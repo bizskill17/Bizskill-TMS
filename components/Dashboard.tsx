@@ -302,41 +302,62 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const anchor = parseDDMMYYYY(anchorStr);
       if (!anchor) return null;
       anchor.setHours(0, 0, 0, 0);
+      const todayRef = new Date(today);
 
       if (periodicity === 'Fixed Days') {
         const frequencyDays = Math.max(1, Number(task.frequencyDays || 1));
         const next = new Date(anchor);
-        next.setDate(anchor.getDate() + frequencyDays);
-        next.setHours(0, 0, 0, 0);
+        do {
+          next.setDate(next.getDate() + frequencyDays);
+          next.setHours(0, 0, 0, 0);
+        } while (next < todayRef);
         return next;
       }
 
       if (periodicity === 'Weekly') {
-        const targetDay = typeof task.recurrenceDay === 'number' ? task.recurrenceDay : Number(task.recurrenceDay || 0);
+        const targetDay = Math.max(0, Math.min(6, Number(task.recurrenceDay ?? 0)));
         let diff = targetDay - anchor.getDay();
         if (diff <= 0) diff += 7;
         const next = new Date(anchor);
         next.setDate(anchor.getDate() + diff);
         next.setHours(0, 0, 0, 0);
+        while (next < todayRef) {
+          next.setDate(next.getDate() + 7);
+          next.setHours(0, 0, 0, 0);
+        }
         return next;
       }
 
       if (periodicity === 'Monthly') {
-        const targetDay = typeof task.recurrenceDay === 'number' ? task.recurrenceDay : Number(task.recurrenceDay || 1);
-        let next = clampDay(anchor.getFullYear(), anchor.getMonth(), targetDay);
+        const targetDay = Math.max(1, Number(task.recurrenceDay ?? 1));
+        let year = anchor.getFullYear();
+        let month = anchor.getMonth();
+        let next = clampDay(year, month, targetDay);
         if (next <= anchor) {
-          next = clampDay(anchor.getFullYear(), anchor.getMonth() + 1, targetDay);
+          month += 1;
+          next = clampDay(year, month, targetDay);
+        }
+        while (next < todayRef) {
+          month += 1;
+          next = clampDay(year, month, targetDay);
         }
         return next;
       }
 
       if (periodicity === 'Yearly') {
         const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-        const targetMonthIdx = Math.max(0, months.indexOf(String(task.recurrenceMonth || 'January')));
-        const targetDay = typeof task.recurrenceDay === 'number' ? task.recurrenceDay : Number(task.recurrenceDay || 1);
-        let next = clampDay(anchor.getFullYear(), targetMonthIdx, targetDay);
+        const foundMonth = months.indexOf(String(task.recurrenceMonth || 'January'));
+        const targetMonthIdx = foundMonth >= 0 ? foundMonth : 0;
+        const targetDay = Math.max(1, Number(task.recurrenceDay ?? 1));
+        let year = anchor.getFullYear();
+        let next = clampDay(year, targetMonthIdx, targetDay);
         if (next <= anchor) {
-          next = clampDay(anchor.getFullYear() + 1, targetMonthIdx, targetDay);
+          year += 1;
+          next = clampDay(year, targetMonthIdx, targetDay);
+        }
+        while (next < todayRef) {
+          year += 1;
+          next = clampDay(year, targetMonthIdx, targetDay);
         }
         return next;
       }
