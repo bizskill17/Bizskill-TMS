@@ -28,7 +28,7 @@ if (!notifications_table_exists($conn, 'notification_queue')) {
 $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
 $limit = max(1, min(200, $limit));
 
-$result = $conn->query("SELECT * FROM notification_queue WHERE status='pending' ORDER BY id ASC LIMIT {$limit}");
+$result = $conn->query(app_scope_sql($conn, 'notification_queue', "SELECT * FROM notification_queue WHERE status='pending' ORDER BY id ASC LIMIT {$limit}"));
 if (!$result) {
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => 'Failed to read queue']);
@@ -55,7 +55,11 @@ foreach ($rows as $row) {
     $err = (string)($dispatch['error'] ?? '');
 
     if ($ok) {
-        $stmt = $conn->prepare("UPDATE notification_queue SET status='sent', updatedAt=NOW(), attempts=attempts+1, lastError=NULL WHERE id=?");
+        $sql = "UPDATE notification_queue SET status='sent', updatedAt=NOW(), attempts=attempts+1, lastError=NULL WHERE id=?";
+        if (app_table_is_scoped($conn, 'notification_queue')) {
+            $sql .= " AND tenant_id = " . app_tenant_id();
+        }
+        $stmt = $conn->prepare($sql);
         if ($stmt) {
             $stmt->bind_param('i', $id);
             $stmt->execute();
@@ -64,7 +68,11 @@ foreach ($rows as $row) {
         $sent++;
         notifications_log($conn, '', (string)$row['channel'], (string)$row['provider'], (string)$row['target'], 'sent', '');
     } else {
-        $stmt = $conn->prepare("UPDATE notification_queue SET status='failed', updatedAt=NOW(), attempts=attempts+1, lastError=? WHERE id=?");
+        $sql = "UPDATE notification_queue SET status='failed', updatedAt=NOW(), attempts=attempts+1, lastError=? WHERE id=?";
+        if (app_table_is_scoped($conn, 'notification_queue')) {
+            $sql .= " AND tenant_id = " . app_tenant_id();
+        }
+        $stmt = $conn->prepare($sql);
         if ($stmt) {
             $stmt->bind_param('si', $err, $id);
             $stmt->execute();

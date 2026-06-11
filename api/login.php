@@ -9,8 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$rawInput = file_get_contents('php://input');
-$input = json_decode($rawInput ?: '{}', true);
+$input = app_get_raw_input_data();
 
 $email = isset($input['email']) ? trim((string)$input['email']) : '';
 $password = isset($input['password']) ? (string)$input['password'] : '';
@@ -21,7 +20,11 @@ if ($email === '' || $password === '') {
     exit;
 }
 
-$sql = "SELECT id, name, email, role, designation, department, employee_id, telegram_user_name, password, isActive FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1";
+$sql = "SELECT id, name, email, role, designation, department, employee_id, telegram_user_name, password, isActive FROM users WHERE LOWER(email) = LOWER(?)";
+if (app_table_is_scoped($conn, 'users')) {
+    $sql .= " AND tenant_id = " . app_tenant_id();
+}
+$sql .= " LIMIT 1";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
@@ -70,7 +73,15 @@ echo json_encode([
         'designation' => (string)($user['designation'] ?? ''),
         'department' => (string)($user['department'] ?? ''),
         'telegramUserName' => (string)($user['telegram_user_name'] ?? ''),
-        'isActive' => true
+        'isActive' => true,
+        'tenantId' => app_tenant_id(),
+        'tenantCode' => app_tenant_code(),
+        'tenantName' => app_tenant_name(),
+    ],
+    'tenant' => [
+        'id' => app_tenant_id(),
+        'code' => app_tenant_code(),
+        'name' => app_tenant_name(),
+        'dbMode' => (string)($currentTenant['db_mode'] ?? 'shared'),
     ]
 ]);
-

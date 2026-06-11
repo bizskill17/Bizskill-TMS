@@ -113,7 +113,10 @@ export interface User {
   role: string;
   isActive: boolean;
   telegramUserName?: string;
-  password?: string; 
+  password?: string;
+  tenantId?: number;
+  tenantCode?: string;
+  tenantName?: string;
 }
 
 export interface Designation {

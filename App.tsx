@@ -241,6 +241,7 @@ export default function App() {
     const saved = localStorage.getItem('taskpro_user');
     return saved ? JSON.parse(saved) : null;
   });
+  const [tenantCode, setTenantCode] = useState<string>(() => localStorage.getItem('taskpro_tenant_code') || '');
   const [workspaceId, setWorkspaceId] = useState<string>(() => localStorage.getItem('taskpro_workspace_id') || '');
   const [apiUrl, setApiUrl] = useState<string>(() => localStorage.getItem('taskpro_api_url') || '');
 
@@ -608,7 +609,8 @@ export default function App() {
       action: action,
       target: target,
       data: finalData,
-      user: currentUser?.name || 'Unknown'
+      user: currentUser?.name || 'Unknown',
+      tenantCode: tenantCode || currentUser?.tenantCode || ''
     };
 
 	    try {
@@ -648,8 +650,9 @@ export default function App() {
 	    }, 20000);
 	    
 	    try {
+          const tenantQuery = tenantCode ? `&tenantCode=${encodeURIComponent(tenantCode)}` : '';
 		      const response = await fetch(
-            `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}action=init&actionLogsLimit=500&recurringActionsLimit=500&_cb=${Date.now()}`,
+            `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}action=init&actionLogsLimit=500&recurringActionsLimit=500${tenantQuery}&_cb=${Date.now()}`,
             { 
 		        signal: abortControllerRef.current.signal,
 		        cache: 'no-store',
@@ -659,6 +662,11 @@ export default function App() {
 	      
 			      if (result.success) {
 			        const { data } = result;
+                if (data?.tenant?.code) {
+                  const resolvedTenantCode = String(data.tenant.code);
+                  setTenantCode(resolvedTenantCode);
+                  localStorage.setItem('taskpro_tenant_code', resolvedTenantCode);
+                }
 	        const normalizeTasks = (list: any[]) => (list || []).map(item => {
             const rawProject = String(item.project || item.Project || '').trim();
             const rawClient = String(item.clientName || item['client Name'] || item['Client Name'] || item.client || item.Client || '').trim();
@@ -948,7 +956,7 @@ export default function App() {
       const response = await fetch('/api/login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass })
+        body: JSON.stringify({ email, password: pass, tenantCode })
       });
       const authData = await safeJsonParse(response, 'Login');
       if (!response.ok || !authData?.success || !authData?.user) {
@@ -957,11 +965,14 @@ export default function App() {
       const user = authData.user;
       const normalizedUser = { ...user, id: Number(user.id), isActive: true };
       setCurrentUser(normalizedUser);
+      const resolvedTenantCode = String(authData?.tenant?.code || normalizedUser.tenantCode || tenantCode || '');
+      setTenantCode(resolvedTenantCode);
       setWorkspaceId('');
       const mysqlApiUrl = '/api/init.php';
       setApiUrl(mysqlApiUrl);
       localStorage.setItem('taskpro_api_url', mysqlApiUrl);
       localStorage.setItem('taskpro_user', JSON.stringify(normalizedUser));
+      if (resolvedTenantCode) localStorage.setItem('taskpro_tenant_code', resolvedTenantCode);
       localStorage.removeItem('taskpro_workspace_id');
       setActiveTab('dashboard');
       return { success: true };
@@ -1362,8 +1373,8 @@ export default function App() {
 	              isSyncing={isSyncing}
 	              onSync={fetchData}
 	              hasError={!!apiError}
-	              onLogout={() => { setCurrentUser(null); localStorage.removeItem('taskpro_user'); }}
-	              onExitWorkspace={() => { setCurrentUser(null); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
+	              onLogout={() => { setCurrentUser(null); setTenantCode(''); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
+	              onExitWorkspace={() => { setCurrentUser(null); setTenantCode(''); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
 	              workspaceId={workspaceId}
 	            />
 	          )}

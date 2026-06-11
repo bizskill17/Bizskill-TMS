@@ -16,7 +16,7 @@ if (!ini_get('zlib.output_compression') && isset($_SERVER['HTTP_ACCEPT_ENCODING'
 
 function fetchAllRows(mysqli $conn, string $table, ?string $orderBy = null): array {
     $safe = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
-    $sql = "SELECT * FROM `{$safe}`";
+    $sql = app_scope_sql($conn, $safe, "SELECT * FROM `{$safe}`");
     if ($orderBy) {
         $safeOrder = preg_replace('/[^a-zA-Z0-9_]/', '', $orderBy);
         $sql .= " ORDER BY `{$safeOrder}` ASC";
@@ -35,7 +35,7 @@ function fetchAllRows(mysqli $conn, string $table, ?string $orderBy = null): arr
 function fetchRecentRows(mysqli $conn, string $table, int $limit): array {
     $safe = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
     $limit = max(1, min(5000, $limit));
-    $sql = "SELECT * FROM `{$safe}` ORDER BY id DESC LIMIT {$limit}";
+    $sql = app_scope_sql($conn, $safe, "SELECT * FROM `{$safe}` ORDER BY id DESC LIMIT {$limit}");
     $result = $conn->query($sql);
     if (!$result) {
         return [];
@@ -48,21 +48,7 @@ function fetchRecentRows(mysqli $conn, string $table, int $limit): array {
 }
 
 function hasColumn(mysqli $conn, string $table, string $column): bool {
-    static $cache = [];
-    $key = strtolower($table . '.' . $column);
-    if (array_key_exists($key, $cache)) {
-        return $cache[$key];
-    }
-    $safeTable = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
-    $safeColumn = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
-    $sql = "SHOW COLUMNS FROM `{$safeTable}` LIKE '{$safeColumn}'";
-    $result = $conn->query($sql);
-    $exists = $result instanceof mysqli_result && $result->num_rows > 0;
-    if ($result instanceof mysqli_result) {
-        $result->free();
-    }
-    $cache[$key] = $exists;
-    return $exists;
+    return db_has_column($conn, $table, $column);
 }
 
 function add_employee_id_column_if_missing(mysqli $conn): void {
@@ -303,14 +289,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'actionLogs' => fetchRecentRows($conn, 'action_logs', $actionLogsLimit),
             'recurringTasks' => fetchAllRows($conn, 'recurring_tasks'),
             'recurringActions' => fetchRecentRows($conn, 'recurring_actions', $recurringActionsLimit),
-            'settings' => $settings
+            'settings' => $settings,
+            'tenant' => [
+                'id' => app_tenant_id(),
+                'code' => app_tenant_code(),
+                'name' => app_tenant_name(),
+                'dbMode' => (string)($currentTenant['db_mode'] ?? 'shared'),
+            ]
         ]
     ]);
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $rawInput = file_get_contents('php://input');
-    $payload = json_decode($rawInput ?: '{}', true);
+    $payload = app_get_raw_input_data();
     if (!is_array($payload)) {
         sendJson(['success' => false, 'error' => 'Invalid JSON payload.'], 400);
     }
@@ -354,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $designation = trim((string)($data['designation'] ?? ''));
         $department = trim((string)($data['department'] ?? ''));
         $telegram_user_name = trim((string)($data['telegramUserName'] ?? $data['telegram_user_name'] ?? ''));
-        $password = (string)($data['password'] ?? '');
+        $password = app_normalize_password_for_storage((string)($data['password'] ?? ''));
         $isActiveRaw = strtolower((string)($data['isActive'] ?? 'true'));
         $isActive = in_array($isActiveRaw, ['1', 'true', 'yes'], true) ? 1 : 0;
 
@@ -362,13 +353,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sendJson(['success' => false, 'error' => 'Name, email and password are required.'], 400);
         }
 
-        $stmt = $conn->prepare(
-            "INSERT INTO users (name, email, employee_id, mobile, role, designation, department, telegram_user_name, password, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-        );
-        if (!$stmt) {
-            sendJson(['success' => false, 'error' => 'Failed to prepare insert query.'], 500);
+        if (app_table_is_scoped($conn, 'users')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare(
+                "INSERT INTO users (tenant_id, name, email, employee_id, mobile, role, designation, department, telegram_user_name, password, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmt) {
+                sendJson(['success' => false, 'error' => 'Failed to prepare insert query.'], 500);
+            }
+            $stmt->bind_param('isssssssssi', $tenantId, $name, $email, $employee_id, $mobile, $role, $designation, $department, $telegram_user_name, $password, $isActive);
+        } else {
+            $stmt = $conn->prepare(
+                "INSERT INTO users (name, email, employee_id, mobile, role, designation, department, telegram_user_name, password, isActive) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+            if (!$stmt) {
+                sendJson(['success' => false, 'error' => 'Failed to prepare insert query.'], 500);
+            }
+            $stmt->bind_param('sssssssssi', $name, $email, $employee_id, $mobile, $role, $designation, $department, $telegram_user_name, $password, $isActive);
         }
-        $stmt->bind_param('sssssssssi', $name, $email, $employee_id, $mobile, $role, $designation, $department, $telegram_user_name, $password, $isActive);
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -412,13 +414,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if ($table === 'main_tasks') {
-            $stmt = $conn->prepare("INSERT INTO main_tasks (id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task insert.'], 500);
-            $stmt->bind_param('issssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            if (app_table_is_scoped($conn, 'main_tasks')) {
+                $tenantId = app_tenant_id();
+                $stmt = $conn->prepare("INSERT INTO main_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task insert.'], 500);
+                $stmt->bind_param('iissssssssssssssdssss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO main_tasks (id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task insert.'], 500);
+                $stmt->bind_param('issssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            }
         } else {
-            $stmt = $conn->prepare("INSERT INTO vendor_tasks (id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task insert.'], 500);
-            $stmt->bind_param('issssssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            if (app_table_is_scoped($conn, 'vendor_tasks')) {
+                $tenantId = app_tenant_id();
+                $stmt = $conn->prepare("INSERT INTO vendor_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task insert.'], 500);
+                $stmt->bind_param('iissssssssssssssssdssss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO vendor_tasks (id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task insert.'], 500);
+                $stmt->bind_param('issssssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+            }
         }
 
 	        $ok = $stmt->execute();
@@ -460,9 +476,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $gstNumber = trim((string)($data['gSTNumber'] ?? $data['gstNumber'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Client name is required.'], 400);
 
-        $stmt = $conn->prepare("INSERT INTO clients (name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare client insert.'], 500);
-        $stmt->bind_param('sssss', $name, $email, $mobile, $address, $gstNumber);
+        if (app_table_is_scoped($conn, 'clients')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO clients (tenant_id, name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare client insert.'], 500);
+            $stmt->bind_param('isssss', $tenantId, $name, $email, $mobile, $address, $gstNumber);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO clients (name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare client insert.'], 500);
+            $stmt->bind_param('sssss', $name, $email, $mobile, $address, $gstNumber);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -478,9 +501,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $gstNumber = trim((string)($data['gSTNumber'] ?? $data['gstNumber'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Vendor name is required.'], 400);
 
-        $stmt = $conn->prepare("INSERT INTO vendors (name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor insert.'], 500);
-        $stmt->bind_param('sssss', $name, $email, $mobile, $address, $gstNumber);
+        if (app_table_is_scoped($conn, 'vendors')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO vendors (tenant_id, name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor insert.'], 500);
+            $stmt->bind_param('isssss', $tenantId, $name, $email, $mobile, $address, $gstNumber);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO vendors (name, email, mobile, address, gstNumber) VALUES (?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor insert.'], 500);
+            $stmt->bind_param('sssss', $name, $email, $mobile, $address, $gstNumber);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -495,9 +525,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = trim((string)($data['status'] ?? 'Active'));
         if ($name === '') sendJson(['success' => false, 'error' => 'Project name is required.'], 400);
 
-        $stmt = $conn->prepare("INSERT INTO projects (name, client, projectType, status) VALUES (?, ?, ?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare project insert.'], 500);
-        $stmt->bind_param('ssss', $name, $client, $projectType, $status);
+        if (app_table_is_scoped($conn, 'projects')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO projects (tenant_id, name, client, projectType, status) VALUES (?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare project insert.'], 500);
+            $stmt->bind_param('issss', $tenantId, $name, $client, $projectType, $status);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO projects (name, client, projectType, status) VALUES (?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare project insert.'], 500);
+            $stmt->bind_param('ssss', $name, $client, $projectType, $status);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -509,9 +546,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['type'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Category name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO categories (name, type) VALUES (?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category insert.'], 500);
-        $stmt->bind_param('ss', $name, $type);
+        if (app_table_is_scoped($conn, 'categories')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO categories (tenant_id, name, type) VALUES (?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category insert.'], 500);
+            $stmt->bind_param('iss', $tenantId, $name, $type);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO categories (name, type) VALUES (?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category insert.'], 500);
+            $stmt->bind_param('ss', $name, $type);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -522,9 +566,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'status_master') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Status name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO status_master (name, is_system) VALUES (?, 0)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare status insert.'], 500);
-        $stmt->bind_param('s', $name);
+        if (app_table_is_scoped($conn, 'status_master')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO status_master (tenant_id, name, is_system) VALUES (?, ?, 0)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare status insert.'], 500);
+            $stmt->bind_param('is', $tenantId, $name);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO status_master (name, is_system) VALUES (?, 0)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare status insert.'], 500);
+            $stmt->bind_param('s', $name);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -537,9 +588,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Firm name is required.'], 400);
         if ($sortName === '') sendJson(['success' => false, 'error' => 'Sort Name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO firms (name, sortName) VALUES (?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm insert.'], 500);
-        $stmt->bind_param('ss', $name, $sortName);
+        if (app_table_is_scoped($conn, 'firms')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO firms (tenant_id, name, sortName) VALUES (?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm insert.'], 500);
+            $stmt->bind_param('iss', $tenantId, $name, $sortName);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO firms (name, sortName) VALUES (?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm insert.'], 500);
+            $stmt->bind_param('ss', $name, $sortName);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -550,9 +608,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'vendor_categories') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Vendor category name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO vendor_categories (name) VALUES (?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor category insert.'], 500);
-        $stmt->bind_param('s', $name);
+        if (app_table_is_scoped($conn, 'vendor_categories')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO vendor_categories (tenant_id, name) VALUES (?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor category insert.'], 500);
+            $stmt->bind_param('is', $tenantId, $name);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO vendor_categories (name) VALUES (?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor category insert.'], 500);
+            $stmt->bind_param('s', $name);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -563,9 +628,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'designations') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Designation name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO designations (name) VALUES (?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare designation insert.'], 500);
-        $stmt->bind_param('s', $name);
+        if (app_table_is_scoped($conn, 'designations')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO designations (tenant_id, name) VALUES (?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare designation insert.'], 500);
+            $stmt->bind_param('is', $tenantId, $name);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO designations (name) VALUES (?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare designation insert.'], 500);
+            $stmt->bind_param('s', $name);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -576,9 +648,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'departments') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Department name is required.'], 400);
-        $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare department insert.'], 500);
-        $stmt->bind_param('s', $name);
+        if (app_table_is_scoped($conn, 'departments')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO departments (tenant_id, name) VALUES (?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare department insert.'], 500);
+            $stmt->bind_param('is', $tenantId, $name);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO departments (name) VALUES (?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare department insert.'], 500);
+            $stmt->bind_param('s', $name);
+        }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
@@ -612,16 +691,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $supportsRecurrenceExtras = hasColumn($conn, 'recurring_tasks', 'recurrenceDay') && hasColumn($conn, 'recurring_tasks', 'recurrenceMonth');
         $idStr = (string)$id;
         if ($supportsRecurrenceExtras) {
-            $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
-            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-            $stmt->bind_param('ssssssssiisssss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status);
+            if (app_table_is_scoped($conn, 'recurring_tasks')) {
+                $tenantId = app_tenant_id();
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
+                $stmt->bind_param('issssssssiisssss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
+                $stmt->bind_param('ssssssssiisssss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status);
+            }
         } else {
             if (in_array($frequencyType, ['Monthly', 'Yearly'], true) && $recurrenceDay > 0) {
                 $frequencyDays = $recurrenceDay;
             }
-            $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
-            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-            $stmt->bind_param('ssssssssissss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status);
+            if (app_table_is_scoped($conn, 'recurring_tasks')) {
+                $tenantId = app_tenant_id();
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
+                $stmt->bind_param('issssssssissss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
+                $stmt->bind_param('ssssssssissss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status);
+            }
         }
 	        $ok = $stmt->execute();
 	        $stmtError = $stmt->error;
@@ -670,11 +763,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($taskId <= 0) sendJson(['success' => false, 'error' => 'Invalid recurring task id.'], 400);
 
-        $stmt = $conn->prepare("INSERT INTO recurring_actions (id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring action insert.'], 500);
         $idStr = (string)$id;
         $taskIdStr = (string)$taskId;
-        $stmt->bind_param('ssssssssssssss', $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $goal, $photos, $pdf, $updatedOn, $timestamp);
+        if (app_table_is_scoped($conn, 'recurring_actions')) {
+            $tenantId = app_tenant_id();
+            $stmt = $conn->prepare("INSERT INTO recurring_actions (tenant_id, id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring action insert.'], 500);
+            $stmt->bind_param('issssssssssssss', $tenantId, $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $goal, $photos, $pdf, $updatedOn, $timestamp);
+        } else {
+            $stmt = $conn->prepare("INSERT INTO recurring_actions (id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring action insert.'], 500);
+            $stmt->bind_param('ssssssssssssss', $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $goal, $photos, $pdf, $updatedOn, $timestamp);
+        }
 	        $ok = $stmt->execute();
 	        $stmtError = $stmt->error;
 	        $stmt->close();
@@ -701,7 +801,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'deleteMaster') {
         $id = $data['id'] ?? 0;
-        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : ''));
         $stmt->bind_param('s', $id);
         $ok = $stmt->execute();
         $stmt->close();
@@ -723,19 +823,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $designation = trim((string)($data['designation'] ?? ''));
         $department = trim((string)($data['department'] ?? ''));
         $telegram_user_name = trim((string)($data['telegramUserName'] ?? $data['telegram_user_name'] ?? ''));
-        $password = (string)($data['password'] ?? '');
+        $password = app_normalize_password_for_storage((string)($data['password'] ?? ''));
         $isActiveRaw = strtolower((string)($data['isActive'] ?? 'true'));
         $isActive = in_array($isActiveRaw, ['1', 'true', 'yes'], true) ? 1 : 0;
 
         if ($password !== '') {
             $stmt = $conn->prepare(
-                "UPDATE users SET name=?, email=?, employee_id=?, mobile=?, role=?, designation=?, department=?, telegram_user_name=?, password=?, isActive=? WHERE id=?"
+                "UPDATE users SET name=?, email=?, employee_id=?, mobile=?, role=?, designation=?, department=?, telegram_user_name=?, password=?, isActive=? WHERE id=?" . (app_table_is_scoped($conn, 'users') ? " AND tenant_id = " . app_tenant_id() : '')
             );
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare update query.'], 500);
             $stmt->bind_param('sssssssssii', $name, $email, $employee_id, $mobile, $role, $designation, $department, $telegram_user_name, $password, $isActive, $id);
         } else {
             $stmt = $conn->prepare(
-                "UPDATE users SET name=?, email=?, employee_id=?, mobile=?, role=?, designation=?, department=?, telegram_user_name=?, isActive=? WHERE id=?"
+                "UPDATE users SET name=?, email=?, employee_id=?, mobile=?, role=?, designation=?, department=?, telegram_user_name=?, isActive=? WHERE id=?" . (app_table_is_scoped($conn, 'users') ? " AND tenant_id = " . app_tenant_id() : '')
             );
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare update query.'], 500);
             $stmt->bind_param('ssssssssii', $name, $email, $employee_id, $mobile, $role, $designation, $department, $telegram_user_name, $isActive, $id);
@@ -770,9 +870,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	        $existing = fetchAllRows($conn, 'app_settings');
 	        $existingId = isset($existing[0]['id']) ? (int)$existing[0]['id'] : 0;
+            $settingsScoped = app_table_is_scoped($conn, 'app_settings');
 
 	        if ($existingId > 0) {
-	            $stmt = $conn->prepare("UPDATE app_settings SET officeTokenId=?, officeTelegramGroupId=?, whatsappGroupId=?, masId=?, masPassword=?, metaAccessToken=?, metaPhoneNumberId=?, metaWabaId=?, metaVerifyToken=?, viewLabelOverrides=?, fieldLabelOverrides=?, updated_at=NOW() WHERE id=?");
+	            $stmt = $conn->prepare("UPDATE app_settings SET officeTokenId=?, officeTelegramGroupId=?, whatsappGroupId=?, masId=?, masPassword=?, metaAccessToken=?, metaPhoneNumberId=?, metaWabaId=?, metaVerifyToken=?, viewLabelOverrides=?, fieldLabelOverrides=?, updated_at=NOW() WHERE id=?" . ($settingsScoped ? " AND tenant_id = " . app_tenant_id() : ''));
 	            if ($stmt) {
 	                $stmt->bind_param('sssssssssssi', $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken, $viewLabelOverrides, $fieldLabelOverrides, $existingId);
 	            } else {
@@ -783,16 +884,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	                    ], 400);
 	                }
 	                // Backward compatible with older schemas where override columns don't exist.
-	                $stmt = $conn->prepare("UPDATE app_settings SET officeTokenId=?, officeTelegramGroupId=?, whatsappGroupId=?, masId=?, masPassword=?, metaAccessToken=?, metaPhoneNumberId=?, metaWabaId=?, metaVerifyToken=?, updated_at=NOW() WHERE id=?");
+	                $stmt = $conn->prepare("UPDATE app_settings SET officeTokenId=?, officeTelegramGroupId=?, whatsappGroupId=?, masId=?, masPassword=?, metaAccessToken=?, metaPhoneNumberId=?, metaWabaId=?, metaVerifyToken=?, updated_at=NOW() WHERE id=?" . ($settingsScoped ? " AND tenant_id = " . app_tenant_id() : ''));
 	                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare settings update query.'], 500);
 	                $stmt->bind_param('sssssssssi', $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken, $existingId);
 	            }
 	        } else {
-	            $insertId = 1;
-	            $stmt = $conn->prepare("INSERT INTO app_settings (id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, viewLabelOverrides, fieldLabelOverrides, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-	            if ($stmt) {
-	                $stmt->bind_param('isssssssssss', $insertId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken, $viewLabelOverrides, $fieldLabelOverrides);
-	            } else {
+	            if ($settingsScoped) {
+                    $tenantId = app_tenant_id();
+	                $stmt = $conn->prepare("INSERT INTO app_settings (tenant_id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, viewLabelOverrides, fieldLabelOverrides, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+	                if ($stmt) {
+	                    $stmt->bind_param('isssssssssss', $tenantId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken, $viewLabelOverrides, $fieldLabelOverrides);
+	                } else {
+	                    if ($hasLabelOverrides) {
+	                        sendJson([
+	                            'success' => false,
+	                            'error' => 'Display-name overrides could not be saved because the database schema is missing columns. Please run: ALTER TABLE app_settings ADD COLUMN viewLabelOverrides TEXT, ADD COLUMN fieldLabelOverrides TEXT;'
+	                        ], 400);
+	                    }
+	                    $stmt = $conn->prepare("INSERT INTO app_settings (tenant_id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+	                    if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare settings insert query.'], 500);
+	                    $stmt->bind_param('issssssssss', $tenantId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken);
+	                }
+                } else {
+	                $insertId = 1;
+	                $stmt = $conn->prepare("INSERT INTO app_settings (id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, viewLabelOverrides, fieldLabelOverrides, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+	                if ($stmt) {
+	                    $stmt->bind_param('isssssssssss', $insertId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken, $viewLabelOverrides, $fieldLabelOverrides);
+	                } else {
 	                if ($hasLabelOverrides) {
 	                    sendJson([
 	                        'success' => false,
@@ -800,10 +918,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	                    ], 400);
 	                }
 	                // Backward compatible with older schemas where override columns don't exist.
-	                $stmt = $conn->prepare("INSERT INTO app_settings (id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-	                if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare settings insert query.'], 500);
-	                $stmt->bind_param('isssssssss', $insertId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken);
-	            }
+	                    $stmt = $conn->prepare("INSERT INTO app_settings (id, officeTokenId, officeTelegramGroupId, whatsappGroupId, masId, masPassword, metaAccessToken, metaPhoneNumberId, metaWabaId, metaVerifyToken, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+	                    if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare settings insert query.'], 500);
+	                    $stmt->bind_param('isssssssss', $insertId, $officeTokenId, $officeTelegramGroupId, $whatsappGroupId, $masId, $masPassword, $metaAccessToken, $metaPhoneNumberId, $metaWabaId, $metaVerifyToken);
+	                }
+                }
 	        }
 
         $ok = $stmt->execute();
@@ -821,7 +940,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	        // Preserve the original (master) attachments on the task record.
 	        // Updates to goal/photos/pdf should be stored only in action_logs.
-	        $existingStmt = $conn->prepare("SELECT goal, photos, pdf FROM `{$table}` WHERE id=? LIMIT 1");
+	        $existingStmt = $conn->prepare("SELECT goal, photos, pdf FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
 	        if (!$existingStmt) sendJson(['success' => false, 'error' => 'Failed to prepare task lookup.'], 500);
 	        $existingStmt->bind_param('i', $id);
 	        $existingStmt->execute();
@@ -858,11 +977,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	        $skipLog = in_array($skipLogRaw, ['1', 'true', 'yes'], true);
 
         if ($table === 'main_tasks') {
-            $stmt = $conn->prepare("UPDATE main_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, client=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE main_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, client=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'main_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task update.'], 500);
             $stmt->bind_param('sssssssssssssdssssi', $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf, $id);
         } else {
-            $stmt = $conn->prepare("UPDATE vendor_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, vendor=?, vendorCategory=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE vendor_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, vendor=?, vendorCategory=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'vendor_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task update.'], 500);
             $stmt->bind_param('ssssssssssssssdssssi', $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf, $id);
         }
@@ -881,9 +1000,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	                $timestamp = $dateTime[1] ?? '';
 	            }
 
-            $logStmt = $conn->prepare("INSERT INTO action_logs (id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            if (!$logStmt) sendJson(['success' => false, 'error' => 'Failed to prepare action log insert.'], 500);
-            $logStmt->bind_param('iissssssssssssdssssss', $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logGoal, $logPhotos, $logPdf, $updatedOn, $timestamp);
+            if (app_table_is_scoped($conn, 'action_logs')) {
+                $tenantId = app_tenant_id();
+                $logStmt = $conn->prepare("INSERT INTO action_logs (tenant_id, id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$logStmt) sendJson(['success' => false, 'error' => 'Failed to prepare action log insert.'], 500);
+                $logStmt->bind_param('iiissssssssssssdssssss', $tenantId, $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logGoal, $logPhotos, $logPdf, $updatedOn, $timestamp);
+            } else {
+                $logStmt = $conn->prepare("INSERT INTO action_logs (id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                if (!$logStmt) sendJson(['success' => false, 'error' => 'Failed to prepare action log insert.'], 500);
+                $logStmt->bind_param('iissssssssssssdssssss', $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logGoal, $logPhotos, $logPdf, $updatedOn, $timestamp);
+            }
 	            $logOk = $logStmt->execute();
 	            $logError = $logStmt->error;
 	            $logStmt->close();
@@ -927,7 +1053,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mobile = trim((string)($data['mobile'] ?? ''));
         $address = trim((string)($data['address'] ?? ''));
         $gstNumber = trim((string)($data['gSTNumber'] ?? $data['gstNumber'] ?? ''));
-        $stmt = $conn->prepare("UPDATE clients SET name=?, email=?, mobile=?, address=?, gstNumber=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE clients SET name=?, email=?, mobile=?, address=?, gstNumber=? WHERE id=?" . (app_table_is_scoped($conn, 'clients') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare client update.'], 500);
         $stmt->bind_param('sssssi', $name, $email, $mobile, $address, $gstNumber, $id);
         $ok = $stmt->execute();
@@ -944,7 +1070,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $mobile = trim((string)($data['mobile'] ?? ''));
         $address = trim((string)($data['address'] ?? ''));
         $gstNumber = trim((string)($data['gSTNumber'] ?? $data['gstNumber'] ?? ''));
-        $stmt = $conn->prepare("UPDATE vendors SET name=?, email=?, mobile=?, address=?, gstNumber=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE vendors SET name=?, email=?, mobile=?, address=?, gstNumber=? WHERE id=?" . (app_table_is_scoped($conn, 'vendors') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor update.'], 500);
         $stmt->bind_param('sssssi', $name, $email, $mobile, $address, $gstNumber, $id);
         $ok = $stmt->execute();
@@ -960,7 +1086,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $client = trim((string)($data['client'] ?? ''));
         $projectType = trim((string)($data['projectType'] ?? ''));
         $status = trim((string)($data['status'] ?? 'Active'));
-        $stmt = $conn->prepare("UPDATE projects SET name=?, client=?, projectType=?, status=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE projects SET name=?, client=?, projectType=?, status=? WHERE id=?" . (app_table_is_scoped($conn, 'projects') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare project update.'], 500);
         $stmt->bind_param('ssssi', $name, $client, $projectType, $status, $id);
         $ok = $stmt->execute();
@@ -974,7 +1100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid category id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['type'] ?? ''));
-        $stmt = $conn->prepare("UPDATE categories SET name=?, type=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE categories SET name=?, type=? WHERE id=?" . (app_table_is_scoped($conn, 'categories') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category update.'], 500);
         $stmt->bind_param('ssi', $name, $type, $id);
         $ok = $stmt->execute();
@@ -988,7 +1114,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid status id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Status name is required.'], 400);
-        $check = $conn->prepare("SELECT is_system, name FROM status_master WHERE id=? LIMIT 1");
+        $check = $conn->prepare("SELECT is_system, name FROM status_master WHERE id=?" . (app_table_is_scoped($conn, 'status_master') ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
         if (!$check) sendJson(['success' => false, 'error' => 'Failed to validate status.'], 500);
         $check->bind_param('i', $id);
         $check->execute();
@@ -998,7 +1124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ((int)($row['is_system'] ?? 0) === 1 || in_array(strtolower(trim((string)($row['name'] ?? ''))), ['in progress', 'completed'], true)) {
             sendJson(['success' => false, 'error' => 'Default status cannot be updated.'], 400);
         }
-        $stmt = $conn->prepare("UPDATE status_master SET name=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE status_master SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'status_master') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare status update.'], 500);
         $stmt->bind_param('si', $name, $id);
         $ok = $stmt->execute();
@@ -1013,7 +1139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
         if ($sortName === '') sendJson(['success' => false, 'error' => 'Sort Name is required.'], 400);
-        $stmt = $conn->prepare("UPDATE firms SET name=?, sortName=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE firms SET name=?, sortName=? WHERE id=?" . (app_table_is_scoped($conn, 'firms') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm update.'], 500);
         $stmt->bind_param('ssi', $name, $sortName, $id);
         $ok = $stmt->execute();
@@ -1026,7 +1152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid vendor category id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
-        $stmt = $conn->prepare("UPDATE vendor_categories SET name=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE vendor_categories SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'vendor_categories') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor category update.'], 500);
         $stmt->bind_param('si', $name, $id);
         $ok = $stmt->execute();
@@ -1039,7 +1165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid designation id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
-        $stmt = $conn->prepare("UPDATE designations SET name=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE designations SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'designations') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare designation update.'], 500);
         $stmt->bind_param('si', $name, $id);
         $ok = $stmt->execute();
@@ -1052,7 +1178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid department id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
-        $stmt = $conn->prepare("UPDATE departments SET name=? WHERE id=?");
+        $stmt = $conn->prepare("UPDATE departments SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'departments') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare department update.'], 500);
         $stmt->bind_param('si', $name, $id);
         $ok = $stmt->execute();
@@ -1065,7 +1191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid recurring task id.'], 400);
 
-        $stmt = $conn->prepare("SELECT * FROM recurring_tasks WHERE id=? LIMIT 1");
+        $stmt = $conn->prepare("SELECT * FROM recurring_tasks WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task lookup.'], 500);
         $idStr = (string)$id;
         $stmt->bind_param('s', $idStr);
@@ -1098,14 +1224,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $supportsRecurrenceExtras = hasColumn($conn, 'recurring_tasks', 'recurrenceDay') && hasColumn($conn, 'recurring_tasks', 'recurrenceMonth');
         if ($supportsRecurrenceExtras) {
-            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, recurrenceDay=?, recurrenceMonth=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, recurrenceDay=?, recurrenceMonth=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task update.'], 500);
             $stmt->bind_param('sssssssiissssssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
         } else {
             if (in_array($frequencyType, ['Monthly', 'Yearly'], true) && $recurrenceDay > 0) {
                 $frequencyDays = $recurrenceDay;
             }
-            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?");
+            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task update.'], 500);
             $stmt->bind_param('sssssssisssssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
         }
@@ -1121,7 +1247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) {
             sendJson(['success' => false, 'error' => 'Invalid user id.'], 400);
         }
-        $stmt = $conn->prepare("DELETE FROM users WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM users WHERE id=?" . (app_table_is_scoped($conn, 'users') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare delete query.'], 500);
         $stmt->bind_param('i', $id);
         $ok = $stmt->execute();
@@ -1135,7 +1261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'deleteRecord' && in_array($table, ['main_tasks', 'vendor_tasks'], true)) {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid task id.'], 400);
-        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare task delete.'], 500);
         $stmt->bind_param('i', $id);
         $ok = $stmt->execute();
@@ -1147,7 +1273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'deleteRecord' && $table === 'action_logs') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid log id.'], 400);
-        $stmt = $conn->prepare("DELETE FROM action_logs WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM action_logs WHERE id=?" . (app_table_is_scoped($conn, 'action_logs') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare log delete.'], 500);
         $stmt->bind_param('i', $id);
         $ok = $stmt->execute();
@@ -1159,7 +1285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'deleteRecord' && in_array($table, ['recurring_tasks', 'recurring_actions'], true)) {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid id.'], 400);
-        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare delete query.'], 500);
         $idStr = (string)$id;
         $stmt->bind_param('s', $idStr);
@@ -1173,7 +1299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid id.'], 400);
         if ($table === 'status_master') {
-            $check = $conn->prepare("SELECT is_system, name FROM status_master WHERE id=? LIMIT 1");
+            $check = $conn->prepare("SELECT is_system, name FROM status_master WHERE id=?" . (app_table_is_scoped($conn, 'status_master') ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
             if (!$check) sendJson(['success' => false, 'error' => 'Failed to validate status.'], 500);
             $check->bind_param('i', $id);
             $check->execute();
@@ -1184,7 +1310,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendJson(['success' => false, 'error' => 'Default status cannot be deleted.'], 400);
             }
         }
-        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?");
+        $stmt = $conn->prepare("DELETE FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare delete query.'], 500);
         $stmt->bind_param('i', $id);
         $ok = $stmt->execute();

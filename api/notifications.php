@@ -31,7 +31,7 @@ function notifications_table_exists(mysqli $conn, string $table): bool {
 }
 
 function notifications_get_settings(mysqli $conn): array {
-    $result = $conn->query("SELECT * FROM app_settings LIMIT 1");
+    $result = $conn->query(app_scope_sql($conn, 'app_settings', "SELECT * FROM app_settings") . " LIMIT 1");
     if (!$result) return [];
     $row = $result->fetch_assoc() ?: [];
     $result->free();
@@ -41,7 +41,12 @@ function notifications_get_settings(mysqli $conn): array {
 function notifications_get_user_mobile(mysqli $conn, string $userName): string {
     $name = trim($userName);
     if ($name === '') return '';
-    $stmt = $conn->prepare("SELECT mobile FROM users WHERE name = ? LIMIT 1");
+    $sql = "SELECT mobile FROM users WHERE name = ?";
+    if (app_table_is_scoped($conn, 'users')) {
+        $sql .= " AND tenant_id = " . app_tenant_id();
+    }
+    $sql .= " LIMIT 1";
+    $stmt = $conn->prepare($sql);
     if (!$stmt) return '';
     $stmt->bind_param('s', $name);
     $stmt->execute();
@@ -54,7 +59,12 @@ function notifications_get_user_mobile(mysqli $conn, string $userName): string {
 function notifications_get_vendor_mobile(mysqli $conn, string $vendorName): string {
     $name = trim($vendorName);
     if ($name === '') return '';
-    $stmt = $conn->prepare("SELECT mobile FROM vendors WHERE name = ? LIMIT 1");
+    $sql = "SELECT mobile FROM vendors WHERE name = ?";
+    if (app_table_is_scoped($conn, 'vendors')) {
+        $sql .= " AND tenant_id = " . app_tenant_id();
+    }
+    $sql .= " LIMIT 1";
+    $stmt = $conn->prepare($sql);
     if (!$stmt) return '';
     $stmt->bind_param('s', $name);
     $stmt->execute();
@@ -67,7 +77,12 @@ function notifications_get_vendor_mobile(mysqli $conn, string $vendorName): stri
 function notifications_get_project_groups(mysqli $conn, string $projectName): array {
     $projectName = trim($projectName);
     if ($projectName === '' || $projectName === '-') return ['whatsappGroupId' => '', 'telegramGroupId' => ''];
-    $stmt = $conn->prepare("SELECT whatsappGroupId, telegramGroupId FROM projects WHERE name = ? LIMIT 1");
+    $sql = "SELECT whatsappGroupId, telegramGroupId FROM projects WHERE name = ?";
+    if (app_table_is_scoped($conn, 'projects')) {
+        $sql .= " AND tenant_id = " . app_tenant_id();
+    }
+    $sql .= " LIMIT 1";
+    $stmt = $conn->prepare($sql);
     if (!$stmt) return ['whatsappGroupId' => '', 'telegramGroupId' => ''];
     $stmt->bind_param('s', $projectName);
     $stmt->execute();
@@ -221,10 +236,17 @@ function notifications_enqueue(mysqli $conn, string $channel, string $provider, 
     if ($channel === '' || $provider === '' || $target === '' || $message === '') return;
     if (!notifications_table_exists($conn, 'notification_queue')) return;
 
-    $stmt = $conn->prepare("INSERT INTO notification_queue (channel, provider, targetType, target, message, meta, status, attempts, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, NOW(), NOW())");
-    if (!$stmt) return;
     $metaJson = json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    $stmt->bind_param('ssssss', $channel, $provider, $targetType, $target, $message, $metaJson);
+    if (app_table_is_scoped($conn, 'notification_queue')) {
+        $tenantId = app_tenant_id();
+        $stmt = $conn->prepare("INSERT INTO notification_queue (tenant_id, channel, provider, targetType, target, message, meta, status, attempts, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, NOW(), NOW())");
+        if (!$stmt) return;
+        $stmt->bind_param('issssss', $tenantId, $channel, $provider, $targetType, $target, $message, $metaJson);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO notification_queue (channel, provider, targetType, target, message, meta, status, attempts, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, NOW(), NOW())");
+        if (!$stmt) return;
+        $stmt->bind_param('ssssss', $channel, $provider, $targetType, $target, $message, $metaJson);
+    }
     $stmt->execute();
     $stmt->close();
 }
@@ -232,9 +254,16 @@ function notifications_enqueue(mysqli $conn, string $channel, string $provider, 
 function notifications_log(mysqli $conn, string $eventType, string $channel, string $provider, string $target, string $status, string $error = ''): void {
     if (!notifications_enabled()) return;
     if (!notifications_table_exists($conn, 'notification_logs')) return;
-    $stmt = $conn->prepare("INSERT INTO notification_logs (eventType, channel, provider, target, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-    if (!$stmt) return;
-    $stmt->bind_param('ssssss', $eventType, $channel, $provider, $target, $status, $error);
+    if (app_table_is_scoped($conn, 'notification_logs')) {
+        $tenantId = app_tenant_id();
+        $stmt = $conn->prepare("INSERT INTO notification_logs (tenant_id, eventType, channel, provider, target, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+        if (!$stmt) return;
+        $stmt->bind_param('issssss', $tenantId, $eventType, $channel, $provider, $target, $status, $error);
+    } else {
+        $stmt = $conn->prepare("INSERT INTO notification_logs (eventType, channel, provider, target, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+        if (!$stmt) return;
+        $stmt->bind_param('ssssss', $eventType, $channel, $provider, $target, $status, $error);
+    }
     $stmt->execute();
     $stmt->close();
 }
