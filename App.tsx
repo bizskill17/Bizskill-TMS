@@ -250,6 +250,13 @@ export default function App() {
     return 'dashboard';
   });
 
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    if (layoutMode === 'side') {
+      setIsSidebarCollapsed(true);
+    }
+  };
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
@@ -761,7 +768,7 @@ export default function App() {
                 recurrenceMonth: String(t.recurrenceMonth || t.recurrencemonth || ''),
 		            startDate: formatToIndianDate(t.startDate || ''),
 		            time: formatToHHMM(getCaseInsensitive(t, 'time') || ''),
-			            lastUpdatedOn: formatToIndianDate(t.lastUpdatedOn || ''),
+			            lastUpdatedOn: formatToIndianDateTime(t.lastUpdatedOn || ''),
 			            lastUpdateRemarks: String(t.lastUpdateRemarks || ''),
 				            goal: String(t.goal || ''),
                   firm: String(t.firm || ''),
@@ -784,7 +791,7 @@ export default function App() {
 				          photos: String(a.photos || a.Photos || ''),
 		          pdf: String(a.pdf || a.PDF || ''),
 		          timestamp: formatToHHMM(getCaseInsensitive(a, 'timestamp') || ''),
-		          updatedOn: formatToIndianDate(getCaseInsensitive(a, 'updatedOn') || '')
+		          updatedOn: formatToIndianDateTime(getCaseInsensitive(a, 'updatedOn') || '')
 		        })));
 		        if (data.settings) setSettings(normalizeSettings(data.settings));
 		        setLastSynced(new Date());
@@ -1344,7 +1351,7 @@ export default function App() {
 			            <Sidebar 
 		              items={navItemsWithCounts} 
 		              activeTab={activeTab} 
-	              onTabChange={setActiveTab} 
+	              onTabChange={handleTabChange} 
 	              onLayoutChange={setLayoutMode}
 	              layoutMode={layoutMode}
 	              isOpen={isSidebarOpen} 
@@ -1364,7 +1371,7 @@ export default function App() {
               <TopBar 
                 items={navItemsWithCounts} 
                 activeTab={activeTab} 
-                onTabChange={setActiveTab} 
+                onTabChange={handleTabChange} 
                 onLayoutChange={setLayoutMode}
                 layoutMode={layoutMode}
                 lastSynced={lastSynced}
