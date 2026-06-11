@@ -3,9 +3,9 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
-$DB_HOST = 'srv735.hstgr.io';
-$DB_NAME = 'u299994438_tmsumang';
-$DB_USER = 'u299994438_tmsumang';
+$DB_HOST = 'srv2057.hstgr.io';
+$DB_NAME = 'u380752258_bizskillTMSCA';
+$DB_USER = 'u380752258_bizskillTMSCA';
 $DB_PASS = '!Office1@';
 
 // Notifications feature flag (safe default: off).
