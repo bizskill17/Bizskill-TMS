@@ -44,5 +44,5 @@ jobs:
           port: ${{ secrets.FTP_PORT }}
           protocol: ftp
           local-dir: ./deploy/
-          server-dir: ./public_html/
+          server-dir: ./
           dangerous-clean-slate: true
