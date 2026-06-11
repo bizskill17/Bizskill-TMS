@@ -47,7 +47,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ departments, o
     return sortableItems;
   }, [departments, sortConfig]);
 
-  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer hover:bg-indigo-700 transition-colors select-none";
+  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none";
   const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0";
 
   const handleExportExcel = () => {
@@ -105,7 +105,7 @@ export const DepartmentsView: React.FC<DepartmentsViewProps> = ({ departments, o
               <tr className="bg-indigo-600 border-b border-indigo-700">
                 <th className={thClass} onClick={() => requestSort('id')}><div className="flex items-center">S.No. {getSortIcon('id')}</div></th>
                 <th className={thClass} onClick={() => requestSort('name')}><div className="flex items-center">Department Name {getSortIcon('name')}</div></th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 text-center">Actions</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 text-center bg-indigo-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black">

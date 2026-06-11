@@ -70,7 +70,7 @@ export const VendorCategoriesView: React.FC<VendorCategoriesViewProps> = ({ cate
     }
   };
 
-  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer hover:bg-indigo-700 transition-colors select-none";
+  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none";
   const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0";
 
   return (

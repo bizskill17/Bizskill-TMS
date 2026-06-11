@@ -47,7 +47,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
     return sortableItems;
   }, [users, sortConfig]);
 
-  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer hover:bg-indigo-700 transition-colors select-none whitespace-normal";
+  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none whitespace-normal";
   const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0 whitespace-normal break-words";
 
   return (
@@ -90,7 +90,7 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
               <th className={thClass} onClick={() => requestSort('isActive')}>
                 <div className="flex items-center justify-center">Status {getSortIcon('isActive')}</div>
               </th>
-              <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 text-center whitespace-normal">Actions</th>
+              <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 text-center whitespace-normal bg-indigo-600">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-black">

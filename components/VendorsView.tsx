@@ -44,7 +44,7 @@ export const VendorsView: React.FC<VendorsViewProps> = ({ vendors, onAddVendor, 
     return filteredVendors.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredVendors, currentPage]);
 
-  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0";
+  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 bg-indigo-600";
   const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0";
 
   const startEntry = filteredVendors.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;

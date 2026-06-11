@@ -87,10 +87,10 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-indigo-600 border-b border-indigo-700">
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500">S.No.</th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500">Firm Name</th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500">Short</th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center">Actions</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">S.No.</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">Firm Name</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">Short</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center bg-indigo-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
