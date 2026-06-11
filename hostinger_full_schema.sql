@@ -1,5 +1,5 @@
 -- TaskPro full schema for Hostinger MySQL
--- Import this file in phpMyAdmin for DB: u299994438_tmsumang
+-- Import this file in phpMyAdmin for database: u380752258_bizskillTMSCA
 
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
@@ -16,12 +16,19 @@ CREATE TABLE IF NOT EXISTS users (
   telegram_user_name VARCHAR(120) DEFAULT NULL,
   password VARCHAR(255) NOT NULL,
   isActive TINYINT(1) NOT NULL DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_users_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS designations (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS departments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -31,6 +38,13 @@ CREATE TABLE IF NOT EXISTS categories (
   type VARCHAR(120) DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_category_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS status_master (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  is_system TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS vendor_categories (
@@ -47,14 +61,17 @@ CREATE TABLE IF NOT EXISTS clients (
   mobile VARCHAR(30) DEFAULT '',
   address TEXT,
   gstNumber VARCHAR(60) DEFAULT '',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_clients_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS firms (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(190) NOT NULL,
+  sortName VARCHAR(50) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_firm_name (name)
+  UNIQUE KEY uq_firm_name (name),
+  KEY idx_firms_sort_name (sortName)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS vendors (
@@ -64,7 +81,8 @@ CREATE TABLE IF NOT EXISTS vendors (
   mobile VARCHAR(30) DEFAULT '',
   address TEXT,
   gstNumber VARCHAR(60) DEFAULT '',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_vendors_name (name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS projects (
@@ -73,8 +91,12 @@ CREATE TABLE IF NOT EXISTS projects (
   client VARCHAR(190) DEFAULT '',
   projectType VARCHAR(120) DEFAULT '',
   status VARCHAR(60) DEFAULT 'Active',
+  telegramGroupId VARCHAR(255) DEFAULT '',
+  whatsappGroupId VARCHAR(255) DEFAULT '',
+  projectEmail VARCHAR(190) DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_project_name (name)
+  UNIQUE KEY uq_project_name (name),
+  KEY idx_projects_client (client)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS main_tasks (
@@ -91,14 +113,17 @@ CREATE TABLE IF NOT EXISTS main_tasks (
   priority VARCHAR(50) DEFAULT 'Medium',
   status VARCHAR(80) DEFAULT 'Not Yet Started',
   dueDate VARCHAR(20) DEFAULT '',
-  lastUpdateDate VARCHAR(20) DEFAULT '',
+  lastUpdateDate VARCHAR(30) DEFAULT '',
   lastUpdateRemarks TEXT,
   hours DECIMAL(10,2) DEFAULT 0,
   time VARCHAR(10) DEFAULT '',
   goal VARCHAR(255) DEFAULT '',
   photos MEDIUMTEXT,
   pdf MEDIUMTEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_main_tasks_project (project),
+  KEY idx_main_tasks_owner (owner),
+  KEY idx_main_tasks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS vendor_tasks (
@@ -116,14 +141,18 @@ CREATE TABLE IF NOT EXISTS vendor_tasks (
   priority VARCHAR(50) DEFAULT 'Medium',
   status VARCHAR(80) DEFAULT 'Not Yet Started',
   dueDate VARCHAR(20) DEFAULT '',
-  lastUpdateDate VARCHAR(20) DEFAULT '',
+  lastUpdateDate VARCHAR(30) DEFAULT '',
   lastUpdateRemarks TEXT,
   hours DECIMAL(10,2) DEFAULT 0,
   time VARCHAR(10) DEFAULT '',
   goal VARCHAR(255) DEFAULT '',
   photos MEDIUMTEXT,
   pdf MEDIUMTEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_vendor_tasks_project (project),
+  KEY idx_vendor_tasks_owner (owner),
+  KEY idx_vendor_tasks_vendor (vendor),
+  KEY idx_vendor_tasks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS action_logs (
@@ -149,24 +178,32 @@ CREATE TABLE IF NOT EXISTS action_logs (
   updatedOn VARCHAR(20) DEFAULT '',
   timestamp VARCHAR(30) DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_action_logs_task (taskId)
+  KEY idx_action_logs_task (taskId),
+  KEY idx_action_logs_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS recurring_tasks (
   id BIGINT PRIMARY KEY,
   title VARCHAR(255) NOT NULL,
+  notes LONGTEXT,
   firm VARCHAR(190) DEFAULT '',
+  owner VARCHAR(190) DEFAULT '',
   category VARCHAR(190) DEFAULT '',
   assignee VARCHAR(190) DEFAULT '',
-  frequencyType VARCHAR(50) DEFAULT 'Monthly',
-  frequencyDays INT DEFAULT 30,
+  frequencyType VARCHAR(50) DEFAULT 'Fixed Days',
+  frequencyDays INT DEFAULT 0,
+  recurrenceDay INT DEFAULT 0,
+  recurrenceMonth VARCHAR(50) DEFAULT '',
   startDate VARCHAR(20) DEFAULT '',
   time VARCHAR(10) DEFAULT '',
   goal VARCHAR(255) DEFAULT '',
   status VARCHAR(80) DEFAULT 'Not Yet Started',
   lastUpdatedOn VARCHAR(20) DEFAULT '',
   lastUpdateRemarks TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_recurring_tasks_owner (owner),
+  KEY idx_recurring_tasks_assignee (assignee),
+  KEY idx_recurring_tasks_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS recurring_actions (
@@ -174,6 +211,7 @@ CREATE TABLE IF NOT EXISTS recurring_actions (
   taskId BIGINT NOT NULL,
   taskTitle VARCHAR(255) DEFAULT '',
   firm VARCHAR(190) DEFAULT '',
+  owner VARCHAR(190) DEFAULT '',
   category VARCHAR(190) DEFAULT '',
   assignee VARCHAR(190) DEFAULT '',
   status VARCHAR(80) DEFAULT '',
@@ -184,31 +222,8 @@ CREATE TABLE IF NOT EXISTS recurring_actions (
   updatedOn VARCHAR(20) DEFAULT '',
   timestamp VARCHAR(30) DEFAULT '',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_recurring_actions_task (taskId)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS template_master (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(190) NOT NULL UNIQUE,
-  type VARCHAR(120) DEFAULT '',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS template_tasks (
-  id BIGINT PRIMARY KEY,
-  templateId INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  notes TEXT,
-  firm VARCHAR(190) DEFAULT '',
-  category VARCHAR(190) DEFAULT '',
-  frequencyType VARCHAR(50) DEFAULT 'Monthly',
-  frequencyDays INT DEFAULT 30,
-  recurrenceDay INT DEFAULT 0,
-  recurrenceMonth VARCHAR(50) DEFAULT '',
-  time VARCHAR(10) DEFAULT '',
-  goal VARCHAR(255) DEFAULT '',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_template_tasks_template (templateId)
+  KEY idx_recurring_actions_task (taskId),
+  KEY idx_recurring_actions_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS app_settings (
@@ -227,10 +242,53 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS notification_queue (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  channel VARCHAR(20) NOT NULL,
+  provider VARCHAR(20) NOT NULL,
+  targetType VARCHAR(20) NOT NULL,
+  target VARCHAR(255) NOT NULL,
+  message MEDIUMTEXT NOT NULL,
+  meta JSON NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  attempts INT NOT NULL DEFAULT 0,
+  lastError TEXT NULL,
+  createdAt DATETIME NOT NULL,
+  updatedAt DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_queue_status_created (status, createdAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notification_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  eventType VARCHAR(50) NOT NULL,
+  channel VARCHAR(20) NOT NULL,
+  provider VARCHAR(20) NOT NULL,
+  target VARCHAR(255) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  error TEXT NULL,
+  createdAt DATETIME NOT NULL,
+  PRIMARY KEY (id),
+  KEY idx_logs_created (createdAt),
+  KEY idx_logs_event (eventType)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO app_settings (id)
 VALUES (1)
 ON DUPLICATE KEY UPDATE id = 1;
 
+INSERT INTO status_master (name, is_system)
+VALUES
+  ('Not Yet Started', 1),
+  ('In Progress', 1),
+  ('Completed', 1)
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  is_system = VALUES(is_system);
+
 INSERT INTO users (name, email, role, password, isActive)
 VALUES ('Admin', 'bizskill17@gmail.com', 'Admin', '!Office1@', 1)
-ON DUPLICATE KEY UPDATE name = VALUES(name), role = VALUES(role), isActive = VALUES(isActive);
+ON DUPLICATE KEY UPDATE
+  name = VALUES(name),
+  role = VALUES(role),
+  isActive = VALUES(isActive);

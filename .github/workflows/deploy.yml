@@ -18,6 +18,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
@@ -30,7 +31,9 @@ jobs:
           rm -rf deploy
           mkdir -p deploy
           cp -r dist/* deploy/
-          cp -r api deploy/api
+          if [ -d api ]; then
+            cp -r api deploy/api
+          fi
 
       - name: Deploy to Hostinger (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -41,5 +44,5 @@ jobs:
           port: ${{ secrets.FTP_PORT }}
           protocol: ftp
           local-dir: ./deploy/
-          server-dir: ./
+          server-dir: ./public_html/
           dangerous-clean-slate: true
