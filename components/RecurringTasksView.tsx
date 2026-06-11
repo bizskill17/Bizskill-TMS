@@ -381,6 +381,18 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
     return taskActions.length > 0 ? (taskActions[0].timestamp || taskActions[0].updatedOn) : null;
   };
 
+  const getActivityDisplay = (task: RecurringTask) => {
+    const dateTime = String(task.lastUpdatedOn || '').trim();
+    if (dateTime.includes(':')) return dateTime;
+
+    const latestStamp = String(getLatestActionTimestamp(task.id) || '').trim();
+    if (!dateTime) return latestStamp || '-';
+    if (!latestStamp || latestStamp === dateTime) return dateTime;
+
+    const timePart = latestStamp.includes(' ') ? latestStamp.split(' ').slice(1).join(' ').trim() : latestStamp;
+    return timePart ? `${dateTime} ${timePart}` : dateTime;
+  };
+
   const sortedTasks = useMemo(() => {
     let sortableItems = [...filteredTasks];
     if (sortConfig !== null) {
@@ -656,16 +668,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{goalDisplay}</td>
 			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{achievedDisplay}</td>
 			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{getAchievedPercent(goalDisplay, achievedDisplay)}</td>
-		                    <td className={tdClass}>
-                          <div className="flex flex-col">
-                            <span>{task.lastUpdatedOn || '-'}</span>
-                            {getLatestActionTimestamp(task.id) && (
-                              <span className="text-[9px] text-gray-500 italic">
-                                {String(getLatestActionTimestamp(task.id)).split(' ').slice(1).join(' ')}
-                              </span>
-                            )}
-                          </div>
-                        </td>
+		                    <td className={tdClass}>{getActivityDisplay(task)}</td>
 	                    <td className={`${tdClass}`}>{task.lastUpdateRemarks || '-'}</td>
 	                    <td className={`${tdClass} font-bold ${isOverdue ? 'text-red-600 animate-pulse' : 'text-indigo-600'}`}>
 	                        {nextDueStr}
@@ -752,9 +755,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                       </div>
                       <div className="col-span-2 mt-1 pt-1 border-t border-gray-100">
                         <span className="text-gray-400 font-bold uppercase text-[9px] block">Last Activity</span>
-                        <div className="text-[10px] text-gray-600">
-                          {task.lastUpdatedOn || '-'} {getLatestActionTimestamp(task.id) ? `(${String(getLatestActionTimestamp(task.id)).split(' ').slice(1).join(' ')})` : ''}
-                        </div>
+	                        <div className="text-[10px] text-gray-600">{getActivityDisplay(task)}</div>
                       </div>
 	                    </div>
                     <div className="flex gap-2 pt-3 border-t border-gray-100 flex-wrap">
