@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 /**
- * Notifications (WhatsApp + Telegram) for the Hostinger/MySQL backend.
+ * Notifications (WhatsApp + Telegram) for the MySQL backend.
  *
  * Safety goals:
  * - No-op by default unless $NOTIFICATIONS_ENABLED is set true in config.php.
