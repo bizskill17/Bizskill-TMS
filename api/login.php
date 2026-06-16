@@ -11,12 +11,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $input = app_get_raw_input_data();
 
+$orgId = isset($input['orgId']) ? strtolower(trim((string)$input['orgId'])) : '';
+$orgId = $orgId !== '' ? preg_replace('/[^a-z0-9_-]+/', '-', $orgId) : '';
 $email = isset($input['email']) ? trim((string)$input['email']) : '';
 $password = isset($input['password']) ? (string)$input['password'] : '';
 
-if ($email === '' || $password === '') {
+if ($orgId === '' || $email === '' || $password === '') {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Email and password are required.']);
+    echo json_encode(['success' => false, 'error' => 'Org Id, email and password are required.']);
+    exit;
+}
+
+$resolvedTenantCode = app_tenant_code();
+if ($resolvedTenantCode !== $orgId) {
+    http_response_code(404);
+    echo json_encode(['success' => false, 'error' => 'Invalid Org Id.']);
+    exit;
+}
+
+$tenantStatus = strtolower(trim((string)($currentTenant['status'] ?? 'inactive')));
+if ($tenantStatus !== 'active') {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'This organization is inactive.']);
     exit;
 }
 
@@ -75,13 +91,14 @@ echo json_encode([
         'telegramUserName' => (string)($user['telegram_user_name'] ?? ''),
         'isActive' => true,
         'tenantId' => app_tenant_id(),
-        'tenantCode' => app_tenant_code(),
+        'tenantCode' => $resolvedTenantCode,
         'tenantName' => app_tenant_name(),
     ],
     'tenant' => [
         'id' => app_tenant_id(),
-        'code' => app_tenant_code(),
+        'code' => $resolvedTenantCode,
         'name' => app_tenant_name(),
         'dbMode' => (string)($currentTenant['db_mode'] ?? 'shared'),
+        'status' => (string)($currentTenant['status'] ?? 'active'),
     ]
 ]);

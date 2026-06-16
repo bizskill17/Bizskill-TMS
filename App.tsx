@@ -950,13 +950,14 @@ export default function App() {
     isSidebarCollapsed,
   ]);
 
-  const handleLogin = async (email: string, pass: string) => {
+  const handleLogin = async (orgId: string, email: string, pass: string) => {
     setIsLoading(true);
     try {
+      const normalizedOrgId = String(orgId || '').trim().toLowerCase();
       const response = await fetch('/api/login.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: pass, tenantCode })
+        body: JSON.stringify({ orgId: normalizedOrgId, tenantCode: normalizedOrgId, email, password: pass })
       });
       const authData = await safeJsonParse(response, 'Login');
       if (!response.ok || !authData?.success || !authData?.user) {
@@ -965,7 +966,7 @@ export default function App() {
       const user = authData.user;
       const normalizedUser = { ...user, id: Number(user.id), isActive: true };
       setCurrentUser(normalizedUser);
-      const resolvedTenantCode = String(authData?.tenant?.code || normalizedUser.tenantCode || tenantCode || '');
+      const resolvedTenantCode = String(authData?.tenant?.code || normalizedUser.tenantCode || normalizedOrgId || tenantCode || '');
       setTenantCode(resolvedTenantCode);
       setWorkspaceId('');
       const mysqlApiUrl = '/api/init.php';

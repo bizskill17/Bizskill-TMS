@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, Loader2, AlertCircle, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { Building2, Mail, Lock, Loader2, AlertCircle, ChevronRight, Eye, EyeOff } from 'lucide-react';
 
 interface LoginViewProps {
-  onLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  onLogin: (orgId: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   isAuthenticating: boolean;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isAuthenticating }) => {
+  const [orgId, setOrgId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,12 +18,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isAuthenticating 
     e.preventDefault();
     setError(null);
     
-    if (!email || !password) {
+    if (!orgId || !email || !password) {
       setError('Please fill in all fields.');
       return;
     }
 
-    const result = await onLogin(email, password);
+    const result = await onLogin(orgId, email, password);
     if (!result.success) {
       setError(result.error || 'Invalid credentials.');
     }
@@ -48,6 +49,23 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isAuthenticating 
         <div className="bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-100 overflow-hidden">
           <div className="p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest ml-1">Org Id</label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-indigo-500 transition-colors">
+                    <Building2 size={20} />
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-12 pr-4 py-4 bg-[#fcfdfe] border border-gray-200 rounded-2xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 outline-none text-gray-900 transition-all font-medium"
+                    placeholder="your-org-id"
+                    value={orgId}
+                    onChange={(e) => setOrgId(e.target.value)}
+                    autoComplete="organization"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest ml-1">Email Address</label>
                 <div className="relative group">

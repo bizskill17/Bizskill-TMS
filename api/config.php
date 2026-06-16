@@ -190,9 +190,13 @@ function app_current_host(): string {
 function app_requested_tenant_code(): string {
     $payload = app_get_raw_input_data();
     $candidates = [
+        $_GET['orgId'] ?? null,
         $_GET['tenantCode'] ?? null,
+        $_SERVER['HTTP_X_ORG_ID'] ?? null,
         $_SERVER['HTTP_X_TENANT_CODE'] ?? null,
+        $payload['orgId'] ?? null,
         $payload['tenantCode'] ?? null,
+        $payload['data']['orgId'] ?? null,
         $payload['data']['tenantCode'] ?? null,
     ];
     foreach ($candidates as $candidate) {
@@ -202,6 +206,10 @@ function app_requested_tenant_code(): string {
         }
     }
     return '';
+}
+
+function app_requested_org_id(): string {
+    return app_requested_tenant_code();
 }
 
 function app_normalize_password_for_storage(string $password): string {
@@ -399,14 +407,14 @@ function app_resolve_tenant(mysqli $platformConn): array {
     }
 
     $tenant = null;
-    $host = app_current_host();
-    if ($host !== '') {
-        $tenant = app_find_tenant_by_domain($platformConn, $host);
+    $requestedCode = app_requested_tenant_code();
+    if ($requestedCode !== '') {
+        $tenant = app_find_tenant_by_code($platformConn, $requestedCode);
     }
     if (!$tenant) {
-        $requestedCode = app_requested_tenant_code();
-        if ($requestedCode !== '') {
-            $tenant = app_find_tenant_by_code($platformConn, $requestedCode);
+        $host = app_current_host();
+        if ($host !== '') {
+            $tenant = app_find_tenant_by_domain($platformConn, $host);
         }
     }
     if (!$tenant) {

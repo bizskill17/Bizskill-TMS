@@ -144,10 +144,16 @@ if ($action !== 'provisionTenant') {
 }
 
 $tenantName = trim((string)($payload['tenantName'] ?? ''));
-$tenantCode = strtolower(trim((string)($payload['tenantCode'] ?? '')));
+$tenantCode = strtolower(trim((string)($payload['tenantCode'] ?? $payload['orgId'] ?? '')));
 $tenantCode = preg_replace('/[^a-z0-9_-]+/', '-', $tenantCode);
 $domain = strtolower(trim((string)($payload['domain'] ?? '')));
-$dbMode = strtolower(trim((string)($payload['dbMode'] ?? 'shared')));
+$storageOption = strtolower(trim((string)($payload['storageOption'] ?? '')));
+$dbMode = strtolower(trim((string)($payload['dbMode'] ?? '')));
+$dbMode = match ($storageOption) {
+    'use_existing_db' => 'shared',
+    'enter_new_db' => 'dedicated',
+    default => ($dbMode !== '' ? $dbMode : 'shared'),
+};
 $adminName = trim((string)($payload['adminName'] ?? 'Admin'));
 $adminEmail = trim((string)($payload['adminEmail'] ?? ''));
 $adminPassword = trim((string)($payload['adminPassword'] ?? ''));
@@ -171,13 +177,14 @@ if ($dbMode === 'shared') {
     setup_create_shared_admin($platformConn, $tenantId, $adminName, $adminEmail, $passwordHash);
     setup_json([
         'success' => true,
-        'message' => 'Shared tenant provisioned successfully.',
+        'message' => 'Organization using existing DB provisioned successfully.',
         'tenant' => [
             'id' => $tenantId,
             'code' => $tenantCode,
             'name' => $tenantName,
             'dbMode' => $dbMode,
-        ]
+            'storageOption' => 'use_existing_db',
+        ],
     ]);
 }
 
@@ -196,11 +203,12 @@ setup_create_dedicated_admin($tenantConn, $adminName, $adminEmail, $passwordHash
 
 setup_json([
     'success' => true,
-    'message' => 'Dedicated tenant provisioned successfully.',
+    'message' => 'Organization using new DB provisioned successfully.',
     'tenant' => [
         'id' => $tenantId,
         'code' => $tenantCode,
         'name' => $tenantName,
         'dbMode' => $dbMode,
+        'storageOption' => 'enter_new_db',
     ]
 ]);
