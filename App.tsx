@@ -108,6 +108,7 @@ const navItems: NavItem[] = [
   { id: 'categories', label: 'Categories', icon: <Tags size={20} />, section: 'Master' },
   { id: 'statuses', label: 'Status', icon: <Tags size={20} />, section: 'Master' },
   { id: 'designations', label: 'Designation', icon: <Briefcase size={20} />, section: 'Master' },
+  { id: 'departments', label: 'Departments', icon: <Building size={20} />, section: 'Master' },
   ...(VENDOR_MODULE_ENABLED ? ([
 	    { id: 'vendor-categories', label: 'Vendor Categories', icon: <Tags size={20} />, section: 'Master' },
 	    { id: 'vendors', label: 'Vendors', icon: <Truck size={20} />, section: 'Master' },
