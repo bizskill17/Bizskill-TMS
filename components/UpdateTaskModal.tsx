@@ -238,25 +238,24 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-	                  <label className="text-sm font-medium text-gray-900 block mb-1">{getFieldLabel('task.photos', 'Photo (Up to 5)')}</label>
+	                  <label className="text-sm font-medium text-gray-900 block mb-1">{getFieldLabel('task.photos', 'Photo')}</label>
                   <input
                     type="file"
                     accept="image/*"
-                    multiple
                     onChange={async (e) => {
-                      const files = Array.from(e.target.files || []);
-                      if (files.length > 5) {
-                        setError('Please upload maximum 5 photos');
+                      const file = e.target.files?.[0];
+                      if (!file) {
+                        setPhotosInput([]);
                         return;
                       }
-                      const photoData = await Promise.all(files.map(readFileAsDataUrl));
-                      setPhotosInput(photoData);
+                      const photoData = await readFileAsDataUrl(file);
+                      setPhotosInput([photoData]);
                       setError('');
                     }}
                     className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm"
                   />
                   <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>{photosInput.length} photo(s) selected</span>
+                    <span>{photosInput.length > 0 ? 'Photo selected' : 'No photo selected'}</span>
                     {photosInput.length > 0 && (
                       <button
                         type="button"

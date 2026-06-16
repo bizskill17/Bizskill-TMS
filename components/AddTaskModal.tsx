@@ -431,23 +431,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-black block mb-1">Photo (Up to 5)</label>
+                <label className="text-sm font-medium text-black block mb-1">Photo</label>
                 <input
                   type="file"
                   accept="image/*"
-                  multiple
                   onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 5) {
-                      alert('Please upload maximum 5 photos.');
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setFormData(prev => ({ ...prev, photos: [] }));
                       return;
                     }
-                    const photoData = await Promise.all(files.map(readFileAsDataUrl));
-                    setFormData(prev => ({ ...prev, photos: photoData }));
+                    const photoData = await readFileAsDataUrl(file);
+                    setFormData(prev => ({ ...prev, photos: [photoData] }));
                   }}
                   className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm"
                 />
-                <p className="text-xs text-gray-500">{formData.photos.length} photo(s) selected</p>
+                <p className="text-xs text-gray-500">{formData.photos.length > 0 ? 'Photo selected' : 'No photo selected'}</p>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium text-black block mb-1">PDF</label>

@@ -124,24 +124,23 @@ export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> =
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('recurringAction.photos', 'Photo (Up to 5)')}</label>
+                <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('recurringAction.photos', 'Photo')}</label>
                 <input
                   type="file"
                   accept="image/*"
-                  multiple
                   disabled={isSaving}
                   onChange={async (e) => {
-                    const files = Array.from(e.target.files || []);
-                    if (files.length > 5) {
-                      alert('Please upload maximum 5 photos.');
+                    const file = e.target.files?.[0];
+                    if (!file) {
+                      setPhotos([]);
                       return;
                     }
-                    const photoData = await Promise.all(files.map(readFileAsDataUrl));
-                    setPhotos(photoData);
+                    const photoData = await readFileAsDataUrl(file);
+                    setPhotos([photoData]);
                   }}
                   className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm"
                 />
-                <p className="text-xs text-gray-500">{photos.length} photo(s) selected</p>
+                <p className="text-xs text-gray-500">{photos.length > 0 ? 'Photo selected' : 'No photo selected'}</p>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('recurringAction.pdf', 'PDF')}</label>
