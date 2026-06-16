@@ -238,6 +238,39 @@ export default function App() {
     return merged as AppSettings;
   }, []);
   const normalizeStatusName = (value: string) => String(value || '').trim().toLowerCase();
+  const ensureDefaultStatuses = useCallback((incoming: any[]): StatusMaster[] => {
+    const normalizedIncoming = (Array.isArray(incoming) ? incoming : []).map((status: any) => ({
+      ...status,
+      id: Number(status.id || 0),
+      name: String(status.name || ''),
+      is_system: Number(status.is_system || 0),
+    }));
+
+    const defaults = ['Completed', 'In Progress'];
+    const statusMap = new Map<string, StatusMaster>();
+
+    normalizedIncoming.forEach((status) => {
+      const key = normalizeStatusName(status.name);
+      if (!key) return;
+      statusMap.set(key, {
+        ...status,
+        is_system: ['completed', 'in progress'].includes(key) ? 1 : Number(status.is_system || 0),
+      });
+    });
+
+    defaults.forEach((name, index) => {
+      const key = normalizeStatusName(name);
+      if (!statusMap.has(key)) {
+        statusMap.set(key, {
+          id: -(index + 1),
+          name,
+          is_system: 1,
+        });
+      }
+    });
+
+    return Array.from(statusMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, []);
   const makePendingStatusId = (statusName: string) => `pending-status:${encodeURIComponent(normalizeStatusName(statusName))}`;
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('taskpro_user');
@@ -333,7 +366,7 @@ export default function App() {
       if (Array.isArray(cachedFirms)) setFirms(cachedFirms);
       if (Array.isArray(cachedVendors)) setVendors(cachedVendors);
       if (Array.isArray(cachedCategories)) setCategories(cachedCategories);
-      if (Array.isArray(cachedStatuses)) setStatuses(cachedStatuses);
+      if (Array.isArray(cachedStatuses)) setStatuses(ensureDefaultStatuses(cachedStatuses));
       if (Array.isArray(cachedVendorCategories)) setVendorCategories(cachedVendorCategories);
       if (Array.isArray(cachedDesignations)) setDesignations(cachedDesignations);
       if (Array.isArray(cachedTasks)) setTasks(cachedTasks);
@@ -738,7 +771,7 @@ export default function App() {
         setFirms((data.firms || []).map((f: any) => ({ ...f, id: Number(f.id), name: String(f.name || ''), sortName: String(f.sortName || f.sortname || f.SortName || '') })));
         setVendors((data.vendors || []).map((v: any) => ({ ...v, id: Number(v.id), gstNumber: v.gstNumber || v.gSTNumber || v.GSTNumber || '' })));
         setCategories((data.categories || []).map((c: any) => ({ ...c, id: Number(c.id) })));
-        setStatuses((data.statuses || []).map((s: any) => ({ ...s, id: Number(s.id), name: String(s.name || ''), is_system: Number(s.is_system || 0) })));
+        setStatuses(ensureDefaultStatuses(data.statuses || []));
         setVendorCategories((data.vendorCategories || []).map((vc: any) => ({ ...vc, id: Number(vc.id) })));
         setDesignations((data.designations || []).map((d: any) => ({
           id: Number(d.id),
@@ -841,7 +874,7 @@ export default function App() {
               firms: (data.firms || []).map((f: any) => ({ ...f, id: Number(f.id), name: String(f.name || ''), sortName: String(f.sortName || f.sortname || f.SortName || '') })),
               vendors: (data.vendors || []).map((v: any) => ({ ...v, id: Number(v.id), gstNumber: v.gstNumber || v.gSTNumber || v.GSTNumber || '' })),
               categories: (data.categories || []).map((c: any) => ({ ...c, id: Number(c.id) })),
-              statuses: (data.statuses || []).map((s: any) => ({ ...s, id: Number(s.id), name: String(s.name || ''), is_system: Number(s.is_system || 0) })),
+              statuses: ensureDefaultStatuses(data.statuses || []),
               vendorCategories: (data.vendorCategories || []).map((vc: any) => ({ ...vc, id: Number(vc.id) })),
               designations: (data.designations || []).map((d: any) => ({ id: Number(d.id), title: String(d.title || d.name || ''), description: String(d.description || '') })),
               // Use the already-normalized + computed arrays, trimmed to keep localStorage small.
