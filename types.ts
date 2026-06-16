@@ -117,6 +117,22 @@ export interface User {
   tenantId?: number;
   tenantCode?: string;
   tenantName?: string;
+  isPlatformAdmin?: boolean;
+  platformAdminEmail?: string;
+  platformAdminToken?: string;
+}
+
+export interface Organization {
+  id: number;
+  orgId: string;
+  orgName: string;
+  dbMode: 'shared' | 'dedicated';
+  status: 'active' | 'inactive';
+  domain?: string;
+  dbHost?: string;
+  dbName?: string;
+  dbUser?: string;
+  hasConnection?: boolean;
 }
 
 export interface Designation {

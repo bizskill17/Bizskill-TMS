@@ -43,6 +43,7 @@ import { EditRecurringTaskModal } from './components/EditRecurringTaskModal';
 import { LabelProvider, buildLabelResolvers } from './labelOverrides';
 import { TelegramSetupView } from './components/TelegramSetupView'; 
 import { DocumentationView } from './components/DocumentationView';
+import { OrganizationsView } from './components/OrganizationsView';
 import { 
   LayoutDashboard, 
   CheckSquare, 
@@ -66,12 +67,13 @@ import {
   Send,
   BarChart3,
   UserCheck,
-  UserCog,
-  GraduationCap,
-  IndianRupee,
-  Wallet
-} from 'lucide-react';
-import { NavItem, Task, User, Designation, Department, Category, Project, Client, ActionLogEntry, Vendor, VendorCategory, RecurringTask, RecurringTaskAction, AppSettings, Firm, StatusMaster } from './types';
+	  UserCog,
+	  GraduationCap,
+	  IndianRupee,
+	  Wallet,
+    Building
+	} from 'lucide-react';
+	import { NavItem, Task, User, Designation, Department, Category, Project, Client, ActionLogEntry, Vendor, VendorCategory, RecurringTask, RecurringTaskAction, AppSettings, Firm, StatusMaster, Organization } from './types';
 
 const AUTO_SYNC_INTERVAL = 120000;
 const VENDOR_MODULE_ENABLED = false;
@@ -246,6 +248,7 @@ export default function App() {
   const [apiUrl, setApiUrl] = useState<string>(() => localStorage.getItem('taskpro_api_url') || '');
 
   const isAdmin = currentUser?.role === 'Admin';
+  const isPlatformAdmin = !!currentUser?.isPlatformAdmin;
 
   const [activeTab, setActiveTab] = useState(() => {
     return 'dashboard';
@@ -277,7 +280,8 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [firms, setFirms] = useState<Firm[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+	  const [vendors, setVendors] = useState<Vendor[]>([]);
+    const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [actionLogs, setActionLogs] = useState<ActionLogEntry[]>([]);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [recurringActions, setRecurringActions] = useState<RecurringTaskAction[]>([]);
@@ -349,7 +353,7 @@ export default function App() {
   }, []);
 
   // Master item IDs for filtering
-  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', 'departments', ...(VENDOR_MODULE_ENABLED ? ['vendor-categories', 'vendors'] : []), 'settings', 'telegram-setup'];
+	  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', 'departments', ...(VENDOR_MODULE_ENABLED ? ['vendor-categories', 'vendors'] : []), ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
   const pendingStatusNavItems = useMemo<NavItem[]>(() => {
     return statuses
       .map(s => String(s.name || '').trim())
@@ -365,18 +369,20 @@ export default function App() {
         section: 'Tasks'
       }));
   }, [statuses]);
-  const resolvedNavItems = useMemo<NavItem[]>(() => {
-    const pendingGroupIndex = navItems.findIndex(item => item.id === 'pending-group');
-    if (pendingGroupIndex < 0) return navItems;
-    const pendingTaskItem = navItems.find(item => item.id === 'pending');
-    const remainingItems = navItems.filter(item => item.id !== 'pending');
-    return [
-      ...remainingItems.slice(0, pendingGroupIndex + 1),
-      ...(pendingTaskItem ? [pendingTaskItem] : []),
-      ...pendingStatusNavItems,
-      ...remainingItems.slice(pendingGroupIndex + 1),
-    ];
-  }, [pendingStatusNavItems]);
+	  const resolvedNavItems = useMemo<NavItem[]>(() => {
+	    const pendingGroupIndex = navItems.findIndex(item => item.id === 'pending-group');
+	    const orgNavItem: NavItem[] = isPlatformAdmin ? [{ id: 'organizations', label: 'Organizations', icon: <Building size={20} />, section: 'Master' }] : [];
+	    if (pendingGroupIndex < 0) return [...navItems, ...orgNavItem];
+	    const pendingTaskItem = navItems.find(item => item.id === 'pending');
+	    const remainingItems = navItems.filter(item => item.id !== 'pending');
+	    const combined = [
+	      ...remainingItems.slice(0, pendingGroupIndex + 1),
+	      ...(pendingTaskItem ? [pendingTaskItem] : []),
+	      ...pendingStatusNavItems,
+	      ...remainingItems.slice(pendingGroupIndex + 1),
+	    ];
+      return [...combined, ...orgNavItem];
+	  }, [isPlatformAdmin, pendingStatusNavItems]);
 
   // Navigation Logic based on Role
   const filteredNavItems = useMemo(() => {
@@ -605,13 +611,15 @@ export default function App() {
         if ('password' in data) finalData.password = data.password;
     }
 
-    const payload = {
-      action: action,
-      target: target,
-      data: finalData,
-      user: currentUser?.name || 'Unknown',
-      tenantCode: tenantCode || currentUser?.tenantCode || ''
-    };
+	    const payload = {
+	      action: action,
+	      target: target,
+	      data: finalData,
+	      user: currentUser?.name || 'Unknown',
+	      tenantCode: tenantCode || currentUser?.tenantCode || '',
+        platformAdminEmail: currentUser?.platformAdminEmail || '',
+        platformAdminToken: currentUser?.platformAdminToken || '',
+	    };
 
 	    try {
 	      const response = await fetch(apiUrl, {
@@ -650,10 +658,13 @@ export default function App() {
 	    }, 20000);
 	    
 	    try {
-          const tenantQuery = tenantCode ? `&tenantCode=${encodeURIComponent(tenantCode)}` : '';
-		      const response = await fetch(
-            `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}action=init&actionLogsLimit=500&recurringActionsLimit=500${tenantQuery}&_cb=${Date.now()}`,
-            { 
+	          const tenantQuery = tenantCode ? `&tenantCode=${encodeURIComponent(tenantCode)}` : '';
+            const platformAdminQuery = currentUser?.platformAdminToken && currentUser?.platformAdminEmail
+              ? `&platformAdminEmail=${encodeURIComponent(currentUser.platformAdminEmail)}&platformAdminToken=${encodeURIComponent(currentUser.platformAdminToken)}`
+              : '';
+			      const response = await fetch(
+	            `${apiUrl}${apiUrl.includes('?') ? '&' : '?'}action=init&actionLogsLimit=500&recurringActionsLimit=500${tenantQuery}${platformAdminQuery}&_cb=${Date.now()}`,
+	            { 
 		        signal: abortControllerRef.current.signal,
 		        cache: 'no-store',
 		        mode: 'cors'
@@ -662,12 +673,24 @@ export default function App() {
 	      
 			      if (result.success) {
 			        const { data } = result;
-                if (data?.tenant?.code) {
-                  const resolvedTenantCode = String(data.tenant.code);
-                  setTenantCode(resolvedTenantCode);
-                  localStorage.setItem('taskpro_tenant_code', resolvedTenantCode);
-                }
-	        const normalizeTasks = (list: any[]) => (list || []).map(item => {
+	                if (data?.tenant?.code) {
+	                  const resolvedTenantCode = String(data.tenant.code);
+	                  setTenantCode(resolvedTenantCode);
+	                  localStorage.setItem('taskpro_tenant_code', resolvedTenantCode);
+	                }
+                setOrganizations((data?.organizations || []).map((item: any) => ({
+                  id: Number(item.id || 0),
+                  orgId: String(item.org_id || item.orgId || ''),
+                  orgName: String(item.org_name || item.orgName || ''),
+                  dbMode: String(item.db_mode || item.dbMode || 'shared') as 'shared' | 'dedicated',
+                  status: String(item.status || 'active') as 'active' | 'inactive',
+                  domain: String(item.domain || ''),
+                  dbHost: String(item.db_host || item.dbHost || ''),
+                  dbName: String(item.db_name || item.dbName || ''),
+                  dbUser: String(item.db_user || item.dbUser || ''),
+                  hasConnection: String(item.has_connection || item.hasConnection || '0') === '1',
+                })));
+		        const normalizeTasks = (list: any[]) => (list || []).map(item => {
             const rawProject = String(item.project || item.Project || '').trim();
             const rawClient = String(item.clientName || item['client Name'] || item['Client Name'] || item.client || item.Client || '').trim();
             
@@ -853,7 +876,7 @@ export default function App() {
 	      if (showLoading) setIsLoading(false);
 	      setIsSyncing(false);
 	    }
-		  }, [apiUrl, persistCache]);
+			  }, [apiUrl, currentUser, persistCache, tenantCode]);
 
 	  useEffect(() => {
 	    if (apiUrl && currentUser) {
@@ -964,7 +987,7 @@ export default function App() {
         return { success: false, error: authData?.error || "Incorrect Email or Password." };
       }
       const user = authData.user;
-      const normalizedUser = { ...user, id: Number(user.id), isActive: true };
+      const normalizedUser = { ...user, id: Number(user.id), isActive: true, isPlatformAdmin: !!user.isPlatformAdmin };
       setCurrentUser(normalizedUser);
       const resolvedTenantCode = String(authData?.tenant?.code || normalizedUser.tenantCode || normalizedOrgId || tenantCode || '');
       setTenantCode(resolvedTenantCode);
@@ -1326,6 +1349,21 @@ export default function App() {
       case 'projects': if (!isAdmin) return null; return <ProjectsView projects={projects} clients={clients} onAddProject={handleInstantAddProject} onDeleteProject={(id) => { if (!confirmDelete('this project')) return; setProjects(p => p.filter(x => x.id !== id)); apiPost('deleteRecord', { id }, 'Projects'); }} onEditProject={(p) => { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); apiPost('updateMaster', p, 'Projects'); }} onAddClient={() => setIsClientModalOpen(true)} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'categories': if (!isAdmin) return null; return <CategoriesView categories={categories} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddCategory={() => setIsCategoryModalOpen(true)} onDeleteCategory={(id) => { if (!confirmDelete('this category')) return; setCategories(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Categories'); }} onEditCategory={(c) => { setCategories(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Categories'); }} />;
       case 'statuses': if (!isAdmin) return null; return <StatusesView statuses={statuses} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddStatus={async (status) => { const tempId = Date.now(); const row = { ...status, id: tempId, is_system: 0 } as StatusMaster; setStatuses(prev => [...prev, row]); await apiPost('addMaster', status, 'Statuses'); }} onEditStatus={async (status) => { setStatuses(prev => prev.map(x => x.id === status.id ? status : x)); await apiPost('updateMaster', status, 'Statuses'); }} onDeleteStatus={async (id) => { if (!confirmDelete('this status')) return; setStatuses(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Statuses'); }} />;
+      case 'organizations': if (!isPlatformAdmin) return null; return <OrganizationsView organizations={organizations} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddOrganization={async (organization) => {
+        const result = await apiPost('addOrganization', organization, 'Organizations');
+        if (!result?.success) {
+          alert(result?.error || 'Failed to add organization.');
+          return;
+        }
+        await fetchData(false);
+      }} onUpdateOrganization={async (organization) => {
+        const result = await apiPost('updateOrganization', organization, 'Organizations');
+        if (!result?.success) {
+          alert(result?.error || 'Failed to update organization.');
+          return;
+        }
+        await fetchData(false);
+      }} />;
       case 'settings': if (!isAdmin) return null; return <SettingsView settings={settings} onUpdate={async (s) => {
         setSettings(normalizeSettings(s));
         const result = await apiPost('updateMaster', s, 'AppSettings');
@@ -1374,7 +1412,7 @@ export default function App() {
 	              isSyncing={isSyncing}
 	              onSync={fetchData}
 	              hasError={!!apiError}
-	              onLogout={() => { setCurrentUser(null); setTenantCode(''); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
+		              onLogout={() => { setCurrentUser(null); setTenantCode(''); setOrganizations([]); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
 	              onExitWorkspace={() => { setCurrentUser(null); setTenantCode(''); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
 	              workspaceId={workspaceId}
 	            />

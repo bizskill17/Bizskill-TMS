@@ -82,6 +82,34 @@ function add_notes_column_if_missing(mysqli $conn): void {
     }
 }
 
+function fetchOrganizationsWithConnections(mysqli $platformConn): array {
+    $sql = "SELECT
+                o.id,
+                o.org_id,
+                o.org_name,
+                o.db_mode,
+                o.status,
+                o.domain,
+                c.db_host,
+                c.db_name,
+                c.db_user
+            FROM organizations o
+            LEFT JOIN organization_db_connections c
+                ON c.organization_id = o.id
+                AND c.is_active = 1
+            ORDER BY o.id DESC";
+    $result = $platformConn->query($sql);
+    if (!$result) {
+        return [];
+    }
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $row['has_connection'] = !empty($row['db_host']) ? '1' : '0';
+        $rows[] = $row;
+    }
+    return $rows;
+}
+
 function sendJson(array $payload, int $statusCode = 200): void {
     http_response_code($statusCode);
     echo json_encode($payload);
@@ -271,6 +299,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $settings['fieldLabelOverrides'] = '{}';
     }
 
+    $organizations = app_platform_admin_request_authorized($platformConn, $_GET) ? fetchOrganizationsWithConnections($platformConn) : [];
+
     sendJson([
         'success' => true,
         'data' => [
@@ -290,6 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'recurringTasks' => fetchAllRows($conn, 'recurring_tasks'),
             'recurringActions' => fetchRecentRows($conn, 'recurring_actions', $recurringActionsLimit),
             'settings' => $settings,
+            'organizations' => $organizations,
             'tenant' => [
                 'id' => app_tenant_id(),
                 'code' => app_tenant_code(),
@@ -309,6 +340,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($payload['action']) ? (string)$payload['action'] : '';
     $target = strtolower((string)($payload['target'] ?? ''));
     $data = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : [];
+
+    if (in_array($action, ['addOrganization', 'updateOrganization'], true)) {
+        if (!app_platform_admin_request_authorized($platformConn, $payload)) {
+            sendJson(['success' => false, 'error' => 'Platform admin access required.'], 403);
+        }
+
+        $orgId = strtolower(trim((string)($data['orgId'] ?? $data['org_id'] ?? '')));
+        $orgId = preg_replace('/[^a-z0-9_-]+/', '-', $orgId);
+        $orgName = trim((string)($data['orgName'] ?? $data['org_name'] ?? ''));
+        $dbMode = strtolower(trim((string)($data['dbMode'] ?? $data['db_mode'] ?? 'shared')));
+        $status = strtolower(trim((string)($data['status'] ?? 'active')));
+        $domain = strtolower(trim((string)($data['domain'] ?? '')));
+        $dbHost = trim((string)($data['dbHost'] ?? $data['db_host'] ?? ''));
+        $dbName = trim((string)($data['dbName'] ?? $data['db_name'] ?? ''));
+        $dbUser = trim((string)($data['dbUser'] ?? $data['db_user'] ?? ''));
+        $dbPassword = (string)($data['dbPassword'] ?? '');
+
+        if ($orgId === '' || $orgName === '') {
+            sendJson(['success' => false, 'error' => 'Org Id and organization name are required.'], 400);
+        }
+        if (!in_array($dbMode, ['shared', 'dedicated'], true)) {
+            sendJson(['success' => false, 'error' => 'Invalid DB mode.'], 400);
+        }
+        if (!in_array($status, ['active', 'inactive'], true)) {
+            sendJson(['success' => false, 'error' => 'Invalid status.'], 400);
+        }
+
+        if ($action === 'addOrganization') {
+            $check = $platformConn->prepare("SELECT id FROM organizations WHERE org_id = ? LIMIT 1");
+            if (!$check) {
+                sendJson(['success' => false, 'error' => 'Failed to validate organization.'], 500);
+            }
+            $check->bind_param('s', $orgId);
+            $check->execute();
+            $exists = $check->get_result()?->fetch_assoc();
+            $check->close();
+            if ($exists) {
+                sendJson(['success' => false, 'error' => 'Org Id already exists.'], 400);
+            }
+
+            $stmt = $platformConn->prepare("INSERT INTO organizations (org_id, org_name, db_mode, status, domain) VALUES (?, ?, ?, ?, ?)");
+            if (!$stmt) {
+                sendJson(['success' => false, 'error' => 'Failed to prepare organization insert.'], 500);
+            }
+            $stmt->bind_param('sssss', $orgId, $orgName, $dbMode, $status, $domain);
+            $ok = $stmt->execute();
+            $organizationId = (int)$stmt->insert_id;
+            $stmtError = $stmt->error;
+            $stmt->close();
+            if (!$ok) {
+                sendJson(['success' => false, 'error' => 'Failed to add organization: ' . $stmtError], 400);
+            }
+
+            $tenantStmt = $platformConn->prepare("INSERT INTO tenants (code, name, db_mode, status, is_legacy_default) VALUES (?, ?, ?, ?, 0)");
+            if ($tenantStmt) {
+                $tenantStmt->bind_param('ssss', $orgId, $orgName, $dbMode, $status);
+                $tenantStmt->execute();
+                $tenantStmt->close();
+            }
+        } else {
+            $organizationId = (int)($data['id'] ?? 0);
+            if ($organizationId <= 0) {
+                sendJson(['success' => false, 'error' => 'Invalid organization id.'], 400);
+            }
+
+            $stmt = $platformConn->prepare("UPDATE organizations SET org_id=?, org_name=?, db_mode=?, status=?, domain=? WHERE id=?");
+            if (!$stmt) {
+                sendJson(['success' => false, 'error' => 'Failed to prepare organization update.'], 500);
+            }
+            $stmt->bind_param('sssssi', $orgId, $orgName, $dbMode, $status, $domain, $organizationId);
+            $ok = $stmt->execute();
+            $stmtError = $stmt->error;
+            $stmt->close();
+            if (!$ok) {
+                sendJson(['success' => false, 'error' => 'Failed to update organization: ' . $stmtError], 400);
+            }
+
+            $tenantStmt = $platformConn->prepare("UPDATE tenants SET code=?, name=?, db_mode=?, status=? WHERE code = ?");
+            if ($tenantStmt) {
+                $previousCode = trim((string)($data['previousOrgId'] ?? $orgId));
+                $tenantStmt->bind_param('sssss', $orgId, $orgName, $dbMode, $status, $previousCode);
+                $tenantStmt->execute();
+                $tenantStmt->close();
+            }
+        }
+
+        if ($domain !== '') {
+            $tenant = app_find_tenant_by_code($platformConn, $orgId);
+            $tenantId = (int)($tenant['id'] ?? 0);
+            if ($tenantId > 0) {
+                $platformConn->query("DELETE FROM tenant_domains WHERE tenant_id = {$tenantId}");
+                $domainStmt = $platformConn->prepare("INSERT IGNORE INTO tenant_domains (tenant_id, domain, is_primary) VALUES (?, ?, 1)");
+                if ($domainStmt) {
+                    $domainStmt->bind_param('is', $tenantId, $domain);
+                    $domainStmt->execute();
+                    $domainStmt->close();
+                }
+            }
+        }
+
+        if ($dbMode === 'dedicated' && $dbHost !== '' && $dbName !== '' && $dbUser !== '') {
+            $deleteOrgConnection = $platformConn->prepare("DELETE FROM organization_db_connections WHERE organization_id = ?");
+            if ($deleteOrgConnection) {
+                $deleteOrgConnection->bind_param('i', $organizationId);
+                $deleteOrgConnection->execute();
+                $deleteOrgConnection->close();
+            }
+            $insertOrgConnection = $platformConn->prepare("INSERT INTO organization_db_connections (organization_id, db_host, db_name, db_user, db_password, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+            if ($insertOrgConnection) {
+                $insertOrgConnection->bind_param('issss', $organizationId, $dbHost, $dbName, $dbUser, $dbPassword);
+                $insertOrgConnection->execute();
+                $insertOrgConnection->close();
+            }
+
+            $tenant = app_find_tenant_by_code($platformConn, $orgId);
+            $tenantId = (int)($tenant['id'] ?? 0);
+            if ($tenantId > 0) {
+                $deleteTenantConnection = $platformConn->prepare("DELETE FROM tenant_db_connections WHERE tenant_id = ?");
+                if ($deleteTenantConnection) {
+                    $deleteTenantConnection->bind_param('i', $tenantId);
+                    $deleteTenantConnection->execute();
+                    $deleteTenantConnection->close();
+                }
+                $insertTenantConnection = $platformConn->prepare("INSERT INTO tenant_db_connections (tenant_id, db_host, db_name, db_user, db_pass, is_active) VALUES (?, ?, ?, ?, ?, 1)");
+                if ($insertTenantConnection) {
+                    $insertTenantConnection->bind_param('issss', $tenantId, $dbHost, $dbName, $dbUser, $dbPassword);
+                    $insertTenantConnection->execute();
+                    $insertTenantConnection->close();
+                }
+            }
+        }
+
+        sendJson(['success' => true]);
+    }
 
     // Map frontend target labels to SQL table names.
     $targetTableMap = [

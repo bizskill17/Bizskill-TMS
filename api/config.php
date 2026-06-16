@@ -119,6 +119,28 @@ function app_scoped_tables(): array {
 
 function app_base_platform_tables(): array {
     return [
+        "CREATE TABLE IF NOT EXISTS organizations (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            org_id VARCHAR(100) NOT NULL UNIQUE,
+            org_name VARCHAR(190) NOT NULL,
+            db_mode ENUM('shared','dedicated') NOT NULL DEFAULT 'shared',
+            status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+            domain VARCHAR(255) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+        "CREATE TABLE IF NOT EXISTS organization_db_connections (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            organization_id INT NOT NULL,
+            db_host VARCHAR(255) NOT NULL,
+            db_name VARCHAR(255) NOT NULL,
+            db_user VARCHAR(255) NOT NULL,
+            db_password TEXT NOT NULL,
+            is_active TINYINT(1) NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY idx_org_db_org_id (organization_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         "CREATE TABLE IF NOT EXISTS tenants (
             id INT AUTO_INCREMENT PRIMARY KEY,
             code VARCHAR(100) NOT NULL UNIQUE,
@@ -210,6 +232,93 @@ function app_requested_tenant_code(): string {
 
 function app_requested_org_id(): string {
     return app_requested_tenant_code();
+}
+
+function app_platform_admin_default_email(): string {
+    return strtolower(trim((string)app_env('PLATFORM_ADMIN_EMAIL', 'bizskill17@gmail.com')));
+}
+
+function app_platform_admin_default_password(): string {
+    return (string)app_env('PLATFORM_ADMIN_PASSWORD', '!Office1@');
+}
+
+function app_platform_admin_access_key(): string {
+    return (string)app_env('PLATFORM_ADMIN_ACCESS_KEY', (string)app_env('SETUP_TOKEN', 'OfficeSetup2026'));
+}
+
+function app_find_platform_admin(mysqli $platformConn, string $email): ?array {
+    $email = strtolower(trim($email));
+    if ($email === '') {
+        return null;
+    }
+    $stmt = $platformConn->prepare("SELECT * FROM platform_admins WHERE LOWER(email) = LOWER(?) AND is_active = 1 LIMIT 1");
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('s', $email);
+    $stmt->execute();
+    $row = $stmt->get_result()?->fetch_assoc();
+    $stmt->close();
+    return $row ?: null;
+}
+
+function app_platform_admin_password_matches(string $storedPassword, string $password): bool {
+    return $storedPassword !== '' && ($storedPassword === $password || password_verify($password, $storedPassword));
+}
+
+function app_is_platform_admin_credentials(mysqli $platformConn, string $email, string $password): bool {
+    $email = strtolower(trim($email));
+    if ($email === '' || $password === '') {
+        return false;
+    }
+
+    if ($email === app_platform_admin_default_email() && app_platform_admin_default_password() === $password) {
+        return true;
+    }
+
+    $admin = app_find_platform_admin($platformConn, $email);
+    if (!$admin) {
+        return false;
+    }
+
+    return app_platform_admin_password_matches((string)($admin['password'] ?? ''), $password);
+}
+
+function app_issue_platform_admin_token(string $email): string {
+    $normalizedEmail = strtolower(trim($email));
+    return hash_hmac('sha256', $normalizedEmail, app_platform_admin_access_key());
+}
+
+function app_request_value(array $payload, string $key): string {
+    $candidates = [
+        $_GET[$key] ?? null,
+        $_SERVER['HTTP_' . strtoupper(str_replace('-', '_', $key))] ?? null,
+        $payload[$key] ?? null,
+        $payload['data'][$key] ?? null,
+    ];
+    foreach ($candidates as $candidate) {
+        $value = trim((string)$candidate);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+    return '';
+}
+
+function app_platform_admin_request_authorized(mysqli $platformConn, ?array $payload = null): bool {
+    $payload = $payload ?? app_get_raw_input_data();
+    $email = strtolower(app_request_value($payload, 'platformAdminEmail'));
+    $token = app_request_value($payload, 'platformAdminToken');
+    if ($email === '' || $token === '') {
+        return false;
+    }
+
+    $isKnownAdmin = $email === app_platform_admin_default_email() || app_find_platform_admin($platformConn, $email) !== null;
+    if (!$isKnownAdmin) {
+        return false;
+    }
+
+    return hash_equals(app_issue_platform_admin_token($email), $token);
 }
 
 function app_normalize_password_for_storage(string $password): string {

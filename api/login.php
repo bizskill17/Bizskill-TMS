@@ -36,6 +36,38 @@ if ($tenantStatus !== 'active') {
     exit;
 }
 
+if (app_is_platform_admin_credentials($platformConn, $email, $password)) {
+    $platformAdminEmail = strtolower(trim($email));
+    echo json_encode([
+        'success' => true,
+        'user' => [
+            'id' => 0,
+            'name' => 'BizSkill Platform Admin',
+            'email' => $platformAdminEmail,
+            'employeeId' => '',
+            'role' => 'Admin',
+            'designation' => 'Platform Admin',
+            'department' => 'Platform',
+            'telegramUserName' => '',
+            'isActive' => true,
+            'tenantId' => app_tenant_id(),
+            'tenantCode' => $resolvedTenantCode,
+            'tenantName' => app_tenant_name(),
+            'isPlatformAdmin' => true,
+            'platformAdminEmail' => $platformAdminEmail,
+            'platformAdminToken' => app_issue_platform_admin_token($platformAdminEmail),
+        ],
+        'tenant' => [
+            'id' => app_tenant_id(),
+            'code' => $resolvedTenantCode,
+            'name' => app_tenant_name(),
+            'dbMode' => (string)($currentTenant['db_mode'] ?? 'shared'),
+            'status' => (string)($currentTenant['status'] ?? 'active'),
+        ]
+    ]);
+    exit;
+}
+
 $sql = "SELECT id, name, email, role, designation, department, employee_id, telegram_user_name, password, isActive FROM users WHERE LOWER(email) = LOWER(?)";
 if (app_table_is_scoped($conn, 'users')) {
     $sql .= " AND tenant_id = " . app_tenant_id();
