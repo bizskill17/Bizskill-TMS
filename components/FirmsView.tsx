@@ -22,17 +22,14 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return firms;
-    return firms.filter(f =>
-      f.name.toLowerCase().includes(term) ||
-      String(f.sortName || '').toLowerCase().includes(term)
-    );
+    return firms.filter(f => f.name.toLowerCase().includes(term));
   }, [firms, searchTerm]);
   const handleExportExcel = () => {
-    const csv = ['S.No.,Firm Name,Short', ...filtered.map((f, i) => `${i + 1},"${String(f.name || '').replace(/"/g, '""')}","${String(f.sortName || '').replace(/"/g, '""')}"`)].join('\n');
+    const csv = ['S.No.,Client Name', ...filtered.map((f, i) => `${i + 1},"${String(f.name || '').replace(/"/g, '""')}"`)].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `Firms_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Clients_${new Date().toISOString().split('T')[0]}.csv`);
     link.click();
   };
 	  const handleExportPDF = async () => {
@@ -41,21 +38,21 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
         import('jspdf-autotable'),
       ]);
 	    const doc = new jsPDF();
-	    doc.text('Firms', 14, 14);
-	    autoTable(doc, { head: [['S.No.', 'Firm Name', 'Short']], body: filtered.map((f, i) => [i + 1, f.name || '-', f.sortName || '-']), startY: 20 });
-	    doc.save(`Firms_${new Date().toISOString().split('T')[0]}.pdf`);
+	    doc.text('Clients', 14, 14);
+	    autoTable(doc, { head: [['S.No.', 'Client Name']], body: filtered.map((f, i) => [i + 1, f.name || '-']), startY: 20 });
+	    doc.save(`Clients_${new Date().toISOString().split('T')[0]}.pdf`);
 	  };
 
   return (
     <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between gap-3 md:gap-4">
         <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}>
-          <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('firms', 'Firms')}</h2>
+          <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('firms', 'Clients')}</h2>
         </div>
         <button
           onClick={onAddFirm}
           className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
-          title="Add Firm"
+          title="Add Client"
         >
           <Plus size={18} />
         </button>
@@ -68,7 +65,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search firms..."
+            placeholder="Search clients..."
             className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 text-sm"
           />
         </div>
@@ -77,7 +74,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
         <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
         <button onClick={onAddFirm} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
           <Plus size={16} />
-          <span>Add Firm</span>
+          <span>Add Client</span>
         </button>
         </div>
       </div>
@@ -88,8 +85,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
             <thead>
               <tr className="bg-indigo-600 border-b border-indigo-700">
                 <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">S.No.</th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">Firm Name</th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">Short</th>
+                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 bg-indigo-600">Client Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider text-center bg-indigo-600">Actions</th>
               </tr>
             </thead>
@@ -98,7 +94,6 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
                 <tr key={firm.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-900 border-r border-black">{index + 1}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900 border-r border-black">{firm.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900 border-r border-black">{firm.sortName || '-'}</td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-3">
                       {!isLockedFirm(firm) ? (
@@ -125,7 +120,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No firms found.</td>
+                  <td colSpan={3} className="px-6 py-8 text-center text-gray-500">No clients found.</td>
                 </tr>
               )}
             </tbody>
