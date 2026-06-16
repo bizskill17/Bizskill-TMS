@@ -517,8 +517,8 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 
   const thClass = "px-4 py-3 text-[10px] font-bold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer hover:bg-indigo-700 transition-colors select-none whitespace-normal";
   const tdClass = "px-4 py-3 text-xs text-black border-r border-black last:border-r-0 align-top whitespace-normal break-words";
-  const taskColumnClass = "min-w-[280px] w-[280px] max-w-[360px]";
-  const notesColumnClass = "min-w-[180px] w-[180px] max-w-[250px]";
+  const taskColumnClass = "min-w-[250px] w-[250px] max-w-[350px]";
+  const notesColumnClass = "min-w-[250px] w-[250px] max-w-[350px]";
 
   const startEntry = sortedTasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const endEntry = Math.min(currentPage * itemsPerPage, sortedTasks.length);
