@@ -18,6 +18,7 @@ interface SidebarProps {
   onLogout?: () => void;
   onExitWorkspace?: () => void;
   workspaceId?: string;
+  brandName?: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -35,7 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasError = false,
   onLogout,
   onExitWorkspace,
-  workspaceId
+  workspaceId,
+  brandName = 'TaskPro'
 }) => {
   const [openPendingGroup, setOpenPendingGroup] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -180,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 alt="TaskPro Logo" 
               />
               <div className="flex flex-col min-w-0">
-                <h1 className="text-xl font-bold text-indigo-600 truncate">TaskPro</h1>
+                <h1 className="text-xl font-bold text-indigo-600 truncate">{brandName}</h1>
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest group-hover:text-indigo-500">BIZSKILL</span>
               </div>
             </a>

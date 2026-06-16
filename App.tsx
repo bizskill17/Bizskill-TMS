@@ -249,6 +249,12 @@ export default function App() {
 
   const isAdmin = currentUser?.role === 'Admin';
   const isPlatformAdmin = !!currentUser?.isPlatformAdmin;
+  const loginOrgName = String(
+    currentUser?.tenantName ||
+    currentUser?.tenantCode ||
+    tenantCode ||
+    'TaskPro'
+  ).trim();
 
   const [activeTab, setActiveTab] = useState(() => {
     return 'dashboard';
@@ -1400,10 +1406,10 @@ export default function App() {
 	      ) : (
 	        <LabelProvider settings={settings}>
 	          {layoutMode === 'side' && (!isSidebarCollapsed || isSidebarOpen) && (
-			            <Sidebar 
-		              items={navItemsWithCounts} 
-		              activeTab={activeTab} 
-	              onTabChange={handleTabChange} 
+	            <Sidebar 
+	              items={navItemsWithCounts} 
+	              activeTab={activeTab} 
+              onTabChange={handleTabChange} 
 	              onLayoutChange={setLayoutMode}
 	              layoutMode={layoutMode}
 	              isOpen={isSidebarOpen} 
@@ -1412,9 +1418,10 @@ export default function App() {
 	              isSyncing={isSyncing}
 	              onSync={fetchData}
 	              hasError={!!apiError}
-		              onLogout={() => { setCurrentUser(null); setTenantCode(''); setOrganizations([]); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
+	              onLogout={() => { setCurrentUser(null); setTenantCode(''); setOrganizations([]); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
 	              onExitWorkspace={() => { setCurrentUser(null); setTenantCode(''); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
 	              workspaceId={workspaceId}
+                brandName={loginOrgName}
 	            />
 	          )}
 
@@ -1430,6 +1437,7 @@ export default function App() {
                 isSyncing={isSyncing}
                 onSync={fetchData}
                 hasError={!!apiError}
+                brandName={loginOrgName}
               />
             ) : (
 	              <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-40">

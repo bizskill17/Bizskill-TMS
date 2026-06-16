@@ -13,6 +13,7 @@ interface TopBarProps {
   isSyncing?: boolean;
   onSync?: (loading: boolean) => void;
   hasError?: boolean;
+  brandName?: string;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ 
@@ -24,7 +25,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   lastSynced,
   isSyncing,
   onSync,
-  hasError = false
+  hasError = false,
+  brandName = 'TaskPro'
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [openPendingGroup, setOpenPendingGroup] = useState(false);
@@ -205,7 +207,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                alt="TaskPro Logo" 
              />
              <div className="flex flex-col justify-center">
-                 <h1 className="text-xl font-bold text-indigo-600 leading-tight">TaskPro</h1>
+                 <h1 className="text-xl font-bold text-indigo-600 leading-tight">{brandName}</h1>
                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider group-hover:text-indigo-500">BIZSKILL</span>
              </div>
          </a>
