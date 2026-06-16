@@ -751,8 +751,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'firms') {
         $name = trim((string)($data['name'] ?? ''));
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
-        if ($name === '') sendJson(['success' => false, 'error' => 'Firm name is required.'], 400);
-        if ($sortName === '') sendJson(['success' => false, 'error' => 'Sort Name is required.'], 400);
+        if ($name === '') sendJson(['success' => false, 'error' => 'Client name is required.'], 400);
         if (app_table_is_scoped($conn, 'firms')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO firms (tenant_id, name, sortName) VALUES (?, ?, ?)");
@@ -1303,7 +1302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid firm id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
-        if ($sortName === '') sendJson(['success' => false, 'error' => 'Sort Name is required.'], 400);
+        if ($name === '') sendJson(['success' => false, 'error' => 'Client name is required.'], 400);
         $stmt = $conn->prepare("UPDATE firms SET name=?, sortName=? WHERE id=?" . (app_table_is_scoped($conn, 'firms') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm update.'], 500);
         $stmt->bind_param('ssi', $name, $sortName, $id);
