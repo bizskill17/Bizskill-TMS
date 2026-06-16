@@ -43,8 +43,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'card'>('card'); // Fixed type to card | table below
-  const [viewModeActual, setViewModeActual] = useState<'card' | 'table'>('card');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -519,6 +518,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
   const thClass = "px-4 py-3 text-[10px] font-bold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer hover:bg-indigo-700 transition-colors select-none whitespace-normal";
   const tdClass = "px-4 py-3 text-xs text-black border-r border-black last:border-r-0 align-top whitespace-normal break-words";
   const taskColumnClass = "min-w-[280px] w-[280px] max-w-[360px]";
+  const notesColumnClass = "min-w-[180px] w-[180px] max-w-[250px]";
 
   const startEntry = sortedTasks.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const endEntry = Math.min(currentPage * itemsPerPage, sortedTasks.length);
@@ -592,7 +592,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 		                <th className={thClass} onClick={() => requestSort('frequencyDays')}><div className="flex items-center">Period {getSortIcon('frequencyDays')}</div></th>
 			                <th className={thClass} onClick={() => requestSort('time')}><div className="flex items-center">Time {getSortIcon('time')}</div></th>
 			                <th className={`${thClass} ${taskColumnClass}`} onClick={() => requestSort('title')}><div className="flex items-center">Task {getSortIcon('title')}</div></th>
-                <th className={thClass} onClick={() => requestSort('notes' as any)}><div className="flex items-center">Notes {getSortIcon('notes' as any)}</div></th>
+                <th className={`${thClass} ${notesColumnClass}`} onClick={() => requestSort('notes' as any)}><div className="flex items-center">Notes {getSortIcon('notes' as any)}</div></th>
 	                  <th className={thClass} onClick={() => requestSort('firm')}><div className="flex items-center">Client {getSortIcon('firm')}</div></th>
 	                  <th className={thClass} onClick={() => requestSort('owner')}><div className="flex items-center">Owner {getSortIcon('owner')}</div></th>
 		                <th className={thClass} onClick={() => requestSort('category')}><div className="flex items-center">{getFieldLabel('recurringTask.category', 'Category')} {getSortIcon('category')}</div></th>
@@ -665,10 +665,8 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 	                    </td>
 	                    <td className={tdClass}>{task.time || '-'}</td>
 			                    <td className={`${tdClass} ${taskColumnClass} font-medium`}>{task.title}</td>
-                      <td className={tdClass}>
-                        <div className="max-h-16 overflow-y-auto scrollbar-thin scrollbar-thumb-indigo-200">
-                          {task.notes || '-'}
-                        </div>
+                      <td className={`${tdClass} ${notesColumnClass}`}>
+                        {task.notes || '-'}
                       </td>
 	                      <td className={tdClass}>{task.firm || '-'}</td>
 	                      <td className={tdClass}>{task.owner || '-'}</td>
@@ -763,7 +761,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 	                    </div>
                       <div className="col-span-2 mt-1 pt-1 border-t border-gray-100">
                         <span className="text-gray-400 font-bold uppercase text-[9px] block">Notes</span>
-                        <div className="text-[10px] text-gray-600 whitespace-normal break-words line-clamp-3">
+                        <div className="text-[10px] text-gray-600 whitespace-normal break-words">
                           {task.notes || '-'}
                         </div>
                       </div>
