@@ -132,6 +132,40 @@ function ensure_default_statuses(mysqli $conn): void {
     }
 }
 
+function scoped_name_exists(mysqli $conn, string $table, string $name, int $excludeId = 0): bool {
+    $safeTable = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+    $trimmedName = trim($name);
+    if ($safeTable === '' || $trimmedName === '') {
+        return false;
+    }
+
+    $isScoped = app_table_is_scoped($conn, $safeTable);
+    if ($isScoped && $excludeId > 0) {
+        $tenantId = app_tenant_id();
+        $stmt = $conn->prepare("SELECT id FROM `{$safeTable}` WHERE tenant_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) AND id <> ? LIMIT 1");
+        if (!$stmt) return false;
+        $stmt->bind_param('isi', $tenantId, $trimmedName, $excludeId);
+    } elseif ($isScoped) {
+        $tenantId = app_tenant_id();
+        $stmt = $conn->prepare("SELECT id FROM `{$safeTable}` WHERE tenant_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+        if (!$stmt) return false;
+        $stmt->bind_param('is', $tenantId, $trimmedName);
+    } elseif ($excludeId > 0) {
+        $stmt = $conn->prepare("SELECT id FROM `{$safeTable}` WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND id <> ? LIMIT 1");
+        if (!$stmt) return false;
+        $stmt->bind_param('si', $trimmedName, $excludeId);
+    } else {
+        $stmt = $conn->prepare("SELECT id FROM `{$safeTable}` WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) LIMIT 1");
+        if (!$stmt) return false;
+        $stmt->bind_param('s', $trimmedName);
+    }
+
+    $stmt->execute();
+    $existing = $stmt->get_result()?->fetch_assoc();
+    $stmt->close();
+    return !!$existing;
+}
+
 function fetchOrganizationsWithConnections(mysqli $platformConn): array {
     $sql = "SELECT
                 o.id,
@@ -762,6 +796,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['type'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Category name is required.'], 400);
+        if (scoped_name_exists($conn, 'categories', $name)) sendJson(['success' => false, 'error' => 'This category already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'categories')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO categories (tenant_id, name, type) VALUES (?, ?, ?)");
@@ -787,6 +822,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array(strtolower($name), ['in progress', 'completed'], true)) {
             sendJson(['success' => false, 'error' => 'Default status already exists and is locked.'], 400);
         }
+        if (scoped_name_exists($conn, 'status_master', $name)) sendJson(['success' => false, 'error' => 'This status already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'status_master')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO status_master (tenant_id, name, is_system) VALUES (?, ?, 0)");
@@ -808,6 +844,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Client name is required.'], 400);
+        if (scoped_name_exists($conn, 'firms', $name)) sendJson(['success' => false, 'error' => 'This client already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'firms')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO firms (tenant_id, name, sortName) VALUES (?, ?, ?)");
@@ -828,6 +865,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'vendor_categories') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Vendor category name is required.'], 400);
+        if (scoped_name_exists($conn, 'vendor_categories', $name)) sendJson(['success' => false, 'error' => 'This vendor category already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'vendor_categories')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO vendor_categories (tenant_id, name) VALUES (?, ?)");
@@ -848,6 +886,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'designations') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Designation name is required.'], 400);
+        if (scoped_name_exists($conn, 'designations', $name)) sendJson(['success' => false, 'error' => 'This designation already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'designations')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO designations (tenant_id, name) VALUES (?, ?)");
@@ -869,6 +908,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'addMaster' && $table === 'departments') {
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Department name is required.'], 400);
+        if (scoped_name_exists($conn, 'departments', $name)) sendJson(['success' => false, 'error' => 'This department already exists in this organization.'], 400);
         if (app_table_is_scoped($conn, 'departments')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO departments (tenant_id, name) VALUES (?, ?)");
@@ -1322,6 +1362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['type'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Category name is required.'], 400);
+        if (scoped_name_exists($conn, 'categories', $name, $id)) sendJson(['success' => false, 'error' => 'This category already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE categories SET name=?, type=? WHERE id=?" . (app_table_is_scoped($conn, 'categories') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category update.'], 500);
         $stmt->bind_param('ssi', $name, $type, $id);
@@ -1347,6 +1388,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ((int)($row['is_system'] ?? 0) === 1 || in_array(strtolower(trim((string)($row['name'] ?? ''))), ['in progress', 'completed'], true)) {
             sendJson(['success' => false, 'error' => 'Default status cannot be updated.'], 400);
         }
+        if (scoped_name_exists($conn, 'status_master', $name, $id)) sendJson(['success' => false, 'error' => 'This status already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE status_master SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'status_master') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare status update.'], 500);
         $stmt->bind_param('si', $name, $id);
@@ -1362,6 +1404,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $name = trim((string)($data['name'] ?? ''));
         $sortName = trim((string)($data['sortName'] ?? $data['sortname'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Client name is required.'], 400);
+        if (scoped_name_exists($conn, 'firms', $name, $id)) sendJson(['success' => false, 'error' => 'This client already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE firms SET name=?, sortName=? WHERE id=?" . (app_table_is_scoped($conn, 'firms') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare firm update.'], 500);
         $stmt->bind_param('ssi', $name, $sortName, $id);
@@ -1375,6 +1418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid vendor category id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
+        if (scoped_name_exists($conn, 'vendor_categories', $name, $id)) sendJson(['success' => false, 'error' => 'This vendor category already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE vendor_categories SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'vendor_categories') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor category update.'], 500);
         $stmt->bind_param('si', $name, $id);
@@ -1388,6 +1432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid designation id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
+        if (scoped_name_exists($conn, 'designations', $name, $id)) sendJson(['success' => false, 'error' => 'This designation already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE designations SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'designations') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare designation update.'], 500);
         $stmt->bind_param('si', $name, $id);
@@ -1401,6 +1446,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid department id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
+        if (scoped_name_exists($conn, 'departments', $name, $id)) sendJson(['success' => false, 'error' => 'This department already exists in this organization.'], 400);
         $stmt = $conn->prepare("UPDATE departments SET name=? WHERE id=?" . (app_table_is_scoped($conn, 'departments') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare department update.'], 500);
         $stmt->bind_param('si', $name, $id);
