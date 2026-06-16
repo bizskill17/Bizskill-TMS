@@ -14,7 +14,7 @@ interface UpdateTaskModalProps {
   statusOptions: string[];
 }
 
-export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClose, task, onUpdate, users, vendors = [], statusOptions }) => {
+export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClose, task, onUpdate, users = [], vendors = [], statusOptions = [] }) => {
   const { getFieldLabel } = useLabels();
   const [formData, setFormData] = useState<Partial<Task>>({});
   const [reassignSelection, setReassignSelection] = useState<string | string[]>([]);
