@@ -381,6 +381,29 @@ function app_ensure_composite_unique(mysqli $conn, string $table, string $column
     }
 }
 
+function app_ensure_shared_business_schema(mysqli $platformConn): void {
+    foreach (app_scoped_tables() as $table) {
+        app_ensure_business_table_has_tenant_column($platformConn, $table);
+    }
+
+    if (db_table_exists($platformConn, 'app_settings')) {
+        $platformConn->query("ALTER TABLE `app_settings` MODIFY `id` INT NOT NULL AUTO_INCREMENT");
+    }
+
+    app_ensure_composite_unique($platformConn, 'users', 'email', 'uq_users_tenant_email');
+    app_ensure_composite_unique($platformConn, 'designations', 'name', 'uq_designations_tenant_name');
+    app_ensure_composite_unique($platformConn, 'departments', 'name', 'uq_departments_tenant_name');
+    app_ensure_composite_unique($platformConn, 'categories', 'name', 'uq_categories_tenant_name');
+    app_ensure_composite_unique($platformConn, 'status_master', 'name', 'uq_status_master_tenant_name');
+    app_ensure_composite_unique($platformConn, 'vendor_categories', 'name', 'uq_vendor_categories_tenant_name');
+    app_ensure_composite_unique($platformConn, 'firms', 'name', 'uq_firms_tenant_name');
+    app_ensure_composite_unique($platformConn, 'projects', 'name', 'uq_projects_tenant_name');
+
+    if (db_table_exists($platformConn, 'app_settings') && db_has_column($platformConn, 'app_settings', 'tenant_id') && !db_index_exists($platformConn, 'app_settings', 'uq_app_settings_tenant_id')) {
+        $platformConn->query("ALTER TABLE `app_settings` ADD UNIQUE KEY `uq_app_settings_tenant_id` (`tenant_id`)");
+    }
+}
+
 function app_ensure_platform_schema(mysqli $platformConn): void {
     foreach (app_base_platform_tables() as $sql) {
         $platformConn->query($sql);
@@ -402,26 +425,7 @@ function app_ensure_foundation_migration(mysqli $platformConn): void {
         return;
     }
 
-    foreach (app_scoped_tables() as $table) {
-        app_ensure_business_table_has_tenant_column($platformConn, $table);
-    }
-
-    if (db_table_exists($platformConn, 'app_settings')) {
-        $platformConn->query("ALTER TABLE `app_settings` MODIFY `id` INT NOT NULL AUTO_INCREMENT");
-    }
-
-    app_ensure_composite_unique($platformConn, 'users', 'email', 'uq_users_tenant_email');
-    app_ensure_composite_unique($platformConn, 'designations', 'name', 'uq_designations_tenant_name');
-    app_ensure_composite_unique($platformConn, 'departments', 'name', 'uq_departments_tenant_name');
-    app_ensure_composite_unique($platformConn, 'categories', 'name', 'uq_categories_tenant_name');
-    app_ensure_composite_unique($platformConn, 'status_master', 'name', 'uq_status_master_tenant_name');
-    app_ensure_composite_unique($platformConn, 'vendor_categories', 'name', 'uq_vendor_categories_tenant_name');
-    app_ensure_composite_unique($platformConn, 'firms', 'name', 'uq_firms_tenant_name');
-    app_ensure_composite_unique($platformConn, 'projects', 'name', 'uq_projects_tenant_name');
-
-    if (db_table_exists($platformConn, 'app_settings') && db_has_column($platformConn, 'app_settings', 'tenant_id') && !db_index_exists($platformConn, 'app_settings', 'uq_app_settings_tenant_id')) {
-        $platformConn->query("ALTER TABLE `app_settings` ADD UNIQUE KEY `uq_app_settings_tenant_id` (`tenant_id`)");
-    }
+    app_ensure_shared_business_schema($platformConn);
 
     $insert = $platformConn->prepare("INSERT INTO platform_migrations (migration_key) VALUES (?)");
     if ($insert) {
@@ -509,6 +513,7 @@ function app_backfill_shared_tenant_data(mysqli $platformConn, int $tenantId): v
 
 function app_resolve_tenant(mysqli $platformConn): array {
     app_ensure_foundation_migration($platformConn);
+    app_ensure_shared_business_schema($platformConn);
     $defaultTenant = app_seed_default_tenant($platformConn);
     $defaultTenantId = (int)($defaultTenant['id'] ?? 0);
     if ($defaultTenantId > 0) {
