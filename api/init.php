@@ -723,8 +723,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $ok = $stmt->execute();
         $insertId = (int)$stmt->insert_id;
+        $stmtError = $stmt->error;
         $stmt->close();
-        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to add category.'], 400);
+        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to add category: ' . $stmtError], 400);
         sendJson(['success' => true, 'data' => ['id' => $insertId]]);
     }
 
@@ -1264,12 +1265,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid category id.'], 400);
         $name = trim((string)($data['name'] ?? ''));
         $type = trim((string)($data['type'] ?? ''));
+        if ($name === '') sendJson(['success' => false, 'error' => 'Category name is required.'], 400);
         $stmt = $conn->prepare("UPDATE categories SET name=?, type=? WHERE id=?" . (app_table_is_scoped($conn, 'categories') ? " AND tenant_id = " . app_tenant_id() : ''));
         if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare category update.'], 500);
         $stmt->bind_param('ssi', $name, $type, $id);
         $ok = $stmt->execute();
+        $stmtError = $stmt->error;
         $stmt->close();
-        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to update category.'], 400);
+        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to update category: ' . $stmtError], 400);
         sendJson(['success' => true]);
     }
 
