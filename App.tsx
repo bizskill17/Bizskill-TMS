@@ -104,7 +104,7 @@ const navItems: NavItem[] = [
   
   // Master Section
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
-  { id: 'firms', label: 'Firms', icon: <Building2 size={20} />, section: 'Master' },
+  { id: 'firms', label: 'Clients', icon: <Building2 size={20} />, section: 'Master' },
   { id: 'categories', label: 'Categories', icon: <Tags size={20} />, section: 'Master' },
   { id: 'statuses', label: 'Status', icon: <Tags size={20} />, section: 'Master' },
   { id: 'designations', label: 'Designation', icon: <Briefcase size={20} />, section: 'Master' },
