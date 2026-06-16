@@ -1684,17 +1684,19 @@ export default function App() {
           const result = await apiPost('updateMaster', { id: updatedDesignation.id, ...designationPayload }, 'Designations');
           if (!result?.success) {
             alert(result?.error || 'Failed to update designation.');
-            return;
+            return false;
           }
           setDesignations(prev => prev.map(x => x.id === updatedDesignation.id ? updatedDesignation : x));
+          return true;
         } else {
           const result = await apiPost('addMaster', designationPayload, 'Designations');
           if (!result?.success) {
             alert(result?.error || 'Failed to add designation.');
-            return;
+            return false;
           }
           const newId = Number(result?.data?.id || Date.now());
           setDesignations(prev => [...prev, { ...d, id: newId } as any]);
+          return true;
         }
       }} designations={designations} />
       <AddDepartmentModal isOpen={isDepartmentModalOpen} onClose={() => { setIsDepartmentModalOpen(false); setEditingDepartment(null); }} initialData={editingDepartment} onSave={async (dept) => {

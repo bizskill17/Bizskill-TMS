@@ -859,9 +859,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bind_param('s', $name);
         }
         $ok = $stmt->execute();
+        $stmtError = $stmt->error;
         $insertId = (int)$stmt->insert_id;
         $stmt->close();
-        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to add designation.'], 400);
+        if (!$ok) sendJson(['success' => false, 'error' => $stmtError !== '' ? $stmtError : 'Failed to add designation.'], 400);
         sendJson(['success' => true, 'data' => ['id' => $insertId]]);
     }
 

@@ -6,7 +6,7 @@ import { useLabels } from '../labelOverrides';
 interface AddDesignationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (designation: Omit<Designation, 'id'>) => void;
+  onSave: (designation: Omit<Designation, 'id'>) => boolean | Promise<boolean>;
   initialData?: Designation | null;
   designations: Designation[];
 }
@@ -35,7 +35,7 @@ export const AddDesignationModal: React.FC<AddDesignationModalProps> = ({ isOpen
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Uniqueness check
@@ -49,7 +49,11 @@ export const AddDesignationModal: React.FC<AddDesignationModalProps> = ({ isOpen
       return;
     }
 
-    onSave({ ...formData, description: '' });
+    const didSave = await onSave({ ...formData, description: '' });
+    if (!didSave) {
+      return;
+    }
+
     setFormData({ title: '' });
     onClose();
   };
