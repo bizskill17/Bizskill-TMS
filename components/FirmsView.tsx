@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Plus, Search, Edit2, Trash2, FileText, Download } from 'lucide-react';
+import React, { useMemo, useRef, useState } from 'react';
+import { Plus, Search, Edit2, Trash2, FileText, Download, Upload } from 'lucide-react';
 import { Firm } from '../types';
 import { AddFirmModal } from './AddFirmModal';
 import { useLabels } from '../labelOverrides';
@@ -7,16 +7,46 @@ import { useLabels } from '../labelOverrides';
 interface FirmsViewProps {
   firms: Firm[];
   onAddFirm: () => void;
+  onBulkUploadFirms?: (firms: Omit<Firm, 'id'>[]) => Promise<void>;
   onDeleteFirm: (id: number) => void;
   onEditFirm: (firm: Firm) => void;
   sidebarCollapsed?: boolean;
 }
 
-export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDeleteFirm, onEditFirm, sidebarCollapsed = false }) => {
+const parseCsvLine = (line: string) => {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current.trim());
+  return values.map((value) => value.replace(/^"|"$/g, '').trim());
+};
+
+export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onBulkUploadFirms, onDeleteFirm, onEditFirm, sidebarCollapsed = false }) => {
   const { getViewLabel } = useLabels();
   const [searchTerm, setSearchTerm] = useState('');
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedFirm, setSelectedFirm] = useState<Firm | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const isLockedFirm = (firm: Firm) => String(firm.name || '').trim().toUpperCase() === 'GENERAL';
 
   const filtered = useMemo(() => {
@@ -42,6 +72,79 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
 	    autoTable(doc, { head: [['S.No.', 'Client Name']], body: filtered.map((f, i) => [i + 1, f.name || '-']), startY: 20 });
 	    doc.save(`Clients_${new Date().toISOString().split('T')[0]}.pdf`);
 	  };
+
+  const handleTemplateDownload = () => {
+    const template = [
+      'name',
+      '"ABC Client"',
+    ].join('\n');
+
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'client-upload-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !onBulkUploadFirms) return;
+
+    try {
+      const text = await file.text();
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+
+      if (lines.length < 2) {
+        alert('The selected file does not contain any client rows.');
+        return;
+      }
+
+      const header = parseCsvLine(lines[0]).map((item) => item.toLowerCase());
+      if (!header.includes('name')) {
+        alert('Invalid template. Please use the downloaded client template file.');
+        return;
+      }
+
+      const uploadRows: Omit<Firm, 'id'>[] = [];
+
+      for (let index = 1; index < lines.length; index += 1) {
+        const values = parseCsvLine(lines[index]);
+        const row = header.reduce<Record<string, string>>((acc, key, keyIndex) => {
+          acc[key] = values[keyIndex] || '';
+          return acc;
+        }, {});
+
+        const name = String(row.name || '').trim();
+        if (!name) continue;
+
+        uploadRows.push({
+          name,
+          sortName: '',
+        });
+      }
+
+      if (uploadRows.length === 0) {
+        alert('No valid client rows were found in the file.');
+        return;
+      }
+
+      await onBulkUploadFirms(uploadRows);
+    } catch (error) {
+      console.error('Client upload failed', error);
+      alert('Failed to read the upload file.');
+    } finally {
+      event.target.value = '';
+    }
+  };
 
   return (
     <div className="space-y-6 pb-10">
@@ -69,9 +172,24 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onDelete
             className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 text-sm"
           />
         </div>
-        <div className="hidden md:flex items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
         <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
         <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
+        <button onClick={handleUploadClick} className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm">
+          <Upload size={16} />
+          <span>Upload</span>
+        </button>
+        <button onClick={handleTemplateDownload} className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm">
+          <Download size={16} />
+          <span>Template</span>
+        </button>
         <button onClick={onAddFirm} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
           <Plus size={16} />
           <span>Add Client</span>

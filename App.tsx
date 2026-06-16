@@ -1194,12 +1194,41 @@ export default function App() {
 	    }
 	  };
 
-  const handleInstantAddFirm = async (firm: Omit<Firm, 'id'>) => {
-    const tempId = Date.now();
-    const newFirm = { ...firm, id: tempId } as Firm;
-    setFirms(prev => [...prev, newFirm]);
-    await apiPost('addMaster', firm, 'Firms');
-  };
+	  const handleInstantAddFirm = async (firm: Omit<Firm, 'id'>) => {
+	    const result = await apiPost('addMaster', firm, 'Firms', { skipRefresh: true });
+	    if (!result?.success) {
+	      alert(result?.error || 'Failed to add client.');
+	      return;
+	    }
+	    const newId = Number(result?.data?.id || Date.now());
+	    setFirms(prev => [...prev, { ...firm, id: newId } as Firm]);
+	  };
+
+	  const handleBulkUploadFirms = async (bulkFirms: Omit<Firm, 'id'>[]) => {
+	    const addedFirms: Firm[] = [];
+	    const failedRows: string[] = [];
+
+	    for (const firm of bulkFirms) {
+	      const result = await apiPost('addMaster', firm, 'Firms', { skipRefresh: true });
+	      if (!result?.success) {
+	        failedRows.push(firm.name || 'Unnamed client');
+	        continue;
+	      }
+
+	      const newId = Number(result?.data?.id || Date.now() + addedFirms.length);
+	      addedFirms.push({ ...firm, id: newId });
+	    }
+
+	    if (addedFirms.length > 0) {
+	      setFirms(prev => [...prev, ...addedFirms]);
+	    }
+
+	    if (failedRows.length > 0) {
+	      alert(`Some clients could not be uploaded: ${failedRows.join(', ')}`);
+	    } else if (addedFirms.length > 0) {
+	      alert(`${addedFirms.length} client(s) uploaded successfully.`);
+	    }
+	  };
 
   const handleInstantAddDepartment = async (dept: Omit<Department, 'id'>) => {
     const tempId = Date.now();
@@ -1379,7 +1408,7 @@ export default function App() {
       case 'users': if (!isAdmin) return null; return <UsersView users={users} designations={designations} departments={departments} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddUser={(u) => { setUsers(p => [...p, { ...u, id: Date.now(), isActive: true } as any]); apiPost('addMaster', u, 'Users'); }} onEditUser={(u) => { setUsers(p => p.map(x => x.id === u.id ? u : x)); apiPost('updateMaster', u, 'Users'); }} onToggleStatus={(id) => { const user = users.find(u => u.id === id); if (!user) return; const newStatus = !user.isActive; setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: newStatus } : u)); apiPost('updateMaster', { id, isActive: newStatus ? 'TRUE' : 'FALSE' }, 'Users'); }} onDeleteUser={(id) => { if (!confirmDelete('this user')) return; setUsers(p => p.filter(u => u.id !== id)); apiPost('deleteRecord', { id }, 'Users'); }} onAddDesignation={() => { setEditingDesignation(null); setIsDesignationModalOpen(true); }} onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} />;
       case 'designations': if (!isAdmin) return null; return <DesignationsView designations={designations} onAddDesignation={() => { setEditingDesignation(null); setIsDesignationModalOpen(true); }} onDeleteDesignation={async (id) => { if (!confirmDelete('this designation')) return; setDesignations(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Designations'); }} onEditDesignation={(designation) => { setEditingDesignation(designation); setIsDesignationModalOpen(true); }} />;
       case 'departments': if (!isAdmin) return null; return <DepartmentsView departments={departments} onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} onDeleteDepartment={async (id) => { if (!confirmDelete('this department')) return; setDepartments(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Departments'); }} onEditDepartment={(department) => { setEditingDepartment(department); setIsDepartmentModalOpen(true); }} />;
-      case 'firms': if (!isAdmin) return null; return <FirmsView firms={firms} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddFirm={() => setIsFirmModalOpen(true)} onDeleteFirm={(id) => { const target = firms.find(f => f.id === id); if (!target) return; if (String(target.name || '').trim().toUpperCase() === 'GENERAL') return; if (!confirmDelete('this firm')) return; setFirms(p => p.filter(f => f.id !== id)); apiPost('deleteRecord', { id }, 'Firms'); }} onEditFirm={(f) => { if (String(f.name || '').trim().toUpperCase() === 'GENERAL') return; setFirms(p => p.map(x => x.id === f.id ? f : x)); apiPost('updateMaster', f, 'Firms'); }} />;
+	      case 'firms': if (!isAdmin) return null; return <FirmsView firms={firms} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddFirm={() => setIsFirmModalOpen(true)} onBulkUploadFirms={handleBulkUploadFirms} onDeleteFirm={(id) => { const target = firms.find(f => f.id === id); if (!target) return; if (String(target.name || '').trim().toUpperCase() === 'GENERAL') return; if (!confirmDelete('this firm')) return; setFirms(p => p.filter(f => f.id !== id)); apiPost('deleteRecord', { id }, 'Firms'); }} onEditFirm={(f) => { if (String(f.name || '').trim().toUpperCase() === 'GENERAL') return; setFirms(p => p.map(x => x.id === f.id ? f : x)); apiPost('updateMaster', f, 'Firms'); }} />;
 	      case 'clients': if (!isAdmin) return null; return <ClientsView clients={clients} projects={projects} onAddClient={handleInstantAddClient} onDeleteClient={(id) => { if (!confirmDelete('this client')) return; setClients(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Clients'); }} onEditClient={(c) => { setClients(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Clients'); }} onBulkUploadClients={handleBulkUploadClients} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'projects': if (!isAdmin) return null; return <ProjectsView projects={projects} clients={clients} onAddProject={handleInstantAddProject} onDeleteProject={(id) => { if (!confirmDelete('this project')) return; setProjects(p => p.filter(x => x.id !== id)); apiPost('deleteRecord', { id }, 'Projects'); }} onEditProject={(p) => { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); apiPost('updateMaster', p, 'Projects'); }} onAddClient={() => setIsClientModalOpen(true)} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'categories': if (!isAdmin) return null; return <CategoriesView categories={categories} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddCategory={() => setIsCategoryModalOpen(true)} onDeleteCategory={(id) => { if (!confirmDelete('this category')) return; setCategories(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Categories'); }} onEditCategory={(c) => { setCategories(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Categories'); }} />;
