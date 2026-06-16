@@ -1740,6 +1740,7 @@ export default function App() {
         users={users}
         categories={categories}
         firms={firms}
+        clients={clients}
       />
       <UpdateRecurringTaskModal
         isOpen={isRecurringTaskUpdateModalOpen}
