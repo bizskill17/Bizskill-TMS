@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
-import { User, Category, RecurringTask, Firm } from '../types';
+import { User, Category, RecurringTask, Firm, Client } from '../types';
 import { SearchableSelect } from './SearchableSelect';
 import { useLabels } from '../labelOverrides';
 
@@ -13,9 +13,10 @@ interface EditRecurringTaskModalProps {
   users: User[];
   categories: Category[];
   firms: Firm[];
+  clients: Client[];
 }
 
-export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ isOpen, onClose, onSave, task, users, categories, firms }) => {
+export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ isOpen, onClose, onSave, task, users, categories, firms, clients }) => {
   const { getFieldLabel } = useLabels();
   const parseToISO = (str: string) => {
     if (!str) return '';
@@ -87,10 +88,13 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 
   const userOptions = users.map(u => ({ value: u.name, label: u.name }));
   const categoryOptions = categories.map(c => ({ value: c.name, label: c.name }));
-  const firmOptions = firms.map(f => ({
-    value: f.name,
-    label: (f.sortName && String(f.sortName).trim()) ? String(f.sortName).trim() : f.name
-  }));
+  const clientOptions = Array.from(new Set([
+    ...clients.map(c => String(c.name || '').trim()),
+    ...firms.map(f => String(f.name || '').trim()),
+    String(formData.firm || '').trim()
+  ].filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => ({ value: name, label: name }));
   const weekDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -168,26 +172,15 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 			                placeholder=""
 		              />
 		            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-black uppercase tracking-wider block mb-1">{getFieldLabel('recurringTask.firm', 'Firm')} <span className="text-red-500">*</span></label>
-              <div className="flex flex-wrap gap-2">
-                {firmOptions.map((firmOption) => (
-                  <button
-                    key={firmOption.value}
-                    type="button"
-                    disabled={isSaving}
-                    onClick={() => setFormData(p => ({ ...p, firm: firmOption.value }))}
-                    className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
-                      formData.firm === firmOption.value
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                    } disabled:opacity-50`}
-                  >
-                    {firmOption.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <SearchableSelect 
+              label="Client"
+              options={clientOptions}
+              value={formData.firm}
+              onChange={(val) => setFormData(p => ({ ...p, firm: val }))}
+              required
+              placeholder="Select client"
+              disabled={isSaving}
+            />
             <SearchableSelect 
               label="Owner"
               options={userOptions}

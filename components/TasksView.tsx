@@ -5,7 +5,7 @@ import { TaskTable } from './TaskTable';
 import { UpdateTaskModal } from './UpdateTaskModal';
 import { EditTaskModal } from './EditTaskModal';
 import { BulkUpdateModal } from './BulkUpdateModal';
-import { Task, User, Project, Category, Vendor, VendorCategory, Firm } from '../types';
+import { Task, User, Project, Category, Vendor, VendorCategory, Firm, Client } from '../types';
 import { SearchableSelect } from './SearchableSelect';
 import { parseToISO, formatToIndianDate } from '../App';
 import { useLabels } from '../labelOverrides';
@@ -20,6 +20,7 @@ interface TasksViewProps {
   categories: Category[];
   vendors: Vendor[];
   firms: Firm[];
+  clients: Client[];
   taskStatuses: string[];
   onUpdateTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
@@ -81,7 +82,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
   projects,
   categories,
   vendors,
-	  firms,
+  firms,
+  clients,
     taskStatuses,
   onUpdateTask,
   onEditTask,
@@ -150,7 +152,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     if (filterProject.length > 0) active.push(`Projects: ${filterProject.length} items`);
     if (filterClient.length > 0) active.push(`Clients: ${filterClient.length} items`);
 	    if (filterCategory.length > 0) active.push(`${categoryLabel}: ${filterCategory.join(', ')}`);
-    if (filterFirm.length > 0) active.push(`Firm: ${filterFirm.join(', ')}`);
+    if (filterClient.length > 0) active.push(`Clients: ${filterClient.length} items`);
     if (filterAssignee.length > 0) active.push(`Assignee: ${filterAssignee.join(', ')}`);
     if (isVendorView && filterVendor.length > 0) active.push(`Vendor: ${filterVendor.join(', ')}`);
     if (dateFrom || dateTo) active.push(`Date: ${dateFrom || 'start'} to ${dateTo || 'end'}`);
@@ -232,8 +234,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	        case 'client': return values.includes(getClientFromTask(task));
 	        case 'owner': return values.some(v => String(task.owner || '').includes(v));
 	        case 'assignee': return values.some(v => String(task.assignees || '').includes(v));
-        case 'firm': return values.includes(task.firm || '');
-	        case 'vendor': return values.includes(task.vendor || '');
+        case 'vendor': return values.includes(task.vendor || '');
 	        default: return true;
 	    }
 	  };
@@ -259,8 +260,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       if (!matchesFilter(task, 'priority', filterPriority)) return false;
       if (!matchesFilter(task, 'project', filterProject)) return false;
 	      if (!matchesFilter(task, 'category', filterCategory)) return false;
-      if (!matchesFilter(task, 'firm', filterFirm)) return false;
-	      if (!matchesFilter(task, 'client', filterClient)) return false;
+      if (!matchesFilter(task, 'client', filterClient)) return false;
       if (!matchesFilter(task, 'owner', filterOwner)) return false;
       if (!matchesFilter(task, 'assignee', filterAssignee)) return false;
       if (isVendorView && filterVendor && !matchesFilter(task, 'vendor', filterVendor)) return false;
@@ -481,18 +481,17 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	  }, [projects]);
 
 	  const baseClientOptions = useMemo(() => {
-	    const unique = Array.from(new Set(projects.map(p => normalize(p.client)))).filter(Boolean);
+	    const unique = Array.from(new Set([
+        ...clients.map(c => normalize(c.name)),
+        ...projects.map(p => normalize(p.client)),
+        ...tasks.map(t => normalize(getClientFromTask(t)))
+      ])).filter(Boolean);
 	    return unique.map(c => ({ value: c, label: c }));
-	  }, [projects]);
+	  }, [clients, projects, tasks]);
 
 	  const baseVendorOptions = useMemo(() => {
 	    return vendors.map(v => ({ value: normalize(v.name), label: normalize(v.name) })).filter(o => o.value !== '');
 	  }, [vendors]);
-
-  const baseFirmOptions = useMemo(() => {
-    const unique = Array.from(new Set(tasks.map(t => normalize(t.firm)).filter(Boolean)));
-    return unique.map(f => ({ value: f, label: f }));
-  }, [tasks]);
 
 	  const tasksForStatusOptions = useMemo(() => tasks.filter(t => doesTaskMatchAllFilters(t, 'status')), [tasks, projects, filterType, searchTerm, filterPriority, filterProject, filterCategory, filterFirm, filterClient, filterOwner, filterAssignee, filterVendor, dateFrom, dateTo, lastUpdateFrom, lastUpdateTo, isVendorView]);
 	  const statusOptions = useMemo(() => {
@@ -566,15 +565,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	    return [...fromBase, ...extras];
 	  }, [tasksForVendorOptions, baseVendorOptions]);
 
-  const tasksForFirmOptions = useMemo(() => tasks.filter(t => doesTaskMatchAllFilters(t, 'firm')), [tasks, projects, filterType, searchTerm, filterStatus, filterPriority, filterProject, filterCategory, filterClient, filterOwner, filterAssignee, filterVendor, dateFrom, dateTo, lastUpdateFrom, lastUpdateTo, isVendorView]);
-  const firmOptions = useMemo(() => {
-    if (tasksForFirmOptions.length === 0) return baseFirmOptions;
-    const allowed = new Set(tasksForFirmOptions.map(t => normalize(t.firm)).filter(Boolean));
-    const fromBase = baseFirmOptions.filter(o => allowed.has(o.value));
-    const extras = Array.from(allowed).filter(v => !fromBase.some(o => o.value === v)).map(v => ({ value: v, label: v }));
-    return [...fromBase, ...extras];
-  }, [tasksForFirmOptions, baseFirmOptions]);
-
   const totalPages = Math.ceil(filteredTasks.length / itemsPerPage);
   const handleUpdateTaskClick = (task: Task) => { setSelectedTask(task); setIsUpdateModalOpen(true); };
   const handleEditTaskClick = (task: Task) => { setSelectedTask(task); setIsEditModalOpen(true); };
@@ -587,7 +577,6 @@ export const TasksView: React.FC<TasksViewProps> = ({
     setFilterPriority([]);
     setFilterProject([]);
 	    setFilterCategory([]);
-    setFilterFirm([]);
 	    setFilterClient([]);
     setFilterOwner([]);
     setFilterAssignee([]);
@@ -604,14 +593,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
       if (filterStatus.length > 0) badges.push({ label: `Status: ${filterStatus.join(', ')}`, clear: () => setFilterStatus([]) });
       if (filterPriority.length > 0) badges.push({ label: `Priority: ${filterPriority.join(', ')}`, clear: () => setFilterPriority([]) });
 	      if (filterCategory.length > 0) badges.push({ label: `${categoryLabel}: ${filterCategory.join(', ')}`, clear: () => setFilterCategory([]) });
-      if (filterFirm.length > 0) badges.push({ label: `Firm: ${filterFirm.join(', ')}`, clear: () => setFilterFirm([]) });
       if (filterProject.length > 0) badges.push({ label: `Project: ${filterProject.length} selected`, clear: () => setFilterProject([]) });
       if (filterClient.length > 0) badges.push({ label: `Client: ${filterClient.length} selected`, clear: () => setFilterClient([]) });
       if (filterOwner.length > 0) badges.push({ label: `Owner: ${filterOwner.join(', ')}`, clear: () => setFilterOwner([]) });
       if (filterAssignee.length > 0) badges.push({ label: `Assignee: ${filterAssignee.join(', ')}`, clear: () => setFilterAssignee([]) });
       if (isVendorView && filterVendor.length > 0) badges.push({ label: `Vendor: ${filterVendor.join(', ')}`, clear: () => setFilterVendor?.([]) });
       return badges;
-	  }, [filterStatus, filterPriority, filterCategory, filterFirm, filterProject, filterClient, filterOwner, filterAssignee, filterVendor, isVendorView, setFilterFirm]);
+	  }, [filterStatus, filterPriority, filterCategory, filterProject, filterClient, filterOwner, filterAssignee, filterVendor, isVendorView]);
 
   const getFilterClass = (isActive: boolean) => 
     `w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-colors ${isActive ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-medium' : 'bg-white border-indigo-300 text-black'}`;
@@ -699,7 +687,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
              <SearchableSelect label="Status" options={statusOptions} value={filterStatus} onChange={setFilterStatus} multiple={true} placeholder="All Statuses" className="text-sm"/>
 	             <SearchableSelect label="Priority" options={priorityOptions} value={filterPriority} onChange={setFilterPriority} multiple={true} placeholder="All Priorities" className="text-sm"/>
 	             <SearchableSelect label="Category" labelKey="task.category" options={categoryOptions} value={filterCategory} onChange={setFilterCategory} multiple={true} placeholder="All Categories" className="text-sm"/>
-               <SearchableSelect label="Firm" options={firmOptions} value={filterFirm} onChange={setFilterFirm} multiple={true} placeholder="All Firms" className="text-sm"/>
+               <SearchableSelect label="Client" options={clientOptions} value={filterClient} onChange={setFilterClient} multiple={true} placeholder="All Clients" className="text-sm"/>
              <SearchableSelect label="Owner" options={ownerOptions} value={filterOwner} onChange={setFilterOwner} multiple={true} placeholder="All Owners" className="text-sm"/>
              {!isVendorView && <SearchableSelect label="Assignee" options={assigneeOptions} value={filterAssignee} onChange={setFilterAssignee} multiple={true} placeholder="All Assignees" className="text-sm"/>}
              {isVendorView && setFilterVendor && <SearchableSelect label="Vendor" options={vendorOptions} value={filterVendor} onChange={setFilterVendor} multiple={true} placeholder="All Vendors" className="text-sm"/>}
@@ -728,7 +716,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       </div>
 
 	      <UpdateTaskModal isOpen={isUpdateModalOpen} onClose={() => setIsUpdateModalOpen(false)} task={selectedTask} onUpdate={onUpdateTask} users={users} vendors={vendors} statusOptions={taskStatuses}/>
-      <EditTaskModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} task={selectedTask} onSave={onEditTask} onAddCategory={onAddCategory} onAddProject={onAddProject} onAddVendorCategory={onAddVendorCategory!} users={users} categories={categories} projects={projects} firms={firms} vendors={vendors} vendorCategories={vendorCategories} isVendorView={isVendorView} lastAddedCategory={lastAddedCategory} lastAddedProject={lastAddedProject} lastAddedVendorCategory={lastAddedVendorCategory} onClearLastAdded={onClearLastAdded} />
+      <EditTaskModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} task={selectedTask} onSave={onEditTask} onAddCategory={onAddCategory} onAddProject={onAddProject} onAddVendorCategory={onAddVendorCategory!} users={users} categories={categories} projects={projects} firms={firms} clients={clients} vendors={vendors} vendorCategories={vendorCategories} isVendorView={isVendorView} lastAddedCategory={lastAddedCategory} lastAddedProject={lastAddedProject} lastAddedVendorCategory={lastAddedVendorCategory} onClearLastAdded={onClearLastAdded} />
       <BulkUpdateModal isOpen={isBulkUpdateModalOpen} onClose={() => setIsBulkUpdateModalOpen(false)} count={selectedIds.length} onUpdate={handleBulkUpdate} users={users} vendors={vendors} categories={categories} isVendorView={isVendorView} mode={bulkMode} />
 
       {showBulkDeleteConfirm && (

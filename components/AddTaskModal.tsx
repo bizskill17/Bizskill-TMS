@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Clock3 } from 'lucide-react';
-import { Task, User, Category, Project, Vendor, VendorCategory, Firm } from '../types';
+import { Task, User, Category, Project, Vendor, VendorCategory, Firm, Client } from '../types';
 import { SearchableSelect } from './SearchableSelect';
 import { useLabels } from '../labelOverrides';
 
@@ -16,6 +16,7 @@ interface AddTaskModalProps {
   categories: Category[];
   projects: Project[];
   firms: Firm[];
+  clients: Client[];
   vendors: Vendor[];
   vendorCategories?: VendorCategory[];
   isVendorView?: boolean;
@@ -36,6 +37,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   categories, 
   projects = [],
   firms = [],
+  clients = [],
   vendors,
   vendorCategories = [],
   isVendorView = false,
@@ -130,10 +132,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
   const vendorOptions = vendors.map(v => ({ value: v.name, label: v.name }));
   const vendorCategoryOptions = (vendorCategories || []).map(c => ({ value: c.name, label: c.name }));
-  const firmOptions = firms.map(f => ({
-    value: f.name,
-    label: (f.sortName && String(f.sortName).trim()) ? String(f.sortName).trim() : f.name
-  }));
+  const clientOptions = Array.from(new Set([
+    ...clients.map(c => String(c.name || '').trim()),
+    ...firms.map(f => String(f.name || '').trim())
+  ].filter(Boolean)))
+    .sort((a, b) => a.localeCompare(b))
+    .map(name => ({ value: name, label: name }));
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -274,24 +278,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 	              </div>
 	            </div>
 
-			            <div className="space-y-1">
-			              <label className="text-xs font-bold text-black uppercase tracking-wider block mb-1">Firm <span className="text-red-500">*</span></label>
-                    <div className="flex flex-wrap gap-2">
-                      {firmOptions.map((firmOption) => (
-                        <button
-                          key={firmOption.value}
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, firm: firmOption.value }))}
-                          className={`px-3 py-2 rounded-lg border text-sm font-semibold transition-colors ${
-                            formData.firm === firmOption.value
-                              ? 'bg-indigo-600 text-white border-indigo-600'
-                              : 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50'
-                          }`}
-                        >
-                          {firmOption.label}
-                        </button>
-                      ))}
-                    </div>
+		            <div className="space-y-1">
+                    <SearchableSelect
+                      label="Client"
+                      options={clientOptions}
+                      value={formData.firm}
+                      onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
+                      placeholder="Select Client..."
+                      required
+                    />
 			            </div>
 
 	            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

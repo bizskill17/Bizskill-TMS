@@ -29,7 +29,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 	  const categoryLabel = getFieldLabel('recurringTask.category', 'Category');
 	  const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const [filterFirm, setFilterFirm] = useState('All');
+  const [filterClient, setFilterClient] = useState('All');
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
 	  const [filterDate, setFilterDate] = useState('');
@@ -72,7 +72,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
   };
 
   const categories = useMemo(() => ['All', ...Array.from(new Set(actions.map(a => a.category)))], [actions]);
-  const firms = useMemo(() => ['All', ...Array.from(new Set(actions.map(a => a.firm || '').filter(Boolean)))], [actions]);
+  const clients = useMemo(() => ['All', ...Array.from(new Set(actions.map(a => a.firm || '').filter(Boolean)))], [actions]);
   const assignees = useMemo(() => ['All', ...Array.from(new Set(actions.map(a => a.assignee)))], [actions]);
   const statuses = ['All', 'Not Yet Started', 'In Progress', 'Complete'];
 
@@ -87,7 +87,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
       }
 
       const matchesCategory = filterCategory === 'All' || action.category === filterCategory;
-      const matchesFirm = filterFirm === 'All' || (action.firm || '') === filterFirm;
+      const matchesClient = filterClient === 'All' || (action.firm || '') === filterClient;
       const matchesAssignee = filterAssignee === 'All' || action.assignee === filterAssignee;
       const matchesStatus = filterStatus === 'All' || action.status === filterStatus;
       
@@ -97,9 +97,9 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
           matchesDate = actionISO === filterDate;
       }
       
-      return matchesCategory && matchesFirm && matchesAssignee && matchesStatus && matchesDate;
+      return matchesCategory && matchesClient && matchesAssignee && matchesStatus && matchesDate;
     });
-  }, [actions, searchTerm, filterCategory, filterFirm, filterAssignee, filterStatus, filterDate]);
+  }, [actions, searchTerm, filterCategory, filterClient, filterAssignee, filterStatus, filterDate]);
 
   const sortedActions = useMemo(() => {
     let sortableItems = [...filteredActions];
@@ -177,7 +177,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 
   const handleClearFilters = () => {
     setFilterCategory('All'); 
-    setFilterFirm('All'); 
+    setFilterClient('All'); 
     setFilterAssignee('All'); 
     setFilterStatus('All'); 
     setFilterDate(''); 
@@ -232,7 +232,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
 	            <SearchableSelect label={<span className="text-[10px] font-black uppercase">{categoryLabel}</span>} options={categories.map(c => ({ value: c, label: c }))} value={filterCategory} onChange={setFilterCategory} />
-            <SearchableSelect label={<span className="text-[10px] font-black uppercase">Firm</span>} options={firms.map(f => ({ value: f, label: f }))} value={filterFirm} onChange={setFilterFirm} />
+            <SearchableSelect label={<span className="text-[10px] font-black uppercase">Client</span>} options={clients.map(c => ({ value: c, label: c }))} value={filterClient} onChange={setFilterClient} />
             <SearchableSelect label={<span className="text-[10px] font-black uppercase">Assignee</span>} options={assignees.map(a => ({ value: a, label: a }))} value={filterAssignee} onChange={setFilterAssignee} />
             <div className="space-y-1"><label className="text-[10px] font-black text-blue-600 uppercase block mb-1">Status</label><select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full px-3 py-2 border-2 border-blue-200 rounded-md text-sm">{statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
             <div className="space-y-1"><label className="text-[10px] font-black text-blue-600 uppercase block mb-1">Date</label><input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="w-full px-3 py-2 border-2 border-blue-200 rounded-md text-sm"/></div>
@@ -335,7 +335,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 	              <tr className="bg-blue-600">
 	                <th className="px-4 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-black w-16 text-center whitespace-nowrap">S.No.</th>
 	                <th className={thClass} onClick={() => requestSort('taskTitle')}><div className="flex items-center">Task {getSortIcon('taskTitle')}</div></th>
-		                <th className={thClass} onClick={() => requestSort('firm')}><div className="flex items-center">Firm {getSortIcon('firm')}</div></th>
+		                <th className={thClass} onClick={() => requestSort('firm')}><div className="flex items-center">Client {getSortIcon('firm')}</div></th>
                 <th className={thClass} onClick={() => requestSort('owner' as any)}><div className="flex items-center">Owner {getSortIcon('owner' as any)}</div></th>
 	                <th className={thClass} onClick={() => requestSort('category')}><div className="flex items-center">{categoryLabel} {getSortIcon('category')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('assignee')}><div className="flex items-center">Assignee {getSortIcon('assignee')}</div></th>

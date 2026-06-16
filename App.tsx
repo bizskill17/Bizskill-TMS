@@ -1237,7 +1237,7 @@ export default function App() {
         ['Not Yet Started', ...statuses.map(s => String(s.name || '').trim()).filter(Boolean)]
       ));
 	    const commonTaskProps = {
-		      users, projects, vendors, firms, categories, syncingIds, vendorCategories, currentUser,
+		      users, projects, vendors, firms, clients, categories, syncingIds, vendorCategories, currentUser,
           taskStatuses: taskStatusOptions,
         showCollapsedMenuButton: layoutMode === 'side' && isSidebarCollapsed && !isAnyFormModalOpen,
         onShowMenu: () => setIsSidebarCollapsed(false),
@@ -1521,7 +1521,7 @@ export default function App() {
         onAddCategory={() => setIsCategoryModalOpen(true)}
         onAddProject={() => setIsProjectModalOpen(true)}
         onAddVendorCategory={() => setIsVendorCategoryModalOpen(true)}
-        users={users} categories={categories} projects={projects} firms={firms} vendors={vendors}
+        users={users} categories={categories} projects={projects} firms={firms} clients={clients} vendors={vendors}
         vendorCategories={vendorCategories} isVendorView={isTaskModalVendorMode}
         lastAddedCategory={lastAddedCategory} lastAddedProject={lastAddedProject} 
         lastAddedVendorCategory={lastAddedVendorCategory} onClearLastAdded={() => { setLastAddedCategory(''); setLastAddedProject(''); setLastAddedVendorCategory(''); }}
@@ -1569,6 +1569,7 @@ export default function App() {
         onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} 
         users={users}
         firms={firms}
+        clients={clients}
         categories={categories}
       />
       <AddDesignationModal isOpen={isDesignationModalOpen} onClose={() => { setIsDesignationModalOpen(false); setEditingDesignation(null); }} initialData={editingDesignation} onSave={async (d) => {
@@ -1690,7 +1691,8 @@ export default function App() {
 	        }} 
 	        users={users} 
 	        categories={categories} 
-	        firms={firms} 
+	        firms={firms}
+          clients={clients} 
 	      />
 	      <RecurringTaskHistoryModal isOpen={isRecurringHistoryModalOpen} onClose={() => setIsRecurringHistoryModalOpen(false)} task={selectedRecurringTask} actions={recurringActions} />
 	      </LabelProvider>

@@ -39,7 +39,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
   const { getFieldLabel } = useLabels();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
-  const [filterFirm, setFilterFirm] = useState('All');
+  const [filterClient, setFilterClient] = useState('All');
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
@@ -60,10 +60,10 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
   useEffect(() => {
     setCurrentPage(1);
     setSelectedIds([]);
-  }, [searchTerm, filterCategory, filterFirm, filterAssignee, filterStatus, filterType]);
+  }, [searchTerm, filterCategory, filterClient, filterAssignee, filterStatus, filterType]);
 
   const categories = useMemo(() => ['All', ...Array.from(new Set(tasks.map(t => t.category)))], [tasks]);
-  const firms = useMemo(() => ['All', ...Array.from(new Set(tasks.map(t => t.firm || '').filter(Boolean)))], [tasks]);
+  const clients = useMemo(() => ['All', ...Array.from(new Set(tasks.map(t => t.firm || '').filter(Boolean)))], [tasks]);
   const assignees = useMemo(() => ['All', ...Array.from(new Set(tasks.map(t => t.assignee)))], [tasks]);
   const statuses = ['All', 'Not Yet Started', 'In Progress', 'Complete'];
 
@@ -376,13 +376,13 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
       }
 
       const matchesCategory = filterCategory === 'All' || task.category === filterCategory;
-      const matchesFirm = filterFirm === 'All' || (task.firm || '') === filterFirm;
+      const matchesClient = filterClient === 'All' || (task.firm || '') === filterClient;
       const matchesAssignee = filterAssignee === 'All' || task.assignee === filterAssignee;
       const matchesStatus = filterStatus === 'All' || effectiveStatus === filterStatus;
       
-      return matchesCategory && matchesFirm && matchesAssignee && matchesStatus;
+      return matchesCategory && matchesClient && matchesAssignee && matchesStatus;
     });
-  }, [tasks, actions, searchTerm, filterCategory, filterFirm, filterAssignee, filterStatus, filterType]);
+  }, [tasks, actions, searchTerm, filterCategory, filterClient, filterAssignee, filterStatus, filterType]);
 
   const getLatestActionTimestamp = (taskId: number) => {
     const taskActions = actions
@@ -565,10 +565,10 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
 	            <SearchableSelect label="Category" labelKey="recurringTask.category" options={categories.map(c => ({ value: c, label: c }))} value={filterCategory} onChange={setFilterCategory} />
-              <SearchableSelect label="Firm" options={firms.map(f => ({ value: f, label: f }))} value={filterFirm} onChange={setFilterFirm} />
+              <SearchableSelect label="Client" options={clients.map(c => ({ value: c, label: c }))} value={filterClient} onChange={setFilterClient} />
 	            <SearchableSelect label="Assignee" options={assignees.map(a => ({ value: a, label: a }))} value={filterAssignee} onChange={setFilterAssignee} />
 	            <div><label className="text-[10px] font-bold text-indigo-600 uppercase mb-1 block">Status</label><select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="w-full px-3 py-2 border border-indigo-300 rounded-md text-sm">{statuses.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-	            <div className="flex items-end"><button onClick={() => { setFilterCategory('All'); setFilterFirm('All'); setFilterAssignee('All'); setFilterStatus('All'); setSearchTerm(''); }} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white border border-red-700 rounded-md hover:bg-red-700 text-sm font-medium h-[42px] transition-colors shadow-sm"><X size={16} />Clear</button></div>
+	            <div className="flex items-end"><button onClick={() => { setFilterCategory('All'); setFilterClient('All'); setFilterAssignee('All'); setFilterStatus('All'); setSearchTerm(''); }} className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white border border-red-700 rounded-md hover:bg-red-700 text-sm font-medium h-[42px] transition-colors shadow-sm"><X size={16} />Clear</button></div>
           </div>
         )}
       </div>
@@ -593,7 +593,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 			                <th className={thClass} onClick={() => requestSort('time')}><div className="flex items-center">Time {getSortIcon('time')}</div></th>
 			                <th className={`${thClass} ${taskColumnClass}`} onClick={() => requestSort('title')}><div className="flex items-center">Task {getSortIcon('title')}</div></th>
                 <th className={thClass} onClick={() => requestSort('notes' as any)}><div className="flex items-center">Notes {getSortIcon('notes' as any)}</div></th>
-	                  <th className={thClass} onClick={() => requestSort('firm')}><div className="flex items-center">Firm {getSortIcon('firm')}</div></th>
+	                  <th className={thClass} onClick={() => requestSort('firm')}><div className="flex items-center">Client {getSortIcon('firm')}</div></th>
 	                  <th className={thClass} onClick={() => requestSort('owner')}><div className="flex items-center">Owner {getSortIcon('owner')}</div></th>
 		                <th className={thClass} onClick={() => requestSort('category')}><div className="flex items-center">{getFieldLabel('recurringTask.category', 'Category')} {getSortIcon('category')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('assignee')}><div className="flex items-center">Assignee {getSortIcon('assignee')}</div></th>
@@ -748,7 +748,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                     <h3 className="font-bold text-gray-900 leading-tight mt-2 whitespace-normal break-words">{task.title}</h3>
                     </div>
 		                    <div className="grid grid-cols-2 gap-y-2 text-xs text-gray-600 mb-4 bg-gray-50 p-2 rounded">
-                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Firm</span><span className="whitespace-normal break-words">{task.firm || '-'}</span></div>
+                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Client</span><span className="whitespace-normal break-words">{task.firm || '-'}</span></div>
                     <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Owner</span><span className="whitespace-normal break-words">{task.owner || '-'}</span></div>
 		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">{getFieldLabel('recurringTask.category', 'Category')}</span><span className="whitespace-normal break-words">{task.category}</span></div>
 	                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Assignee</span><span className="whitespace-normal break-words">{task.assignee}</span></div>

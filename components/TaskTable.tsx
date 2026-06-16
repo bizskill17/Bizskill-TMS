@@ -95,6 +95,15 @@ export const TaskTable: React.FC<TaskTableProps> = ({
     return formatToIndianDate(dateStr);
   };
 
+  const getClientDisplay = (task: Task) => {
+    const direct = String(task.clientName || '').trim();
+    if (direct) return direct;
+    const rawProject = String(task.project || '').trim();
+    const match = rawProject.match(/^(.*?)\s*\((.*?)\)\s*$/);
+    if (match?.[2]) return String(match[2]).trim();
+    return String(task.firm || '').trim();
+  };
+
   const parseNumber = (value: unknown): number => {
     const num = Number(String(value ?? '').trim());
     return Number.isFinite(num) ? num : 0;
@@ -180,7 +189,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 	                <th className={thClass} style={{ width: '350px' }} onClick={() => requestSort('title')}><div className="flex items-center">Task {getSortIcon('title')}</div></th>
 	                <th className={thClass} style={{ width: '320px' }} onClick={() => requestSort('remarks')}><div className="flex items-center">Notes {getSortIcon('remarks')}</div></th>
 	                <th className={thClass} style={{ width: '120px' }} onClick={() => requestSort('date')}><div className="flex items-center">Date {getSortIcon('date')}</div></th>
-                    <th className={thClass} style={{ width: '160px' }} onClick={() => requestSort('firm')}><div className="flex items-center">Firm {getSortIcon('firm')}</div></th>
+                    <th className={thClass} style={{ width: '160px' }} onClick={() => requestSort('firm')}><div className="flex items-center">Client {getSortIcon('firm')}</div></th>
 		                <th className={thClass} style={{ width: '150px' }} onClick={() => requestSort('category')}><div className="flex items-center">{getFieldLabel('task.category', 'Category')} {getSortIcon('category')}</div></th>
 	                <th className={thClass} style={{ width: '100px' }} onClick={() => requestSort('priority')}><div className="flex items-center">Priority {getSortIcon('priority')}</div></th>
 	                <th className={thClass} style={{ width: '100px' }} onClick={() => requestSort('time')}><div className="flex items-center">Time {getSortIcon('time')}</div></th>
@@ -228,7 +237,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 	                    <td className={`${tdClass} font-bold`} title={task.title}>{task.title || '-'}</td>
 	                    <td className={`${tdClass} italic text-gray-700`} title={task.remarks}>{task.remarks || '-'}</td>
 	                    <td className={`${tdClass}`}><div className="flex items-center gap-1">{isSyncing && <Loader2 className="animate-spin text-blue-500" size={12} />}{formatDate(task.date)}</div></td>
-                    <td className={tdClass}>{task.firm || '-'}</td>
+                    <td className={tdClass}>{getClientDisplay(task) || '-'}</td>
 		                    <td className={tdClass}>{displayCategory}</td>
 	                    <td className={tdClass}>{task.priority}</td>
 	                      <td className={tdClass}>{task.time || '-'}</td>
@@ -340,8 +349,8 @@ export const TaskTable: React.FC<TaskTableProps> = ({
               <div className="space-y-3 mb-5">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-4">
                       <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-black text-blue-900/60">Firm</span>
-                        <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words">{task.firm || '-'}</div>
+                        <span className="text-[10px] uppercase font-black text-blue-900/60">Client</span>
+                        <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words">{getClientDisplay(task) || '-'}</div>
                       </div>
                     <div className="space-y-1">
                         <span className="text-[10px] uppercase font-black text-blue-900/60">Priority</span>
