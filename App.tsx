@@ -555,7 +555,7 @@ export default function App() {
     setLogDashboardFilter(null);
   }, [activeTab]);
 
-	  const apiPost = async (action: string, data: any, target?: string) => {
+	  const apiPost = async (action: string, data: any, target?: string, options?: { skipRefresh?: boolean }) => {
     if (!apiUrl) return { success: false, error: 'No API URL configured' };
     setIsSyncing(true);
     setApiError(null);
@@ -636,11 +636,11 @@ export default function App() {
 	        redirect: 'follow'
 	      });
 	      const result = await safeJsonParse(response, action);
-	      if (result.success) setTimeout(() => fetchData(false), 1500);
+	      if (result.success && !options?.skipRefresh) setTimeout(() => fetchData(false), 1500);
 	      return result;
 	    } catch (err: any) {
 	      console.error(`API Error:`, err.message);
-	      setTimeout(() => fetchData(false), 2000);
+	      if (!options?.skipRefresh) setTimeout(() => fetchData(false), 2000);
 	      return { success: false, error: err?.message || 'Request failed' };
 	    } finally {
 	      setIsSyncing(false);
@@ -1158,12 +1158,41 @@ export default function App() {
     await apiPost('addMaster', proj, 'Projects');
   };
 
-  const handleInstantAddClient = async (client: Omit<Client, 'id'>) => {
-    const tempId = Date.now();
-    const newClient = { ...client, id: tempId } as Client;
-    setClients(prev => [...prev, newClient]);
-    await apiPost('addMaster', client, 'Clients');
-  };
+	  const handleInstantAddClient = async (client: Omit<Client, 'id'>) => {
+	    const result = await apiPost('addMaster', client, 'Clients', { skipRefresh: true });
+	    if (!result?.success) {
+	      alert(result?.error || 'Failed to add client.');
+	      return;
+	    }
+	    const newId = Number(result?.data?.id || Date.now());
+	    setClients(prev => [...prev, { ...client, id: newId } as Client]);
+	  };
+
+	  const handleBulkUploadClients = async (bulkClients: Omit<Client, 'id'>[]) => {
+	    const addedClients: Client[] = [];
+	    const failedRows: string[] = [];
+
+	    for (const client of bulkClients) {
+	      const result = await apiPost('addMaster', client, 'Clients', { skipRefresh: true });
+	      if (!result?.success) {
+	        failedRows.push(client.name || 'Unnamed client');
+	        continue;
+	      }
+
+	      const newId = Number(result?.data?.id || Date.now() + addedClients.length);
+	      addedClients.push({ ...client, id: newId });
+	    }
+
+	    if (addedClients.length > 0) {
+	      setClients(prev => [...prev, ...addedClients]);
+	    }
+
+	    if (failedRows.length > 0) {
+	      alert(`Some clients could not be uploaded: ${failedRows.join(', ')}`);
+	    } else if (addedClients.length > 0) {
+	      alert(`${addedClients.length} client(s) uploaded successfully.`);
+	    }
+	  };
 
   const handleInstantAddFirm = async (firm: Omit<Firm, 'id'>) => {
     const tempId = Date.now();
@@ -1351,10 +1380,10 @@ export default function App() {
       case 'designations': if (!isAdmin) return null; return <DesignationsView designations={designations} onAddDesignation={() => { setEditingDesignation(null); setIsDesignationModalOpen(true); }} onDeleteDesignation={async (id) => { if (!confirmDelete('this designation')) return; setDesignations(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Designations'); }} onEditDesignation={(designation) => { setEditingDesignation(designation); setIsDesignationModalOpen(true); }} />;
       case 'departments': if (!isAdmin) return null; return <DepartmentsView departments={departments} onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} onDeleteDepartment={async (id) => { if (!confirmDelete('this department')) return; setDepartments(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Departments'); }} onEditDepartment={(department) => { setEditingDepartment(department); setIsDepartmentModalOpen(true); }} />;
       case 'firms': if (!isAdmin) return null; return <FirmsView firms={firms} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddFirm={() => setIsFirmModalOpen(true)} onDeleteFirm={(id) => { const target = firms.find(f => f.id === id); if (!target) return; if (String(target.name || '').trim().toUpperCase() === 'GENERAL') return; if (!confirmDelete('this firm')) return; setFirms(p => p.filter(f => f.id !== id)); apiPost('deleteRecord', { id }, 'Firms'); }} onEditFirm={(f) => { if (String(f.name || '').trim().toUpperCase() === 'GENERAL') return; setFirms(p => p.map(x => x.id === f.id ? f : x)); apiPost('updateMaster', f, 'Firms'); }} />;
-      case 'clients': if (!isAdmin) return null; return <ClientsView clients={clients} projects={projects} onAddClient={handleInstantAddClient} onDeleteClient={(id) => { if (!confirmDelete('this client')) return; setClients(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Clients'); }} onEditClient={(c) => { setClients(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Clients'); }} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
+	      case 'clients': if (!isAdmin) return null; return <ClientsView clients={clients} projects={projects} onAddClient={handleInstantAddClient} onDeleteClient={(id) => { if (!confirmDelete('this client')) return; setClients(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Clients'); }} onEditClient={(c) => { setClients(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Clients'); }} onBulkUploadClients={handleBulkUploadClients} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'projects': if (!isAdmin) return null; return <ProjectsView projects={projects} clients={clients} onAddProject={handleInstantAddProject} onDeleteProject={(id) => { if (!confirmDelete('this project')) return; setProjects(p => p.filter(x => x.id !== id)); apiPost('deleteRecord', { id }, 'Projects'); }} onEditProject={(p) => { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); apiPost('updateMaster', p, 'Projects'); }} onAddClient={() => setIsClientModalOpen(true)} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'categories': if (!isAdmin) return null; return <CategoriesView categories={categories} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddCategory={() => setIsCategoryModalOpen(true)} onDeleteCategory={(id) => { if (!confirmDelete('this category')) return; setCategories(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Categories'); }} onEditCategory={(c) => { setCategories(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Categories'); }} />;
-      case 'statuses': if (!isAdmin) return null; return <StatusesView statuses={statuses} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddStatus={async (status) => { const tempId = Date.now(); const row = { ...status, id: tempId, is_system: 0 } as StatusMaster; setStatuses(prev => [...prev, row]); await apiPost('addMaster', status, 'Statuses'); }} onEditStatus={async (status) => { setStatuses(prev => prev.map(x => x.id === status.id ? status : x)); await apiPost('updateMaster', status, 'Statuses'); }} onDeleteStatus={async (id) => { if (!confirmDelete('this status')) return; setStatuses(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Statuses'); }} />;
+      case 'statuses': if (!isAdmin) return null; return <StatusesView statuses={statuses} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddStatus={async (status) => { const result = await apiPost('addMaster', status, 'Statuses'); if (!result?.success) { alert(result?.error || 'Failed to add status.'); return; } const newId = Number(result?.data?.id || Date.now()); const normalizedName = String(status.name || '').trim(); const isSystem = ['in progress', 'completed'].includes(normalizedName.toLowerCase()) ? 1 : 0; const row = { ...status, id: newId, is_system: isSystem } as StatusMaster; setStatuses(prev => [...prev, row]); }} onEditStatus={async (status) => { setStatuses(prev => prev.map(x => x.id === status.id ? status : x)); await apiPost('updateMaster', status, 'Statuses'); }} onDeleteStatus={async (id) => { if (!confirmDelete('this status')) return; setStatuses(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Statuses'); }} />;
       case 'organizations': if (!isPlatformAdmin) return null; return <OrganizationsView organizations={organizations} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddOrganization={async (organization) => {
         const result = await apiPost('addOrganization', organization, 'Organizations');
         if (!result?.success) {
@@ -1486,21 +1515,35 @@ export default function App() {
 			                  <Menu size={18} />
 			                </button>
 			              )}
-		              {isLoading ? (
-	                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
-	                    <div className="relative w-20 h-20">
-	                        <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
-	                        <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
-	                    </div>
-	                    <p className="text-indigo-600 font-black uppercase tracking-widest text-sm animate-pulse">Loading...</p>
-	                </div>
-	              ) : (
-				                <div className="w-full mx-auto min-h-full flex flex-col">
-		                  <div className="flex-1">
-		                    {renderContent()}
-		                  </div>
-		                  <Footer />
+			              {isLoading ? (
+		                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
+		                    <div className="relative w-20 h-20">
+		                        <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
+		                        <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+		                    </div>
+		                    <p className="text-indigo-600 font-black uppercase tracking-widest text-sm animate-pulse">Loading...</p>
 		                </div>
+		              ) : (
+					                <div className="w-full mx-auto min-h-full flex flex-col">
+			                  {isSyncing && (
+			                    <div className="fixed inset-0 bg-white/45 backdrop-blur-[2px] z-[90] flex items-center justify-center px-4">
+			                      <div className="bg-white border border-indigo-100 shadow-xl rounded-2xl px-6 py-5 flex items-center gap-4">
+			                        <div className="relative w-12 h-12">
+			                          <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
+			                          <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+			                        </div>
+			                        <div>
+			                          <p className="text-indigo-700 font-semibold">Please wait</p>
+			                          <p className="text-sm text-gray-500">Saving and syncing your data...</p>
+			                        </div>
+			                      </div>
+			                    </div>
+			                  )}
+			                  <div className="flex-1">
+			                    {renderContent()}
+			                  </div>
+			                  <Footer />
+			                </div>
 	              )}
 			            </main>
 			              );

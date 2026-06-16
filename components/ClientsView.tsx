@@ -1,6 +1,6 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, LayoutGrid, LayoutList, Mail, Phone, MapPin, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Plus, Search, Edit2, Trash2, LayoutGrid, LayoutList, Mail, Phone, MapPin, ArrowUpDown, ArrowUp, ArrowDown, Upload, Download } from 'lucide-react';
 import { Client, Project } from '../types';
 import { AddClientModal } from './AddClientModal';
 import { EditClientModal } from './EditClientModal';
@@ -11,9 +11,10 @@ import { useLabels } from '../labelOverrides';
 interface ClientsViewProps {
   clients: Client[];
   projects: Project[];
-  onAddClient: (client: Omit<Client, 'id'>) => void;
+  onAddClient: (client: Omit<Client, 'id'>) => void | Promise<void>;
   onDeleteClient: (id: number) => void;
   onEditClient: (client: Client) => void;
+  onBulkUploadClients?: (clients: Omit<Client, 'id'>[]) => Promise<void>;
   onNavigateToProjectTasks?: (projectName: string) => void;
 }
 
@@ -22,7 +23,35 @@ type SortConfig = {
   direction: 'asc' | 'desc';
 } | null;
 
-export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onAddClient, onDeleteClient, onEditClient, onNavigateToProjectTasks }) => {
+const parseCsvLine = (line: string) => {
+  const values: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      values.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  values.push(current.trim());
+  return values.map((value) => value.replace(/^"|"$/g, '').trim());
+};
+
+export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onAddClient, onDeleteClient, onEditClient, onBulkUploadClients, onNavigateToProjectTasks }) => {
   const { getViewLabel } = useLabels();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -31,6 +60,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
   const [isProjectsModalOpen, setIsProjectsModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const requestSort = (key: keyof Client) => {
     let direction: 'asc' | 'desc' = 'asc';
@@ -45,8 +76,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
     return sortConfig.direction === 'asc' ? <ArrowUp size={14} className="ml-1 text-white" /> : <ArrowDown size={14} className="ml-1 text-white" />;
   };
 
+  const filteredClients = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return clients;
+
+    return clients.filter((client) =>
+      [
+        client.name,
+        client.gstNumber || '',
+        client.email,
+        client.mobile,
+        client.address,
+      ].some((value) => String(value || '').toLowerCase().includes(query))
+    );
+  }, [clients, searchTerm]);
+
   const sortedClients = useMemo(() => {
-    let sortableItems = [...clients];
+    let sortableItems = [...filteredClients];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         const aValue = a[sortConfig.key] ?? '';
@@ -57,7 +103,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
       });
     }
     return sortableItems;
-  }, [clients, sortConfig]);
+  }, [filteredClients, sortConfig]);
 
   const handleClientClick = (client: Client) => {
     setSelectedClient(client);
@@ -81,6 +127,85 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
     }
   };
 
+  const handleTemplateDownload = () => {
+    const template = [
+      'name,email,mobile,address,gstNumber',
+      '"ABC Client","client@example.com","9876543210","Mumbai Office","27ABCDE1234F1Z5"',
+    ].join('\n');
+
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'client-upload-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !onBulkUploadClients) return;
+
+    try {
+      const text = await file.text();
+      const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+
+      if (lines.length < 2) {
+        alert('The selected file does not contain any client rows.');
+        return;
+      }
+
+      const header = parseCsvLine(lines[0]).map((item) => item.toLowerCase());
+      const requiredColumns = ['name', 'email', 'mobile', 'address', 'gstnumber'];
+      const hasAllColumns = requiredColumns.every((column) => header.includes(column));
+
+      if (!hasAllColumns) {
+        alert('Invalid template. Please use the downloaded client template file.');
+        return;
+      }
+
+      const uploadRows: Omit<Client, 'id'>[] = [];
+
+      for (let index = 1; index < lines.length; index += 1) {
+        const values = parseCsvLine(lines[index]);
+        const row = header.reduce<Record<string, string>>((acc, key, keyIndex) => {
+          acc[key] = values[keyIndex] || '';
+          return acc;
+        }, {});
+
+        const name = String(row.name || '').trim();
+        if (!name) continue;
+
+        uploadRows.push({
+          name,
+          email: String(row.email || '').trim(),
+          mobile: String(row.mobile || '').trim(),
+          address: String(row.address || '').trim(),
+          gstNumber: String(row.gstnumber || '').trim(),
+        });
+      }
+
+      if (uploadRows.length === 0) {
+        alert('No valid client rows were found in the file.');
+        return;
+      }
+
+      await onBulkUploadClients(uploadRows);
+    } catch (error) {
+      console.error('Client upload failed', error);
+      alert('Failed to read the upload file.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
   const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none";
   const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0";
 
@@ -99,15 +224,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
           <input 
             type="text" 
             placeholder="Search clients..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 text-sm"
           />
         </div>
         
-        <div className="flex gap-3 w-full md:w-auto">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
                 <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
                 <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
             </div>
+            <button onClick={handleUploadClick} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Upload size={16} /><span>Upload</span></button>
+            <button onClick={handleTemplateDownload} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Download size={16} /><span>Template</span></button>
             <button onClick={() => setIsModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span>Add Client</span></button>
         </div>
       </div>
@@ -171,7 +308,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
                  </div>
              </div>
         ))}
-         {clients.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-lg border border-gray-200">No clients found.</div>}
+         {sortedClients.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-lg border border-gray-200">No clients found.</div>}
       </div>
 
       <AddClientModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={onAddClient} clients={clients} />

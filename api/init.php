@@ -82,6 +82,56 @@ function add_notes_column_if_missing(mysqli $conn): void {
     }
 }
 
+function ensure_default_statuses(mysqli $conn): void {
+    $defaults = ['In Progress', 'Completed'];
+    $isScoped = app_table_is_scoped($conn, 'status_master');
+    $tenantId = $isScoped ? app_tenant_id() : 0;
+
+    foreach ($defaults as $statusName) {
+        $normalized = strtolower(trim($statusName));
+
+        if ($isScoped) {
+            $check = $conn->prepare("SELECT id FROM status_master WHERE tenant_id = ? AND LOWER(TRIM(name)) = ? LIMIT 1");
+            if (!$check) continue;
+            $check->bind_param('is', $tenantId, $normalized);
+        } else {
+            $check = $conn->prepare("SELECT id FROM status_master WHERE LOWER(TRIM(name)) = ? LIMIT 1");
+            if (!$check) continue;
+            $check->bind_param('s', $normalized);
+        }
+
+        $check->execute();
+        $existing = $check->get_result()?->fetch_assoc();
+        $check->close();
+
+        if ($existing) {
+            $statusId = (int)($existing['id'] ?? 0);
+            if ($statusId > 0) {
+                $markSystem = $conn->prepare("UPDATE status_master SET is_system = 1 WHERE id = ?" . ($isScoped ? " AND tenant_id = " . $tenantId : ''));
+                if ($markSystem) {
+                    $markSystem->bind_param('i', $statusId);
+                    $markSystem->execute();
+                    $markSystem->close();
+                }
+            }
+            continue;
+        }
+
+        if ($isScoped) {
+            $insert = $conn->prepare("INSERT INTO status_master (tenant_id, name, is_system) VALUES (?, ?, 1)");
+            if (!$insert) continue;
+            $insert->bind_param('is', $tenantId, $statusName);
+        } else {
+            $insert = $conn->prepare("INSERT INTO status_master (name, is_system) VALUES (?, 1)");
+            if (!$insert) continue;
+            $insert->bind_param('s', $statusName);
+        }
+
+        $insert->execute();
+        $insert->close();
+    }
+}
+
 function fetchOrganizationsWithConnections(mysqli $platformConn): array {
     $sql = "SELECT
                 o.id,
@@ -270,6 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     add_telegram_user_name_column_if_missing($conn);
     ensure_departments_table($conn);
     add_notes_column_if_missing($conn);
+    ensure_default_statuses($conn);
 
     $users = array_map(static function(array $u): array {
         $isActiveRaw = strtolower((string)($u['isActive'] ?? '1'));
@@ -730,8 +781,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'addMaster' && $table === 'status_master') {
+        ensure_default_statuses($conn);
         $name = trim((string)($data['name'] ?? ''));
         if ($name === '') sendJson(['success' => false, 'error' => 'Status name is required.'], 400);
+        if (in_array(strtolower($name), ['in progress', 'completed'], true)) {
+            sendJson(['success' => false, 'error' => 'Default status already exists and is locked.'], 400);
+        }
         if (app_table_is_scoped($conn, 'status_master')) {
             $tenantId = app_tenant_id();
             $stmt = $conn->prepare("INSERT INTO status_master (tenant_id, name, is_system) VALUES (?, ?, 0)");
