@@ -181,8 +181,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="h-10 w-10 object-contain flex-shrink-0" 
                 alt="TaskPro Logo" 
               />
-              <div className="flex flex-col min-w-0">
-                <h1 className="text-xl font-bold text-indigo-600 truncate">{brandName}</h1>
+              <div className="flex flex-col min-w-0 flex-1">
+                <h1 className="text-xl font-bold text-indigo-600 leading-tight whitespace-normal break-words">{brandName}</h1>
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest group-hover:text-indigo-500">BIZSKILL</span>
               </div>
             </a>
