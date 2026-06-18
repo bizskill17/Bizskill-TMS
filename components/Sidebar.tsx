@@ -182,7 +182,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 alt="TaskPro Logo" 
               />
               <div className="flex flex-col min-w-0 flex-1">
-                <h1 className="text-xl font-bold text-indigo-600 leading-tight whitespace-normal break-words">{brandName}</h1>
+                <h1 className="text-lg font-bold text-indigo-600 leading-snug whitespace-normal break-words">{brandName}</h1>
                 <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest group-hover:text-indigo-500">BIZSKILL</span>
               </div>
             </a>
