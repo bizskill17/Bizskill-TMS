@@ -622,7 +622,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 </button>
               )}
               <div>
-		            <h2 className="text-2xl font-bold text-indigo-600">{title}</h2>
+		            <h2 className="sr-only">{title}</h2>
 		            {description && <p className="text-sm text-black mt-1">{description}</p>}
               </div>
 		        </div>

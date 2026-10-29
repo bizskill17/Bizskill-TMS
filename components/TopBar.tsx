@@ -232,7 +232,7 @@ export const TopBar: React.FC<TopBarProps> = ({
           {['Tasks', 'Vendor', 'Master', 'Recurring Tasks', 'Documents', 'DSC', 'Documentation'].map(section => groupedItems[section] && (
             <li key={section} className="relative">
               <button
-                onClick={() => section === 'Master' ? handleItemClick('master') : toggleDropdown(section)}
+                onClick={() => { const first = groupedItems[section]?.find(item => !['pending-group', 'add-multiple', 'update-multiple'].includes(item.id)); if (first) handleItemClick(first.id); }}
                 ref={(el) => {
                   dropdownAnchorRefs.current[section] = el;
                 }}

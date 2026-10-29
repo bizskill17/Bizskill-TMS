@@ -449,7 +449,7 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
     <div className="space-y-6 pb-10">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-black text-blue-600 uppercase tracking-tight">{isVendorView ? 'Vendor Action Log' : 'Action Log'}</h2>
+          <h2 className="sr-only">{isVendorView ? 'Vendor Action Log' : 'Action Log'}</h2>
         </div>
         <div className="flex gap-3 w-full md:auto items-center">
             <div className="flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">

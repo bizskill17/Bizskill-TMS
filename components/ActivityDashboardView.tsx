@@ -143,7 +143,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
   return (
     <div className="space-y-6 pb-12">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-2xl font-black text-blue-600 uppercase tracking-tight">Activity Dashboard</h2>
+        <h2 className="sr-only">Activity Dashboard</h2>
         <div className="flex items-center gap-2">
         <button
           onClick={handleExportPDF}

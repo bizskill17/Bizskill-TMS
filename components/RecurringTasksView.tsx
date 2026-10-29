@@ -493,7 +493,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className={`flex justify-between items-start md:block ${sidebarCollapsed ? 'pl-14 md:pl-16' : ''}`}>
             <div>
-                <h2 className="text-2xl font-bold text-indigo-600 flex items-center gap-2">
+                <h2 className="sr-only">
                     {filterType === 'due' && <AlertCircle className="text-red-500" size={24} />}
                     {title}
                 </h2>

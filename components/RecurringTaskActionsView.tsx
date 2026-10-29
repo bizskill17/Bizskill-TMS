@@ -195,7 +195,7 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
   return (
     <div className="space-y-6 pb-10">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div><h2 className="text-2xl font-black text-blue-600 uppercase tracking-tight">Recurring Actions</h2><p className="text-sm text-gray-600 mt-1">History of recurring task activity</p></div>
+        <div><h2 className="sr-only">Recurring Actions</h2><p className="text-sm text-gray-600 mt-1">History of recurring task activity</p></div>
         <div className="flex flex-wrap gap-2 items-center">
             <div className="flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
                 <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-blue-600' : 'text-blue-500'}`}><LayoutGrid size={18} /></button>

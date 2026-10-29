@@ -212,53 +212,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ].map(sectionInfo => {
             const sectionItems = groupedItems[sectionInfo.source] || [];
             if (sectionItems.length === 0) return null;
-            if (sectionInfo.key === 'Master') {
-              const masterActive = activeTab === 'master' || sectionItems.some(item => item.id === activeTab);
-              return <div key="Master" className="mb-2 px-3">
-                <button type="button" onClick={() => { onTabChange('master'); if (window.innerWidth < 768) onClose?.(); }}
-                  className={`w-full px-4 py-3 flex items-center gap-3 rounded-lg text-sm font-semibold ${masterActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-600 hover:bg-indigo-100/60'}`}
-                  aria-current={activeTab === 'master' ? 'page' : undefined}>
-                  <Layers size={20}/><span>Master</span>
-                </button>
-                <div className="mx-4 my-2 border-b border-indigo-200"></div>
-              </div>;
-            }
-            const isOpenSection = !!openSections[sectionInfo.key];
-            return (
-              <div key={sectionInfo.key} className="mb-2 px-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setOpenSections(prev => {
-                      const willOpen = !prev[sectionInfo.key];
-                      return {
-                        Dashboard: false,
-                        Master: false,
-                        'Simple Tasks': false,
-                        'Recurring Tasks': false,
-                        Documentation: false,
-    Documents: false,
-    DSC: false,
-                        Vendor: false,
-                        [sectionInfo.key]: willOpen,
-                      };
-                    })
-                  }
-                  className="w-full px-4 py-2 mb-1 flex items-center justify-between text-indigo-600 hover:bg-indigo-100/60 rounded-md"
-                >
-                  <span className="text-xs font-bold uppercase tracking-wider">{sectionInfo.key}</span>
-                  {isOpenSection ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                </button>
-                {isOpenSection && (
-                  <ul className="space-y-1">
-                    {sectionInfo.source === 'Tasks'
-                      ? renderTasksSection()
-                      : sectionItems.map(item => <li key={item.id}><NavButton item={item} /></li>)}
-                  </ul>
-                )}
-                <div className="mx-4 my-2 border-b border-indigo-200"></div>
-              </div>
-            );
+            const first = sectionItems.find(item => !['pending-group', 'add-multiple', 'update-multiple'].includes(item.id));
+            if (!first) return null;
+            const sectionActive = sectionItems.some(item => item.id === activeTab);
+            return <div key={sectionInfo.key} className="mb-2 px-3">
+              <button type="button" onClick={() => { onTabChange(first.id); if (window.innerWidth < 768) onClose?.(); }}
+                className={`w-full px-4 py-3 flex items-center gap-3 rounded-lg text-sm font-semibold ${sectionActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-600 hover:bg-indigo-100/60'}`}
+                aria-current={sectionActive ? 'page' : undefined}>
+                <span aria-hidden="true">{sectionInfo.key === 'Master' ? <Layers size={20}/> : first.icon}</span>
+                <span>{sectionInfo.key === 'DSC' ? 'DSC Register' : sectionInfo.key}</span>
+              </button>
+              <div className="mx-4 my-2 border-b border-indigo-200"></div>
+            </div>;
           })}
         </nav>
 
