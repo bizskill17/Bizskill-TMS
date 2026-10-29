@@ -38,7 +38,6 @@ import { UpdateRecurringTaskModal } from './components/UpdateRecurringTaskModal'
 import { EditRecurringTaskModal } from './components/EditRecurringTaskModal';
 import { LabelProvider, buildLabelResolvers } from './labelOverrides';
 import { TelegramSetupView } from './components/TelegramSetupView'; 
-import { DocumentationView } from './components/DocumentationView';
 import { OrganizationsView } from './components/OrganizationsView';
 import { 
   LayoutDashboard, 
@@ -107,8 +106,6 @@ const navItems: NavItem[] = [
   { id: 'settings', label: 'Settings', icon: <Settings size={20} />, section: 'Master' },
   { id: 'telegram-setup', label: 'Telegram Setup', icon: <Send size={20} />, section: 'Master' },
 
-  // Documentation (keep last so it appears at the bottom of the menu)
-  { id: 'documentation', label: 'Documentation', icon: <FileText size={20} />, section: 'Documentation' },
 ];
 
 export const formatToIndianDate = (dateInput: any): string => {
@@ -1439,7 +1436,6 @@ export default function App() {
         }
       }} />;
       case 'telegram-setup': if (!isAdmin) return null; return <TelegramSetupView />;
-      case 'documentation': return <DocumentationView />;
       default: return null;
     }
   };
@@ -1757,5 +1753,6 @@ export default function App() {
 	    </div>
 	  );
 }
+
 
 
