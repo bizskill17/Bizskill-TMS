@@ -478,12 +478,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
            </div>
 
-	           
-	                </div>
-	             </div>
-	           )}
-
-           <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm flex flex-col">
+	                      <div className="bg-white p-5 rounded-2xl border-2 border-emerald-200 shadow-sm flex flex-col">
               <div className="flex items-center gap-2 mb-4 border-b border-emerald-50 pb-2">
                  <RotateCcw size={18} className="text-emerald-600" />
                  <h4 className="text-sm font-black text-emerald-900 uppercase">Recurring Updates</h4>
