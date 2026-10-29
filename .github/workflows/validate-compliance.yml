@@ -71,3 +71,15 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: Serve built application with disposable API
+        run: |
+          mkdir -p /tmp/compliance-web
+          cp -r dist/. /tmp/compliance-web/
+          ln -s "$GITHUB_WORKSPACE/api" /tmp/compliance-web/api
+          php -S 127.0.0.1:8081 -t /tmp/compliance-web > /tmp/compliance-ui.log 2>&1 &
+      - name: Compliance UI smoke test
+        env:
+          PW_BASE_URL: http://127.0.0.1:8081
+        run: npx playwright test tests/compliance-ui.spec.ts

@@ -15,10 +15,7 @@ if ($expected === '' || !hash_equals($expected, $token)) {
     echo json_encode(['success' => false, 'error' => 'Forbidden']);
     exit;
 }
-if (!notifications_enabled()) {
-    echo json_encode(['success' => true, 'processed' => 0, 'sent' => 0, 'failed' => 0, 'message' => 'Notifications disabled']);
-    exit;
-}
+$messagesEnabled = notifications_enabled();
 
 // Limit is per organisation. No Org ID means all active organisations.
 $limit = max(1, min(200, (int)($_GET['limit'] ?? 50)));
@@ -158,14 +155,14 @@ foreach ($tenantsToProcess as $tenant) {
             $tenantConnection = worker_open_connection($platformConn, $tenant);
             $GLOBALS['conn'] = $tenantConnection;
             try { cp_schema($tenantConnection); cp_sync_work($tenantConnection); $entry['complianceGenerated']=cp_generate($tenantConnection); }
-            catch (Throwable $error) { $entry['complianceError']='Compliance generation failed; check server log'; error_log('Compliance tenant '.(int)$tenant['id'].': '.$error->getMessage()); }
-            try { $entry['dscQueued']=dsc_schedule_reminders($tenantConnection); }
+            catch (Throwable $error) { $entry['complianceError']='Compliance generation failed; check server log'; $summary['success']=false; error_log('Compliance tenant '.(int)$tenant['id'].': '.$error->getMessage()); }
+            try { $entry['dscQueued']=$messagesEnabled?dsc_schedule_reminders($tenantConnection):0; }
             catch (Throwable $error) {
                 $entry['dscReminderError']='DSC reminder scheduling failed; check server log';
                 $summary['success']=false;
                 error_log('DSC reminders tenant '.(int)$tenant['id'].': '.$error->getMessage());
             }
-            $entry = array_merge($entry, worker_process_queue($tenantConnection, $limit));
+            $entry = array_merge($entry, $messagesEnabled?worker_process_queue($tenantConnection, $limit):['processed'=>0,'sent'=>0,'failed'=>0]);
             $entry['status'] = 'processed';
             foreach (['processed', 'sent', 'failed'] as $key) $summary[$key] += $entry[$key];
         }
