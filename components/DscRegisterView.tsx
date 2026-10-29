@@ -15,7 +15,7 @@ type RegisterData = {certificates:Certificate[]; users:any[]; clients:any[]; doc
 const emptyData:RegisterData={certificates:[],users:[],clients:[],documents:[],settings:{enabled:0,office_reminders:1,client_reminders:0,expired_reminder:1,intervals:[60,30,15,7,1]},canConfigure:false,csrf:''};
 const tabItems=[['all','All DSCs'],['expiring','Expiring Soon'],['expired','Expired'],['pending','Pending Renewal'],['renewed','Renewed / Closed'],['inactive','Inactive'],['trash','Trash']];
 const dateText=(value:any)=>value?String(value).slice(0,10).split('-').reverse().join('/'):'—';
-const detailLabels:Record<string,string>={client_name:'Client',holder_name:'Certificate Holder',organisation:'Organisation',mobile:'Mobile',email:'Email',issue_date:'Issued On',expiry_date:'Expiry Date',responsible_user_name:'Responsible User',token_location:'Token Location',remarks:'Remarks',lifecycle:'Status',inactive_reason:'Deactivation Reason',inactive_by_name:'Deactivated By',pending_renewal:'Pending Renewal'};
+const detailLabels:Record<string,string>={client_name:'Client',holder_name:'Certificate Holder',mobile:'Mobile',email:'Email',issue_date:'Issued On',expiry_date:'Expiry Date',responsible_user_name:'Responsible User',token_location:'Token Location',remarks:'Remarks',lifecycle:'Status',inactive_reason:'Deactivation Reason',inactive_by_name:'Deactivated By',pending_renewal:'Pending Renewal'};
 function eventDetails(raw:string):[string,string][] {
  try {const parsed=JSON.parse(raw);const values=parsed.changes||parsed.new_certificate||parsed;
  return Object.entries(detailLabels).filter(([key])=>Object.prototype.hasOwnProperty.call(values,key)).map(([key,title])=>[title,key.endsWith('_date')?dateText(values[key]):key==='pending_renewal'?(Number(values[key])?'Yes':'No'):String(values[key]??'—')]);}
@@ -110,7 +110,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const rows=data.certificates||[];
  const today=todayISO();
  const renewalChain=selected?dscRenewalChain(rows,selected.id):[];
- const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.mobile,r.email,r.responsible_user_name,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.mobile,r.email,r.responsible_user_name,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
  const eligible=filtered.filter(r=>r.lifecycle==='active'&&!r.deleted_at);
  const userOptions=data.users.filter(activeUser).map(u=>({value:String(u.id),label:u.name}));
  const clientOptions=Array.from(new Set(data.clients.map(c=>String(c.name)))).map(name=>({value:name,label:name}));
@@ -147,12 +147,11 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   </div>
   <div className="bg-white border border-indigo-200 rounded-xl overflow-x-auto">
    <table className="w-full min-w-[1200px] text-sm text-left border-collapse">
-    <thead className="bg-indigo-600 text-white"><tr><th className="p-3"><input aria-label="Select visible active DSCs" type="checkbox" checked={eligible.length>0&&eligible.every(r=>selectedIds.includes(r.id))} onChange={e=>setSelectedIds(p=>e.target.checked?Array.from(new Set([...p,...eligible.map(r=>r.id)])):p.filter(id=>!eligible.some(r=>r.id===id)))}/></th>{['Client','Certificate Holder','Organisation','Mobile','Email','Issued On','Expiry Date','Days Left','Token Location','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
+    <thead className="bg-indigo-600 text-white"><tr><th className="p-3"><input aria-label="Select visible active DSCs" type="checkbox" checked={eligible.length>0&&eligible.every(r=>selectedIds.includes(r.id))} onChange={e=>setSelectedIds(p=>e.target.checked?Array.from(new Set([...p,...eligible.map(r=>r.id)])):p.filter(id=>!eligible.some(r=>r.id===id)))}/></th>{['Client','Certificate Holder','Mobile','Email','Issued On','Expiry Date','Days Left','Token Location','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
     <tbody>{filtered.map(r=>{const status=dscStatus(r,today),left=daysLeft(r.expiry_date,today);return <tr key={r.id} className="border-b border-indigo-100 hover:bg-indigo-50">
      <td className="p-3">{r.lifecycle==='active'&&!r.deleted_at&&<input type="checkbox" aria-label={'Select DSC for '+r.holder_name} checked={selectedIds.includes(r.id)} onChange={e=>setSelectedIds(p=>e.target.checked?[...p,r.id]:p.filter(id=>id!==r.id))}/>}</td>
      <td className="p-3 font-medium">{r.client_name}</td>
      <td className="p-3 font-semibold">{r.holder_name}</td>
-     <td className="p-3">{r.organisation||'—'}</td>
      <td className="p-3 whitespace-nowrap">{r.mobile||'—'}</td>
      <td className="p-3 break-all">{r.email||'—'}</td>
      <td className="p-3 whitespace-nowrap">{dateText(r.issue_date)}</td>
@@ -162,7 +161,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs font-semibold '+(status==='Expired'?'bg-red-100 text-red-700':status==='Inactive'||status==='Trash'?'bg-gray-100 text-gray-600':status==='Renewed'||status==='Closed'?'bg-green-100 text-green-700':'bg-indigo-50 text-indigo-700')}>{status}</span></td>
      <td className="p-3 max-w-xs break-words">{r.remarks||'—'}</td>
      <td className="p-3 min-w-[145px]"><button className="flex gap-1 items-center text-indigo-700 font-medium mb-2" onClick={()=>void open('history',r)}><History size={15}/>Details & History</button><select aria-label={'Actions for '+r.holder_name} className={input} value="" onChange={e=>{if(e.target.value)void open(e.target.value,r);}}><option value="">Actions</option>{actions(r).map(a=><option key={a} value={a}>{actionTitles[a]}</option>)}</select></td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={13} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
+    </tr>})}{!filtered.length&&<tr><td colSpan={12} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
    </table>
   </div>
   {mode&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dsc-dialog-title">
@@ -173,7 +172,6 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     {(mode==='create'||mode==='edit')&&<div className="grid md:grid-cols-2 gap-4">
      <div><span className={label}>Client Name *</span><SearchableSelect compact required options={clientOptions} value={form.client_name} onChange={v=>setField('client_name',v)}/></div>
      {field('holder_name','Certificate Holder','text',true)}
-     {field('organisation','Organisation')}
      {field('mobile','Mobile','tel',false,30)}{field('email','Email','email')}
      {field('issue_date','Issued On','date')}{field('expiry_date','Expiry Date','date',true)}
      <label><span className={label}>Token Location</span><select className={input} value={form.token_location} onChange={e=>setField('token_location',e.target.value)}>{['Office','Client','Other'].map(v=><option key={v}>{v}</option>)}</select></label>
@@ -193,7 +191,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      {field('intervals','Days Before Expiry (comma separated)','text',true,255)}
     </div>}
     {mode==='history'&&selected&&<div className="space-y-4">
-     <dl className="grid grid-cols-2 gap-3 text-sm">{[['Organisation',selected.organisation],['Issued On',dateText(selected.issue_date)],['Expiry Date',dateText(selected.expiry_date)],['Responsible User',selected.responsible_user_name],['Mobile',selected.mobile],['Email',selected.email],['Token Location',selected.token_location],['Remarks',selected.remarks],['Deactivation Reason',selected.inactive_reason],['Deactivated By',selected.inactive_by_name],['Deactivated On',dateText(selected.inactive_on)]].map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="font-medium break-words">{value||'—'}</dd></div>)}</dl>
+     <dl className="grid grid-cols-2 gap-3 text-sm">{[['Issued On',dateText(selected.issue_date)],['Expiry Date',dateText(selected.expiry_date)],['Responsible User',selected.responsible_user_name],['Mobile',selected.mobile],['Email',selected.email],['Token Location',selected.token_location],['Remarks',selected.remarks],['Deactivation Reason',selected.inactive_reason],['Deactivated By',selected.inactive_by_name],['Deactivated On',dateText(selected.inactive_on)]].map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="font-medium break-words">{value||'—'}</dd></div>)}</dl>
      {renewalChain.length>1&&<div className="space-y-2"><h3 className="font-bold text-indigo-700">Renewal History</h3><div className="overflow-x-auto"><table className="w-full text-sm text-left border border-indigo-100"><thead className="bg-indigo-50"><tr>{['Issued On','Expiry Date','Status','Details'].map(title=><th key={title} className="p-2">{title}</th>)}</tr></thead><tbody>{renewalChain.map(r=><tr key={r.id} className="border-t border-indigo-100"><td className="p-2">{dateText(r.issue_date)}</td><td className="p-2">{dateText(r.expiry_date)}</td><td className="p-2">{dscStatus(r,today)}</td><td className="p-2">{Number(r.id)===Number(selected.id)?'Viewing':<button type="button" className="text-indigo-700 underline" onClick={()=>void open('history',r)}>View Details &amp; History</button>}</td></tr>)}</tbody></table></div></div>}
      <h3 className="font-bold text-indigo-700">History</h3>
      {historyLoading?<p className="text-gray-500">Loading history...</p>:!history.length?<p className="text-gray-500 text-sm">No history found.</p>:history.map((event,i)=><div key={i} className="border-l-2 border-indigo-200 pl-3 py-2 text-sm"><div className="font-semibold">{event.action} · {event.actor_name}</div><div className="text-xs text-gray-500">{dateText(event.created_at)}</div>{event.notes&&<p className="whitespace-pre-wrap">{event.notes}</p>}{event.snapshot&&<details className="mt-1"><summary className="text-xs text-indigo-600 cursor-pointer">Recorded details</summary><dl className="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded">{eventDetails(event.snapshot).map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="text-xs break-words">{value}</dd></div>)}</dl></details>}</div>)}
