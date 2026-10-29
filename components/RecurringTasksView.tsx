@@ -146,48 +146,13 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
     return null;
   };
 
-  const achievedSumByTaskId = useMemo(() => {
-    const map = new Map<number, number>();
-    tasks.forEach((task) => {
-      const taskId = Number(task.id || 0);
-      if (!taskId) return;
-      const window = getCycleWindow(task);
-      if (!window) {
-        map.set(taskId, 0);
-        return;
-      }
-      const total = actions
-        .filter((action) => Number(action.taskId || 0) === taskId)
-        .reduce((sum, action) => {
-          const actionDate = parseDDMMYYYY(String(action.updatedOn || ''));
-          if (!actionDate) return sum;
-          if (actionDate < window.start || actionDate > window.end) return sum;
-          const achievedValue = Number(String(action.goal || '').trim());
-          return sum + (Number.isFinite(achievedValue) ? achievedValue : 0);
-        }, 0);
-      map.set(taskId, total);
-    });
-    return map;
-  }, [actions, tasks]);
 
   const parseNumber = (value: unknown): number => {
     const num = Number(String(value ?? '').trim());
     return Number.isFinite(num) ? num : 0;
   };
 
-  const hasGoalValue = (value: unknown): boolean => {
-    const raw = String(value ?? '').trim();
-    if (!raw || raw === '-') return false;
-    const num = Number(raw);
-    return Number.isFinite(num) && num > 0;
-  };
 
-  const getAchievedPercent = (goalValue: unknown, achievedValue: unknown): string => {
-    const goal = parseNumber(goalValue);
-    const achieved = parseNumber(achievedValue);
-    if (goal <= 0) return '-';
-    return `${((achieved / goal) * 100).toFixed(2)}%`;
-  };
 
   function getLastCompletionDate(task: RecurringTask): string {
     const taskHistory = actions
@@ -598,9 +563,8 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 		                <th className={thClass} onClick={() => requestSort('category')}><div className="flex items-center">{getFieldLabel('recurringTask.category', 'Category')} {getSortIcon('category')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('assignee')}><div className="flex items-center">Assignee {getSortIcon('assignee')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
-		                <th className={thClass} onClick={() => requestSort('goal')}><div className="flex items-center">Goal {getSortIcon('goal')}</div></th>
-		                <th className={thClass}><div className="flex items-center">Achieved</div></th>
-		                <th className={thClass}><div className="flex items-center">Achieved %</div></th>
+		                <th className={thClass}></th>
+		                <th className={thClass}></th>
 		                <th className={thClass} onClick={() => requestSort('lastUpdatedOn')}><div className="flex items-center">Activity {getSortIcon('lastUpdatedOn')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('remarks')}><div className="flex items-center">Remarks {getSortIcon('remarks')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('nextDue')}><div className="flex items-center">Next Due {getSortIcon('nextDue')}</div></th>
@@ -613,9 +577,6 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                 const nextDueStr = getNextDueDateStr(task);
 		                const nextDueObj = getNextDueDateObject(task);
 		                const isOverdue = effectiveStatus !== 'Complete' && nextDueObj && (nextDueObj.getTime() < new Date().setHours(0,0,0,0));
-                  const achieved = String(achievedSumByTaskId.get(Number(task.id || 0)) || 0);
-                  const goalDisplay = hasGoalValue(task.goal) ? String(task.goal) : '1';
-                  const achievedDisplay = hasGoalValue(task.goal) ? achieved : '0';
                   const periodText = getFrequencyText(task);
                   const prevTask = idx > 0 ? paginatedTasks[idx - 1] : null;
                   const showAssigneeHeader = !prevTask || String(prevTask.assignee || '') !== String(task.assignee || '');
@@ -677,9 +638,6 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                             {effectiveStatus}
                         </span>
                     </td>
-			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{goalDisplay}</td>
-			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{achievedDisplay}</td>
-			                    <td className={`${tdClass} bg-yellow-700 text-white font-semibold`}>{getAchievedPercent(goalDisplay, achievedDisplay)}</td>
 		                    <td className={tdClass}>{getActivityDisplay(task)}</td>
 	                    <td className={`${tdClass}`}>{task.lastUpdateRemarks || '-'}</td>
 	                    <td className={`${tdClass} font-bold ${isOverdue ? 'text-red-600 animate-pulse' : 'text-indigo-600'}`}>
@@ -717,9 +675,6 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 	             const nextDueStr = getNextDueDateStr(task);
 	             const nextDueObj = getNextDueDateObject(task);
 	             const isOverdue = effectiveStatus !== 'Complete' && nextDueObj && (nextDueObj.getTime() < new Date().setHours(0,0,0,0));
-               const achieved = String(achievedSumByTaskId.get(Number(task.id || 0)) || 0);
-               const goalDisplay = hasGoalValue(task.goal) ? String(task.goal) : '1';
-               const achievedDisplay = hasGoalValue(task.goal) ? achieved : '0';
 
              return (
                 <div 
@@ -752,9 +707,9 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 	                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Assignee</span><span className="whitespace-normal break-words">{task.assignee}</span></div>
 		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Period</span><span className="whitespace-pre-line break-words">{getFrequencyText(task)}</span></div>
 		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Time</span><span className="whitespace-normal break-words">{task.time || '-'}</span></div>
-                        <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Goal</span><span className="whitespace-normal break-words">{goalDisplay}</span></div>
-                        <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Achieved</span><span className="whitespace-normal break-words">{achievedDisplay}</span></div>
-                        <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Achieved %</span><span className="whitespace-normal break-words">{getAchievedPercent(goalDisplay, achievedDisplay)}</span></div>
+                        
+                        
+                        
 		                    <div>
 		                        <span className="text-indigo-500 font-bold uppercase text-[9px] block">Next Due</span>
 	                        <span className={`font-bold ${isOverdue ? 'text-red-600' : 'text-indigo-600'} whitespace-normal break-words`}>{nextDueStr}</span>

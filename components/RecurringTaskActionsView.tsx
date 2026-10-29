@@ -188,19 +188,6 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
   const thClass = "px-4 py-3 text-[10px] font-black text-white uppercase tracking-widest border-r border-black last:border-r-0 cursor-pointer hover:bg-blue-700 transition-colors select-none whitespace-normal";
   const tdClass = "px-4 py-3 text-xs text-black border-r border-black last:border-r-0 align-top whitespace-normal break-words";
 
-  const getGoalAchievedDisplay = (action: RecurringTaskAction) => {
-    const rawGoal = String(action.taskGoal ?? '').trim();
-    const rawAchieved = String(action.goal ?? '').trim();
-    const isBlankGoal = !rawGoal || rawGoal === '-';
-    const isBlankAchieved = !rawAchieved || rawAchieved === '-';
-    if (action.status === 'Complete' && isBlankGoal && isBlankAchieved) {
-      return { goal: '1', achieved: '1' };
-    }
-    return {
-      goal: isBlankGoal ? '-' : rawGoal,
-      achieved: isBlankAchieved ? '-' : rawAchieved
-    };
-  };
 
   const startEntry = sortedActions.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const endEntry = Math.min(currentPage * itemsPerPage, sortedActions.length);
@@ -284,14 +271,8 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 	                </div>
 
 	                <div className="grid grid-cols-3 gap-2 text-[10px]">
-		                  <div className="space-y-0.5">
-		                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Goal</span>
-		                    <div className="text-blue-900 font-bold whitespace-normal break-words">{action.taskGoal || '-'}</div>
-		                  </div>
-		                  <div className="space-y-0.5">
-		                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Achieved</span>
-		                    <div className="text-blue-900 font-bold whitespace-normal break-words">{action.goal || '-'}</div>
-		                  </div>
+		                  
+		                  
 		                  <div className="space-y-0.5">
 		                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Photo</span>
 	                    {parsePhotos(action.photos).length > 0 ? (
@@ -342,8 +323,6 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 	                <th className={thClass} onClick={() => requestSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('updatedOn')}><div className="flex items-center">Date {getSortIcon('updatedOn')}</div></th>
 	                <th className={thClass} onClick={() => requestSort('remarks')}><div className="flex items-center">Remarks {getSortIcon('remarks')}</div></th>
-		                <th className={thClass} onClick={() => requestSort('goal')}><div className="flex items-center">Goal {getSortIcon('goal')}</div></th>
-		                <th className={thClass} onClick={() => requestSort('goal')}><div className="flex items-center">Achieved {getSortIcon('goal')}</div></th>
 		                <th className={thClass}><div className="flex items-center">Photo</div></th>
 	                <th className={thClass}><div className="flex items-center">PDF</div></th>
 	                <th className="px-4 py-3 text-[10px] font-black text-white uppercase tracking-widest text-center whitespace-normal">Actions</th>
@@ -352,7 +331,6 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 	            <tbody className="divide-y divide-black">
 		              {paginatedActions.map((action, idx) => (
                   (() => {
-                    const display = getGoalAchievedDisplay(action);
                     return (
 		                <tr key={action.id} className="hover:bg-blue-50 transition-colors">
 		                  <td className={`${tdClass} text-center font-bold text-blue-600 !whitespace-nowrap`}>{startEntry + idx}</td>
@@ -364,8 +342,6 @@ export const RecurringTaskActionsView: React.FC<RecurringTaskActionsViewProps> =
 		                  <td className={tdClass}><span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter border border-blue-100 whitespace-normal break-words ${getStatusColor(action.status)}`}>{action.status}</span></td>
 		                  <td className={`${tdClass} font-bold`}>{formatDate(action.updatedOn)}</td>
 		                  <td className={`${tdClass} italic text-blue-900`}>"{action.remarks}"</td>
-		                  <td className={`${tdClass} font-bold`}>{display.goal}</td>
-		                  <td className={`${tdClass} font-bold`}>{display.achieved}</td>
 		                  <td className={tdClass}>
 		                    {parsePhotos(action.photos).length > 0 ? (
 		                      <button

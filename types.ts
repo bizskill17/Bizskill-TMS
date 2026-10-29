@@ -58,8 +58,6 @@ export interface Task {
   lastUpdateRemarks?: string;
   hours?: number;
   time?: string;
-  goal?: number;
-  achieved?: number | string;
   photos?: string; // JSON stringified array of data URLs
   pdf?: string; // data URL
 }
@@ -75,7 +73,6 @@ export interface RecurringTask {
 		  frequencyDays: number;
 		  startDate: string;
 		  time?: string;
-		  goal?: number;
 		  lastUpdatedOn?: string;
 		  lastUpdateRemarks?: string;
 		  status?: 'Not Yet Started' | 'In Progress' | 'Complete' | 'Pending for Client' | 'Pending for Owner';
@@ -96,8 +93,6 @@ export interface RecurringTaskAction {
   updatedOn: string; 
   timestamp: string; 
   remarks: string;
-  goal?: number;
-  taskGoal?: number | string;
   photos?: string;
   pdf?: string;
 }
@@ -206,8 +201,6 @@ export interface ActionLogEntry {
     vendor?: string;
     hours?: number;
     time?: string;
-    goal?: number;
-    taskGoal?: number | string;
     photos?: string;
     pdf?: string;
 }

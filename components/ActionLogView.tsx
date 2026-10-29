@@ -270,7 +270,7 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
   ]);
 
   const handleExportExcel = () => {
-    const headers = ['Task', 'Task Date', 'Update Date', 'Status', 'Minutes', 'Remarks', 'Goal', 'Achieved', 'Achieved %', 'Photo', 'PDF', 'Owner'];
+    const headers = ['Task', 'Task Date', 'Update Date', 'Status', 'Minutes', 'Remarks', 'Photo', 'PDF', 'Owner'];
     if (isVendorView) headers.push('Vendor');
     else headers.push('Assignee');
 
@@ -284,9 +284,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                 log.status,
                 log.hours || 0,
                 `"${String(log.remarks || '').replace(/"/g, '""')}"`, 
-                `"${String(log.taskGoal || '').replace(/"/g, '""')}"`,
-                `"${String(log.goal || '').replace(/"/g, '""')}"`,
-                `"${String(getAchievedPercent(log.taskGoal, log.goal)).replace(/"/g, '""')}"`,
                 parsePhotos(log.photos).length > 0 ? `${parsePhotos(log.photos).length} photo(s)` : '-',
                 log.pdf ? 'Open PDF' : '-',
                 `"${log.owner}"`
@@ -333,9 +330,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
       'Status',
       'Minutes',
       'Remarks',
-      'Goal',
-      'Achieved',
-      'Achieved %',
       'Photo',
       'PDF',
       'Owner',
@@ -350,9 +344,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
       log.status || '-',
       log.hours || 0,
       log.remarks || '-',
-      log.taskGoal || '-',
-      log.goal || '-',
-      getAchievedPercent(log.taskGoal, log.goal),
       parsePhotos(log.photos).length > 0 ? `${parsePhotos(log.photos).length} photo(s)` : '-',
       log.pdf ? 'Open PDF' : '-',
       log.owner || '-',
@@ -411,12 +402,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
     return Number.isFinite(num) ? num : 0;
   };
 
-  const getAchievedPercent = (goalValue: unknown, achievedValue: unknown): string => {
-    const goal = parseNumber(goalValue);
-    const achieved = parseNumber(achievedValue);
-    if (goal <= 0) return '-';
-    return `${((achieved / goal) * 100).toFixed(2)}%`;
-  };
 
 	  const parsePhotos = (rawPhotos?: string): string[] => {
 	    if (!rawPhotos) return [];
@@ -567,24 +552,9 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                             <User size={10} /> {log.owner}
                         </div>
                     </div>
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Goal</span>
-                        <div className="text-[10px] text-blue-900 font-black whitespace-normal break-words">
-                            {log.taskGoal || '-'}
-                        </div>
-                    </div>
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Achieved</span>
-                        <div className="text-[10px] text-blue-900 font-black whitespace-normal break-words">
-                            {log.goal || '-'}
-                        </div>
-                    </div>
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Achieved %</span>
-                        <div className="text-[10px] text-blue-900 font-black whitespace-normal break-words">
-                            {getAchievedPercent(log.taskGoal, log.goal)}
-                        </div>
-                    </div>
+                    
+                    
+                    
                     <div className="space-y-0.5">
                         <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Photo</span>
                         {parsePhotos(log.photos).length > 0 ? (
@@ -648,9 +618,8 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                 <th className={thClass} style={{ width: '120px' }} onClick={() => requestSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
                 <th className={thClass} style={{ width: '100px' }} onClick={() => requestSort('hours')}><div className="flex items-center">Minutes {getSortIcon('hours')}</div></th>
                 <th className={thClass} style={{ width: '300px' }} onClick={() => requestSort('remarks')}><div className="flex items-center">Remarks {getSortIcon('remarks')}</div></th>
-	                <th className={thClass} style={{ width: '140px' }} onClick={() => requestSort('goal')}><div className="flex items-center">Goal {getSortIcon('goal')}</div></th>
-	                <th className={thClass} style={{ width: '140px' }}><div className="flex items-center">Achieved</div></th>
-	                <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">Achieved %</div></th>
+	                <th className={thClass} style={{ width: '140px' }}></th>
+	                <th className={thClass} style={{ width: '120px' }}></th>
                 <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">Photo</div></th>
                 <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">PDF</div></th>
                 <th className={thClass} style={{ width: '180px' }} onClick={() => requestSort('owner')}><div className="flex items-center">Owner {getSortIcon('owner')}</div></th>
@@ -672,9 +641,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                   <td className={tdClass}><span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-black uppercase tracking-tighter !whitespace-nowrap border border-blue-200">{log.status}</span></td>
                   <td className={`${tdClass} font-bold text-indigo-600 text-center`}>{log.hours || 0}</td>
                   <td className={`${tdClass} italic text-blue-800`} title={log.remarks}>{log.remarks}</td>
-	                  <td className={tdClass}>{log.taskGoal || '-'}</td>
-	                  <td className={tdClass}>{log.goal || '-'}</td>
-	                  <td className={tdClass}>{getAchievedPercent(log.taskGoal, log.goal)}</td>
                   <td className={tdClass}>
                     {parsePhotos(log.photos).length > 0 ? (
                       <button type="button" onClick={() => setPhotoViewer({ photos: parsePhotos(log.photos), index: 0 })} className="text-indigo-600 underline">

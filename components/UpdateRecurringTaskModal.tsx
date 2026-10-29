@@ -8,7 +8,6 @@ interface UpdateRecurringTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: RecurringTask | null;
-  onSave: (updatedTask: RecurringTask & { lastUpdateRemarks: string; goal?: string; photos?: string; pdf?: string }) => Promise<void>;
 }
 
 export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> = ({ isOpen, onClose, task, onSave }) => {
@@ -23,20 +22,14 @@ export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> =
 
   const [remarks, setRemarks] = useState('');
   const [status, setStatus] = useState<'Not Yet Started' | 'In Progress' | 'Complete'>('Complete');
-  const [goal, setGoal] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [pdf, setPdf] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   if (!isOpen || !task) return null;
-  const hasTaskGoal = String(task.goal ?? '').trim() !== '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasTaskGoal && goal.trim() === '') {
-      alert('Achieved is required when Goal is set.');
-      return;
-    }
     
     setIsSaving(true);
     try {
@@ -46,7 +39,6 @@ export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> =
         ...task, 
         status, 
         lastUpdateRemarks: remarks,
-        goal,
         photos: JSON.stringify(photos || []),
         pdf: pdf || '',
         title: task.title,
@@ -56,7 +48,6 @@ export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> =
       
       setRemarks('');
       setStatus('Complete');
-      setGoal('');
       setPhotos([]);
       setPdf('');
       onClose();
@@ -107,21 +98,6 @@ export const UpdateRecurringTaskModal: React.FC<UpdateRecurringTaskModalProps> =
                 disabled={isSaving}
               />
             </div>
-            {hasTaskGoal && (
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-black">{getFieldLabel('recurringAction.achieved', 'Achieved')} <span className="text-red-500">*</span></label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none"
-                  placeholder="Enter achieved value"
-                  value={goal}
-                  onChange={(e) => setGoal(e.target.value.replace(/[^\d.]/g, ''))}
-                  disabled={isSaving}
-                />
-              </div>
-            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('recurringAction.photos', 'Photo')}</label>

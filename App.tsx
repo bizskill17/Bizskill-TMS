@@ -616,7 +616,6 @@ export default function App() {
         finalData.taskDate = data.date || shortDate;
         finalData['date'] = data.date || shortDate;
         finalData.time = data.time || '';
-        finalData.goal = data.goal || '';
         finalData.photos = data.photos || '';
         finalData.pdf = data.pdf || '';
     }
@@ -732,8 +731,6 @@ export default function App() {
                 clientName: rawClient,
 	                hours: Number(item.hours || 0), // Normalize hours
 	                time: String(item.time || ''),
-	                goal: String(item.goal || ''),
-	                achieved: '',
 	                firm: String(item.firm || item.Firm || ''),
 	                photos: String(item.photos || ''),
 	                pdf: String(item.pdf || ''),
@@ -744,9 +741,6 @@ export default function App() {
         });
 
 	        const normalizedTaskList = normalizeTasks([...(data.mainTasks || []), ...(data.vendorTasks || [])]);
-	        const taskGoalById = new Map<number, string>(
-	          normalizedTaskList.map((t: any) => [Number(t.id || 0), String(t.goal || '')])
-	        );
         setUsers((data.users || []).map((u: any) => ({ ...u, id: Number(u.id), employeeId: String(u.employeeId || u.employee_id || ''), isActive: String(u.isActive).toUpperCase() === 'TRUE' })));
         setProjects((data.projects || []).map((p: any) => ({ ...p, id: Number(p.id) })));
         setClients((data.clients || []).map((c: any) => ({ ...c, id: Number(c.id), gstNumber: c.gstNumber || c.gSTNumber || c.GSTNumber || '' })));
@@ -778,8 +772,6 @@ export default function App() {
                 assignees: String(l.assignees || l.Assignees || ''),
                 hours: Number(l.hours || 0), // Normalize hours in log
                 time: String(l.time || l.Time || ''),
-	                goal: String(l.goal || l.Goal || ''),
-	                taskGoal: taskGoalById.get(Number(l.taskId || l.taskID || 0)) || '',
 	                firm: String(l.firm || l.Firm || ''),
                 photos: String(l.photos || ''),
                 pdf: String(l.pdf || ''),
@@ -789,27 +781,12 @@ export default function App() {
                 vendor: l.vendor || l.Vendor || ''
             };
         });
-		        const achievedSumByTaskId = new Map<number, number>();
-		        normalizedLogs.forEach((log: any) => {
-		          const taskId = Number(log.taskId || 0);
-		          if (!taskId) return;
-		          const achievedValue = Number(String(log.goal || '').trim());
-		          const prev = achievedSumByTaskId.get(taskId) || 0;
-		          achievedSumByTaskId.set(taskId, prev + (Number.isFinite(achievedValue) ? achievedValue : 0));
-		        });
 
 		        setTasks(
 			          normalizedTaskList
-			            .map((task: any) => ({
-			              ...task,
-			              achieved: String(achievedSumByTaskId.get(Number(task.id || 0)) || '')
-			            }))
 		            .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0))
 		        );
 		        setActionLogs(normalizedLogs);
-		        const recurringTaskGoalById = new Map<number, string>(
-		          (data.recurringTasks || []).map((t: any) => [Number(t.id || 0), String(t.goal || '')])
-		        );
 		        setRecurringTasks((data.recurringTasks || []).map((t: any) => ({
 			            ...t,
 		            id: Number(t.id),
@@ -822,7 +799,6 @@ export default function App() {
 		            time: formatToHHMM(getCaseInsensitive(t, 'time') || ''),
 			            lastUpdatedOn: formatToIndianDateTime(t.lastUpdatedOn || ''),
 			            lastUpdateRemarks: String(t.lastUpdateRemarks || ''),
-				            goal: String(t.goal || ''),
                   firm: String(t.firm || ''),
                   owner: String(t.owner || t.Owner || ''),
 				            status: String(t.status || 'Not Yet Started') as any
@@ -836,8 +812,6 @@ export default function App() {
 		          assignee: String(a.assignee || a.Assignee || ''),
 		          status: String(a.status || a.Status || 'Not Yet Started') as any,
 			          remarks: String(a.remarks || a.Remarks || a.remark || ''),
-					          goal: String(a.goal || a.Goal || ''),
-			          taskGoal: recurringTaskGoalById.get(Number(a.taskId || a.taskID || a.taskid || 0)) || '',
                 firm: String(a.firm || a.Firm || ''),
                   owner: String(a.owner || a.Owner || ''),
 				          photos: String(a.photos || a.Photos || ''),
@@ -861,7 +835,6 @@ export default function App() {
               designations: (data.designations || []).map((d: any) => ({ id: Number(d.id), title: String(d.title || d.name || ''), description: String(d.description || '') })),
               // Use the already-normalized + computed arrays, trimmed to keep localStorage small.
               tasks: normalizedTaskList
-                .map((task: any) => ({ ...task, achieved: String(achievedSumByTaskId.get(Number(task.id || 0)) || '') }))
                 .sort((a: any, b: any) => Number(b.id || 0) - Number(a.id || 0))
                 .slice(0, 500),
               actionLogs: normalizedLogs.slice(0, 500),
@@ -874,7 +847,6 @@ export default function App() {
                 time: formatToHHMM(getCaseInsensitive(t, 'time') || ''),
                 lastUpdatedOn: formatToIndianDate(t.lastUpdatedOn || ''),
                 lastUpdateRemarks: String(t.lastUpdateRemarks || ''),
-                goal: String(t.goal || ''),
                 firm: String(t.firm || ''),
                 owner: String(t.owner || t.Owner || ''),
                 status: String(t.status || 'Not Yet Started') as any,
@@ -1064,10 +1036,7 @@ export default function App() {
     // Note: Cumulative hours are calculated by server, UI adds newly logged hours to local optimistic state
     setTasks(prev => prev.map(t => {
       if (t.id !== task.id) return t;
-      const currentAchieved = Number(String((t as any).achieved || '0').trim());
-      const newAchieved = Number(String(task.goal || '0').trim());
-      const sumAchieved = (Number.isFinite(currentAchieved) ? currentAchieved : 0) + (Number.isFinite(newAchieved) ? newAchieved : 0);
-      return { ...task, achieved: String(sumAchieved), lastUpdateDate: timestamp };
+      return { ...task, lastUpdateDate: timestamp };
     })); 
     setSyncingIds(prev => new Set(prev).add(task.id));
     try {
@@ -1113,7 +1082,6 @@ export default function App() {
 	        status: lastLog ? lastLog.status as any : 'Not Yet Started',
 	        lastUpdateDate: lastLog ? lastLog.updateDate : '',
 	        lastUpdateRemarks: lastLog ? lastLog.remarks : '',
-	        achieved: lastLog ? String(lastLog.goal || '') : ''
 	      };
       setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
       const targetTaskSheet = isVendorLog ? 'VendorTasks' : 'MainTasks';
@@ -1708,7 +1676,6 @@ export default function App() {
             ...t,
             lastUpdatedOn: updatedOn,
             lastUpdateRemarks: t.lastUpdateRemarks,
-            goal: existingTask?.goal || ''
           };
           const photos = String((t as any).photos || '');
           const pdf = String((t as any).pdf || '');
@@ -1737,7 +1704,6 @@ export default function App() {
             updatedOn,
             timestamp,
             remarks: t.lastUpdateRemarks,
-            goal: t.goal || '',
             photos,
             pdf
           }, 'RecurringActions');

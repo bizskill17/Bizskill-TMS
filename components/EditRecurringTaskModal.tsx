@@ -32,7 +32,6 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 			  const [formData, setFormData] = useState<{
 			    title: string;
           notes: string;
-			    goal: number | '';
 			    firm: string;
           owner: string;
 			    category: string;
@@ -47,7 +46,6 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 			  }>({
 			    title: '',
           notes: '',
-			    goal: '',
 			    firm: '',
           owner: '',
 			    category: '',
@@ -68,7 +66,6 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
       setFormData({
         title: task.title,
         notes: task.notes || '',
-        goal: (task.goal as any) || '',
         firm: task.firm || '',
         owner: task.owner || '',
         category: task.category,
@@ -159,19 +156,7 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
                 placeholder="Enter more details..."
               />
             </div>
-		            <div className="space-y-1">
-		              <label className="text-sm font-medium text-black">{getFieldLabel('recurringTask.goal', 'Goal')}</label>
-		              <input
-		                type="number"
-                    min="0"
-                    step="1"
-                    disabled={isSaving}
-		                className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none disabled:bg-gray-50"
-		                value={formData.goal}
-		                onChange={(e) => setFormData(p => ({ ...p, goal: e.target.value === '' ? '' : Number(e.target.value) }))}
-			                placeholder=""
-		              />
-		            </div>
+		            
             <SearchableSelect 
               label="Client"
               options={clientOptions}

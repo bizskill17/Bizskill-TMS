@@ -176,7 +176,6 @@ function notifications_compose_task_created(array $task, bool $isVendor): string
     notifications_add_line($lines, 'Priority', (string)($task['priority'] ?? ''));
     $time = notifications_format_time_hhmm((string)($task['time'] ?? ''));
     notifications_add_line($lines, 'Time', $time, true);
-    notifications_add_line($lines, 'Goal', (string)($task['goal'] ?? ''), true);
     $due = notifications_format_date_dmy((string)($task['dueDate'] ?? ''));
     notifications_add_line($lines, 'Due Date', $due);
     $lines[] = '*Created At:* ' . notifications_format_datetime();
@@ -192,7 +191,6 @@ function notifications_compose_task_updated(array $task, array $log): string {
     notifications_add_line($lines, 'Status', (string)($task['status'] ?? ''));
     notifications_add_line($lines, 'Remarks', (string)($log['remarks'] ?? ''));
     notifications_add_line($lines, 'Minutes', (string)($log['minutes'] ?? ''));
-    notifications_add_line($lines, 'Achieved', (string)($log['achieved'] ?? ''), true);
     $lines[] = '*Updated At:* ' . notifications_format_datetime();
     return implode("\n", $lines);
 }
@@ -213,7 +211,6 @@ function notifications_compose_recurring_created(array $task): string {
         notifications_add_line($lines, 'Rule', $ruleText);
     }
     notifications_add_line($lines, 'Time', notifications_format_time_hhmm((string)($task['time'] ?? '')), true);
-    notifications_add_line($lines, 'Goal', (string)($task['goal'] ?? ''), true);
     $lines[] = '*Created At:* ' . notifications_format_datetime();
     return implode("\n", $lines);
 }
@@ -226,7 +223,6 @@ function notifications_compose_recurring_action(array $action): string {
     notifications_add_line($lines, 'Firm', (string)($action['firm'] ?? ''));
     notifications_add_line($lines, 'Status', (string)($action['status'] ?? ''));
     notifications_add_line($lines, 'Remarks', (string)($action['remarks'] ?? ''));
-    notifications_add_line($lines, 'Achieved', (string)($action['goal'] ?? ''), true);
     $lines[] = '*Updated At:* ' . notifications_format_datetime();
     return implode("\n", $lines);
 }

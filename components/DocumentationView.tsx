@@ -53,7 +53,7 @@ export const DocumentationView: React.FC = () => {
           'Use Search to find a task by keyword.',
           'Open Filters: test Status/Priority/Project/Client/Owner/Assignee/Category/Firm and date filters, then Clear Filters.',
           'Create a task: click Add Task, fill required fields, then Save Task.',
-          'Update a task: open Update, change Status, add Remarks where required, add Hours/Achieved (if goal is set), then Confirm Update.',
+          'Update a task: open Update, change Status, add Remarks where required, add time spent, then Confirm Update.',
           'Edit a task: open Edit and Save Changes.',
           'Open Pending and Completed views and confirm the task appears as expected after status updates.',
           'Open Activity Dashboard and verify it renders.',

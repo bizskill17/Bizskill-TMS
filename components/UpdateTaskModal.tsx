@@ -20,14 +20,12 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
   const [reassignSelection, setReassignSelection] = useState<string | string[]>([]);
   const [remarksInput, setRemarksInput] = useState<string>('');
   const [hoursInput, setHoursInput] = useState<string>('0');
-  const [goalInput, setGoalInput] = useState<string>('');
   const [photosInput, setPhotosInput] = useState<string[]>([]);
   const [pdfInput, setPdfInput] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isConfirming, setIsConfirming] = useState(false);
 
   const isVendorTask = task ? !!task.vendor && task.vendor.trim() !== '' : false;
-  const hasTaskGoal = task ? String(task.goal ?? '').trim() !== '' : false;
 
   const readFileAsDataUrl = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -54,9 +52,8 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
 	      });
 	      setRemarksInput('');
 	      setHoursInput('0');
-	      // Goal/Photo/PDF updates should be stored only in action_logs (not the task master row),
+	      // Photo/PDF updates should be stored only in action_logs (not the task master row),
 	      // so start these fields empty for each update.
-	      setGoalInput('');
 	      setPhotosInput([]);
 	      setPdfInput('');
 	      setReassignSelection(isVendorTask ? '' : []);
@@ -84,10 +81,6 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
       setHoursInput(e.target.value);
   }
 
-  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value.replace(/[^\d.]/g, '');
-      setGoalInput(value);
-  }
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,18 +95,12 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
   };
 
   const handleFinalSubmit = () => {
-    if (hasTaskGoal && goalInput.trim() === '') {
-      setError('Achieved is required when Goal is set.');
-      setIsConfirming(false);
-      return;
-    }
 
     const updatedTask: Task = { 
         ...task, 
         status: formData.status as any,
         lastUpdateRemarks: remarksInput,
         hours: Number(hoursInput || 0), // This will be handled as "New hours logged" by server
-        goal: goalInput,
         photos: JSON.stringify(photosInput || []),
         pdf: pdfInput || '',
     };
@@ -220,21 +207,6 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none text-gray-900 resize-none"
                 ></textarea>
               </div>
-
-              {hasTaskGoal && (
-                <div className="space-y-1">
-	                  <label className="text-sm font-medium text-gray-900 block mb-1">{getFieldLabel('task.achieved', 'Achieved')} <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={goalInput}
-                    onChange={handleGoalChange}
-                    placeholder="Enter achieved value"
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 outline-none text-gray-900"
-                  />
-                </div>
-              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">

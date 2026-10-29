@@ -60,7 +60,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     vendorCategory: string[]; 
     notes: string;
     time: string;
-    goal: number | '';
     photos: string[];
     pdf: string;
   }>({
@@ -76,7 +75,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     vendorCategory: [],
     notes: '',
     time: '',
-    goal: '',
     photos: [],
     pdf: ''
   });
@@ -173,7 +171,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       project: formData.project, // Project is always included now
       firm: formData.firm,
       time: formData.time,
-      goal: formData.goal,
       photos: JSON.stringify(formData.photos || []),
       pdf: formData.pdf || '',
     };
@@ -207,7 +204,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
       vendorCategory: [],
       notes: '',
       time: '',
-      goal: '',
       photos: [],
       pdf: ''
     });
@@ -414,19 +410,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   <Clock3 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-black block mb-1">Goal</label>
-	                <input
-	                  name="goal"
-	                  type="number"
-                    min="0"
-                    step="1"
-	                  value={formData.goal}
-	                  onChange={(e) => setFormData(prev => ({ ...prev, goal: e.target.value === '' ? '' : Number(e.target.value) }))}
-	                  placeholder="Enter goal"
-	                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none text-black"
-	                />
-              </div>
+              
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

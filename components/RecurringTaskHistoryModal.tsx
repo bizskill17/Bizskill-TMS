@@ -98,13 +98,12 @@ export const RecurringTaskHistoryModal: React.FC<RecurringTaskHistoryModalProps>
     doc.text(`Task: ${task.title}`, 14, 28);
     doc.text(`Assignee: ${task.assignee}`, 14, 34);
 
-    const tableColumn = ["Date", "Time", "Status", "Remarks", "Goal", "Photo", "PDF"];
+    const tableColumn = ["Date", "Time", "Status", "Remarks", "Photo", "PDF"];
     const tableRows = taskActions.map(a => [
       formatDate(a.updatedOn),
       formatTime(a.timestamp),
       a.status,
       a.remarks,
-      String(a.goal || ''),
       parsePhotos(a.photos).length > 0 ? `${parsePhotos(a.photos).length} photo(s)` : '-',
       a.pdf ? 'Open PDF' : '-'
     ]);
@@ -155,7 +154,6 @@ export const RecurringTaskHistoryModal: React.FC<RecurringTaskHistoryModalProps>
 	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Time</th>
 	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
 	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Remarks</th>
-	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Goal</th>
 	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">Photo</th>
 	                  <th className="px-6 py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider">PDF</th>
 	                </tr>
@@ -171,7 +169,6 @@ export const RecurringTaskHistoryModal: React.FC<RecurringTaskHistoryModalProps>
 	                      </span>
 	                    </td>
 	                    <td className="px-6 py-4 text-sm text-black">{action.remarks}</td>
-	                    <td className="px-6 py-4 text-sm text-black">{action.goal || '-'}</td>
 	                    <td className="px-6 py-4 text-sm">
 	                      {parsePhotos(action.photos).length > 0 ? (
 	                        <button
@@ -219,7 +216,6 @@ export const RecurringTaskHistoryModal: React.FC<RecurringTaskHistoryModalProps>
                    </div>
 	                   <div className="bg-indigo-50/50 border border-indigo-100 p-2 rounded space-y-2">
 	                      <p className="text-xs text-gray-700 leading-relaxed">"{action.remarks || 'No remarks provided'}"</p>
-	                      {action.goal ? <p className="text-[11px] text-gray-700"><span className="font-semibold">Goal:</span> {action.goal}</p> : null}
 	                      <div className="flex items-center justify-between text-[11px]">
 	                        <div>
 	                          <span className="text-gray-500 font-semibold uppercase">Photo</span>{' '}

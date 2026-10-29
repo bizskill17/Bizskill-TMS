@@ -200,13 +200,6 @@ function sendJson(array $payload, int $statusCode = 200): void {
     exit;
 }
 
-function normalizeNumericGoal($raw): string {
-    if ($raw === null) return '';
-    $value = trim((string)$raw);
-    if ($value === '') return '';
-    if (!is_numeric($value)) return '';
-    return (string)(0 + $value);
-}
 
 function notify_task_created(mysqli $conn, array $taskRow, bool $isVendorTask): void {
     if (!notifications_enabled()) return;
@@ -653,7 +646,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $lastUpdateRemarks = (string)($data['remark'] ?? $data['lastUpdateRemarks'] ?? '');
         $hours = (float)($data['hours'] ?? 0);
         $time = (string)($data['time'] ?? '');
-        $goal = normalizeNumericGoal($data['goal'] ?? '');
         $photos = (string)($data['photos'] ?? '');
         $pdf = (string)($data['pdf'] ?? '');
         $vendor = (string)($data['vendor'] ?? '');
@@ -666,24 +658,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($table === 'main_tasks') {
             if (app_table_is_scoped($conn, 'main_tasks')) {
                 $tenantId = app_tenant_id();
-                $stmt = $conn->prepare("INSERT INTO main_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO main_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task insert.'], 500);
-                $stmt->bind_param('iissssssssssssssdssss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+                $stmt->bind_param('iissssssssssssssdsss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf);
             } else {
-                $stmt = $conn->prepare("INSERT INTO main_tasks (id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO main_tasks (id, date, title, description, project, firm, category, owner, assignees, client, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task insert.'], 500);
-                $stmt->bind_param('issssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+                $stmt->bind_param('issssssssssssssdsss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf);
             }
         } else {
             if (app_table_is_scoped($conn, 'vendor_tasks')) {
                 $tenantId = app_tenant_id();
-                $stmt = $conn->prepare("INSERT INTO vendor_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO vendor_tasks (tenant_id, id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task insert.'], 500);
-                $stmt->bind_param('iissssssssssssssssdssss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+                $stmt->bind_param('iisssssssssssssssdsss', $tenantId, $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf);
             } else {
-                $stmt = $conn->prepare("INSERT INTO vendor_tasks (id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, goal, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $stmt = $conn->prepare("INSERT INTO vendor_tasks (id, date, title, description, project, firm, category, owner, assignees, vendor, vendorCategory, priority, status, dueDate, lastUpdateDate, lastUpdateRemarks, hours, time, photos, pdf) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task insert.'], 500);
-                $stmt->bind_param('issssssssssssssssdssss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf);
+                $stmt->bind_param('isssssssssssssssdsss', $id, $date, $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf);
             }
         }
 
@@ -707,7 +699,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	                  'status' => $status,
 	                  'dueDate' => $dueDate,
 	                  'time' => $time,
-	                  'goal' => $goal,
 	                  'vendor' => $vendor,
 	              ];
               notify_task_created($conn, $taskRow, $table === 'vendor_tasks' || trim($vendor) !== '');
@@ -944,7 +935,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recurrenceMonth = trim((string)($data['recurrenceMonth'] ?? ''));
         $startDate = trim((string)($data['startDate'] ?? ''));
         $time = trim((string)($data['time'] ?? ''));
-        $goal = normalizeNumericGoal($data['goal'] ?? '');
         $status = trim((string)($data['status'] ?? 'Not Yet Started'));
 
         if ($title === '') sendJson(['success' => false, 'error' => 'Recurring task title is required.'], 400);
@@ -954,13 +944,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($supportsRecurrenceExtras) {
             if (app_table_is_scoped($conn, 'recurring_tasks')) {
                 $tenantId = app_tenant_id();
-                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-                $stmt->bind_param('issssssssiisssss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status);
+                $stmt->bind_param('issssssssiissss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $status);
             } else {
-                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, recurrenceDay, recurrenceMonth, startDate, time, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-                $stmt->bind_param('ssssssssiisssss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status);
+                $stmt->bind_param('ssssssssiissss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $status);
             }
         } else {
             if (in_array($frequencyType, ['Monthly', 'Yearly'], true) && $recurrenceDay > 0) {
@@ -968,13 +958,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (app_table_is_scoped($conn, 'recurring_tasks')) {
                 $tenantId = app_tenant_id();
-                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (tenant_id, id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-                $stmt->bind_param('issssssssissss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status);
+                $stmt->bind_param('issssssssisss', $tenantId, $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $status);
             } else {
-                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, goal, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
+                $stmt = $conn->prepare("INSERT INTO recurring_tasks (id, title, notes, firm, owner, category, assignee, frequencyType, frequencyDays, startDate, time, status, lastUpdatedOn, lastUpdateRemarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', '')");
                 if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task insert.'], 500);
-                $stmt->bind_param('ssssssssissss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status);
+                $stmt->bind_param('ssssssssisss', $idStr, $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $status);
             }
         }
 	        $ok = $stmt->execute();
@@ -993,7 +983,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   'frequencyDays' => $frequencyDays,
                   'startDate' => $startDate,
                   'time' => $time,
-                  'goal' => $goal,
                   'status' => $status,
               ]);
           } catch (Throwable $e) {
@@ -1016,7 +1005,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $assignee = trim((string)($data['assignee'] ?? ''));
         $status = trim((string)($data['status'] ?? ''));
         $remarks = trim((string)($data['remarks'] ?? ''));
-        $goal = normalizeNumericGoal($data['goal'] ?? '');
         $photos = (string)($data['photos'] ?? '');
         $pdf = (string)($data['pdf'] ?? '');
         $updatedOn = trim((string)($data['updatedOn'] ?? ''));
@@ -1028,13 +1016,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $taskIdStr = (string)$taskId;
         if (app_table_is_scoped($conn, 'recurring_actions')) {
             $tenantId = app_tenant_id();
-            $stmt = $conn->prepare("INSERT INTO recurring_actions (tenant_id, id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO recurring_actions (tenant_id, id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring action insert.'], 500);
-            $stmt->bind_param('issssssssssssss', $tenantId, $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $goal, $photos, $pdf, $updatedOn, $timestamp);
+            $stmt->bind_param('isssssssssssss', $tenantId, $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $photos, $pdf, $updatedOn, $timestamp);
         } else {
-            $stmt = $conn->prepare("INSERT INTO recurring_actions (id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $conn->prepare("INSERT INTO recurring_actions (id, taskId, taskTitle, firm, owner, category, assignee, status, remarks, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring action insert.'], 500);
-            $stmt->bind_param('ssssssssssssss', $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $goal, $photos, $pdf, $updatedOn, $timestamp);
+            $stmt->bind_param('sssssssssssss', $idStr, $taskIdStr, $taskTitle, $firm, $owner, $category, $assignee, $status, $remarks, $photos, $pdf, $updatedOn, $timestamp);
         }
 	        $ok = $stmt->execute();
 	        $stmtError = $stmt->error;
@@ -1050,7 +1038,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   'assignee' => $assignee,
                   'status' => $status,
                   'remarks' => $remarks,
-                  'goal' => $goal,
                   'updatedOn' => $updatedOn,
                   'timestamp' => $timestamp,
               ]);
@@ -1200,8 +1187,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	        if ($id <= 0) sendJson(['success' => false, 'error' => 'Invalid task id.'], 400);
 
 	        // Preserve the original (master) attachments on the task record.
-	        // Updates to goal/photos/pdf should be stored only in action_logs.
-	        $existingStmt = $conn->prepare("SELECT goal, photos, pdf FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
+	        // Updates to photos/pdf should be stored only in action_logs.
+	        $existingStmt = $conn->prepare("SELECT photos, pdf FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
 	        if (!$existingStmt) sendJson(['success' => false, 'error' => 'Failed to prepare task lookup.'], 500);
 	        $existingStmt->bind_param('i', $id);
 	        $existingStmt->execute();
@@ -1224,10 +1211,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	        $lastUpdateRemarks = (string)($data['remark'] ?? $data['lastUpdateRemarks'] ?? '');
 	        $hours = (float)($data['hours'] ?? 0);
 	        $time = (string)($data['time'] ?? '');
-	        $logGoal = normalizeNumericGoal($data['goal'] ?? '');
 	        $logPhotos = (string)($data['photos'] ?? '');
 	        $logPdf = (string)($data['pdf'] ?? '');
-	        $goal = normalizeNumericGoal($existingRow['goal'] ?? '');
 	        $photos = (string)($existingRow['photos'] ?? '');
 	        $pdf = (string)($existingRow['pdf'] ?? '');
 	        $taskDate = (string)($data['taskDate'] ?? $data['date'] ?? '');
@@ -1238,20 +1223,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	        $skipLog = in_array($skipLogRaw, ['1', 'true', 'yes'], true);
 
         if ($table === 'main_tasks') {
-            $stmt = $conn->prepare("UPDATE main_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, client=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'main_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
+            $stmt = $conn->prepare("UPDATE main_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, client=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'main_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare main task update.'], 500);
-            $stmt->bind_param('sssssssssssssdssssi', $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf, $id);
+            $stmt->bind_param('sssssssssssssdsssi', $title, $description, $project, $firm, $category, $owner, $assignees, $client, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf, $id);
         } else {
-            $stmt = $conn->prepare("UPDATE vendor_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, vendor=?, vendorCategory=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, goal=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'vendor_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
+            $stmt = $conn->prepare("UPDATE vendor_tasks SET title=?, description=?, project=?, firm=?, category=?, owner=?, assignees=?, vendor=?, vendorCategory=?, priority=?, status=?, dueDate=?, lastUpdateDate=?, lastUpdateRemarks=?, hours=?, time=?, photos=?, pdf=? WHERE id=?" . (app_table_is_scoped($conn, 'vendor_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare vendor task update.'], 500);
-            $stmt->bind_param('ssssssssssssssdssssi', $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $goal, $photos, $pdf, $id);
+            $stmt->bind_param('ssssssssssssssdsssi', $title, $description, $project, $firm, $category, $owner, $assignees, $vendor, $vendorCategory, $priority, $status, $dueDate, $lastUpdateDate, $lastUpdateRemarks, $hours, $time, $photos, $pdf, $id);
         }
 
         $ok = $stmt->execute();
         $stmt->close();
 	        if (!$ok) sendJson(['success' => false, 'error' => 'Failed to update task.'], 400);
 
-		        if (!$skipLog && ($lastUpdateRemarks !== '' || $status !== 'Not Yet Started' || $hours > 0 || $logGoal !== '' || $logPhotos !== '' || $logPdf !== '')) {
+		        if (!$skipLog && ($lastUpdateRemarks !== '' || $status !== 'Not Yet Started' || $hours > 0 || $logPhotos !== '' || $logPdf !== '')) {
 		            $logId = (int)round(microtime(true) * 1000);
 	            $updatedOn = '';
 	            $timestamp = '';
@@ -1263,13 +1248,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (app_table_is_scoped($conn, 'action_logs')) {
                 $tenantId = app_tenant_id();
-                $logStmt = $conn->prepare("INSERT INTO action_logs (tenant_id, id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $logStmt = $conn->prepare("INSERT INTO action_logs (tenant_id, id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$logStmt) sendJson(['success' => false, 'error' => 'Failed to prepare action log insert.'], 500);
-                $logStmt->bind_param('iiissssssssssssdssssss', $tenantId, $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logGoal, $logPhotos, $logPdf, $updatedOn, $timestamp);
+                $logStmt->bind_param('iiissssssssssssdsssss', $tenantId, $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logPhotos, $logPdf, $updatedOn, $timestamp);
             } else {
-                $logStmt = $conn->prepare("INSERT INTO action_logs (id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, goal, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $logStmt = $conn->prepare("INSERT INTO action_logs (id, taskId, taskTitle, taskDate, updateDate, project, firm, client, category, owner, assignees, vendor, status, remarks, hours, time, photos, pdf, updatedOn, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                 if (!$logStmt) sendJson(['success' => false, 'error' => 'Failed to prepare action log insert.'], 500);
-                $logStmt->bind_param('iissssssssssssdssssss', $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logGoal, $logPhotos, $logPdf, $updatedOn, $timestamp);
+                $logStmt->bind_param('iissssssssssssdsssss', $logId, $id, $title, $taskDate, $lastUpdateDate, $project, $firm, $client, $category, $owner, $assignees, $vendor, $status, $lastUpdateRemarks, $hours, $time, $logPhotos, $logPdf, $updatedOn, $timestamp);
             }
 	            $logOk = $logStmt->execute();
 	            $logError = $logStmt->error;
@@ -1292,12 +1277,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   'status' => $status,
                   'dueDate' => $dueDate,
                   'vendor' => $vendor,
-                  'goal' => $goal,
               ];
               $logRow = [
                   'remarks' => $lastUpdateRemarks,
                   'minutes' => $hours,
-                  'achieved' => $logGoal,
               ];
               notify_task_updated($conn, $taskRow, $logRow, $table === 'vendor_tasks' || trim($vendor) !== '');
           } catch (Throwable $e) {
@@ -1484,7 +1467,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $recurrenceMonth = array_key_exists('recurrenceMonth', $data) ? trim((string)$data['recurrenceMonth']) : trim((string)($row['recurrenceMonth'] ?? ''));
         $startDate = array_key_exists('startDate', $data) ? trim((string)$data['startDate']) : (string)($row['startDate'] ?? '');
         $time = array_key_exists('time', $data) ? trim((string)$data['time']) : (string)($row['time'] ?? '');
-        $goal = array_key_exists('goal', $data) ? normalizeNumericGoal($data['goal']) : normalizeNumericGoal($row['goal'] ?? '');
         $status = array_key_exists('status', $data) ? trim((string)$data['status']) : (string)($row['status'] ?? 'Not Yet Started');
         $lastUpdatedOn = array_key_exists('lastUpdatedOn', $data) ? trim((string)$data['lastUpdatedOn']) : (string)($row['lastUpdatedOn'] ?? '');
         $lastUpdateRemarks = array_key_exists('lastUpdateRemarks', $data) ? (string)$data['lastUpdateRemarks'] : (string)($row['lastUpdateRemarks'] ?? '');
@@ -1493,16 +1475,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $supportsRecurrenceExtras = hasColumn($conn, 'recurring_tasks', 'recurrenceDay') && hasColumn($conn, 'recurring_tasks', 'recurrenceMonth');
         if ($supportsRecurrenceExtras) {
-            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, recurrenceDay=?, recurrenceMonth=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
+            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, recurrenceDay=?, recurrenceMonth=?, startDate=?, time=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task update.'], 500);
-            $stmt->bind_param('sssssssiissssssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $goal, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
+            $stmt->bind_param('sssssssiisssssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $recurrenceDay, $recurrenceMonth, $startDate, $time, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
         } else {
             if (in_array($frequencyType, ['Monthly', 'Yearly'], true) && $recurrenceDay > 0) {
                 $frequencyDays = $recurrenceDay;
             }
-            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, startDate=?, time=?, goal=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
+            $stmt = $conn->prepare("UPDATE recurring_tasks SET title=?, notes=?, firm=?, owner=?, category=?, assignee=?, frequencyType=?, frequencyDays=?, startDate=?, time=?, status=?, lastUpdatedOn=?, lastUpdateRemarks=? WHERE id=?" . (app_table_is_scoped($conn, 'recurring_tasks') ? " AND tenant_id = " . app_tenant_id() : ''));
             if (!$stmt) sendJson(['success' => false, 'error' => 'Failed to prepare recurring task update.'], 500);
-            $stmt->bind_param('sssssssisssssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $goal, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
+            $stmt->bind_param('sssssssissssss', $title, $notes, $firm, $owner, $category, $assignee, $frequencyType, $frequencyDays, $startDate, $time, $status, $lastUpdatedOn, $lastUpdateRemarks, $idStr);
         }
         $ok = $stmt->execute();
         $stmtError = $stmt->error;
