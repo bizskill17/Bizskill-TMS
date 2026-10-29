@@ -81,9 +81,6 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
               <th className={thClass} onClick={() => requestSort('role')}>
                 <div className="flex items-center">Role {getSortIcon('role')}</div>
               </th>
-              <th className={thClass} onClick={() => requestSort('password')}>
-                <div className="flex items-center">Password {getSortIcon('password')}</div>
-              </th>
               <th className={thClass} onClick={() => requestSort('isActive')}>
                 <div className="flex items-center justify-center">Status {getSortIcon('isActive')}</div>
               </th>
@@ -108,7 +105,6 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
                 </td>
                 <td className={tdClass}>{user.designation || ''}</td>
                 <td className={tdClass}>{user.role}</td>
-                <td className={tdClass}>{user.password || '-'}</td>
                 <td className={`${tdClass} text-center`}>
                    <button 
                     onClick={() => onToggleStatus(user.id)}
@@ -158,7 +154,6 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
                      <div className="flex items-center gap-2 whitespace-normal break-words"><Phone size={14} className="text-gray-400" /><span>{user.mobile}</span></div>
                      <div className="flex items-center gap-2 whitespace-normal break-words"><Briefcase size={14} className="text-gray-400" /><span>{user.designation || 'N/A'}</span></div>
                      {user.telegramUserName && <div className="flex items-center gap-2 whitespace-normal break-words"><Send size={14} className="text-blue-400" /><span>@{user.telegramUserName}</span></div>}
-                     <div className="flex items-center gap-2 font-mono text-xs bg-gray-50 p-1 rounded whitespace-normal break-words"><span className="text-gray-400 uppercase font-bold text-[10px]">Pass:</span> <span>{user.password || '-'}</span></div>
                 </div>
                 <div className="flex gap-2 pt-3 border-t border-gray-100">
                      <button onClick={() => onEditUser(user)} className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"><Edit2 size={16} />Edit</button>
