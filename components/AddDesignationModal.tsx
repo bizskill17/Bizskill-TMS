@@ -78,7 +78,6 @@ export const AddDesignationModal: React.FC<AddDesignationModalProps> = ({ isOpen
                 value={formData.title}
                 onChange={handleChange}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none text-gray-600 ${error ? 'border-red-500' : 'border-gray-200'}`}
-                placeholder="e.g. Developer"
               />
               {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
             </div>

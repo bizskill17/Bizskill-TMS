@@ -74,7 +74,6 @@ export const AddDepartmentModal: React.FC<AddDepartmentModalProps> = ({ isOpen, 
                 value={formData.name}
                 onChange={handleChange}
                 className={`w-full px-4 py-2.5 bg-white border rounded-lg focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none text-gray-600 ${error ? 'border-red-500' : 'border-gray-200'}`}
-                placeholder="e.g. Sales"
               />
               {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
             </div>
