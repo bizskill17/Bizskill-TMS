@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ActionLogEntry, User } from '../types';
 import { parseToISO, formatToIndianDate } from '../App';
-import { X, LayoutGrid, LayoutList, Clock, Filter, FileText, Download } from 'lucide-react';
+import { X, LayoutGrid, LayoutList, Clock, Filter, FileText, Download, Search } from 'lucide-react';
 
 interface ActivityDashboardViewProps {
   logs: ActionLogEntry[];
@@ -17,6 +17,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
   const [fromDate, setFromDate] = useState(firstDayOfMonth);
   const [toDate, setToDate] = useState(todayISO);
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const isAdmin = currentUser?.role === 'Admin';
@@ -82,11 +83,11 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
     const sortedEmployees = Array.from(employeesSet).sort((a, b) => a.localeCompare(b));
 
     return {
-      dates: sortedDates,
-      employees: sortedEmployees,
+      dates: sortedDates.filter(date => !searchTerm.trim() || date.toLowerCase().includes(searchTerm.trim().toLowerCase()) || sortedEmployees.some(emp => emp.toLowerCase().includes(searchTerm.trim().toLowerCase()))),
+      employees: sortedEmployees.filter(emp => !searchTerm.trim() || emp.toLowerCase().includes(searchTerm.trim().toLowerCase()) || sortedDates.some(date => date.toLowerCase().includes(searchTerm.trim().toLowerCase()))),
       data: datesMap
     };
-  }, [logs, fromDate, toDate, users, isAdmin, currentUser]);
+  }, [logs, fromDate, toDate, users, isAdmin, currentUser, searchTerm]);
 
   const columnTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -142,9 +143,9 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="sr-only">Activity Dashboard</h2>
-        <div className="flex items-center gap-2">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-200 flex items-center gap-3 overflow-x-auto">
+        <div className="relative flex-1 min-w-[180px]"><Search size={18} className="absolute left-3 top-2.5 text-indigo-600"/><input aria-label="Search activity by user or date" placeholder="Search users or dates..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100"/></div>
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
         <button
           onClick={handleExportPDF}
           className="flex items-center justify-center p-2.5 bg-blue-500 text-white border border-blue-600 rounded-md hover:bg-blue-600"
@@ -167,7 +168,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
           <Filter size={16} />
         </button>
         </div>
-        <div className="flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
+        <div className="shrink-0 flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
           <button
             onClick={() => setViewMode('card')}
             className={`p-1.5 rounded-md transition-all border ${viewMode === 'card' ? 'bg-white shadow text-blue-600 border-blue-600' : 'text-blue-400 border-transparent'}`}

@@ -609,25 +609,18 @@ export const TasksView: React.FC<TasksViewProps> = ({
 
 	  return (
 	    <div className="space-y-6">
-		      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-		        <div className="flex items-start md:items-center gap-3">
-              {showCollapsedMenuButton && (
-                <button
-                  type="button"
-                  onClick={onShowMenu}
-                  className="hidden md:inline-flex items-center justify-center w-10 h-10 bg-white border-2 border-indigo-200 text-indigo-700 rounded-xl shadow-sm hover:bg-indigo-50"
-                  title="Show menu"
-                >
-                  <Menu size={18} />
-                </button>
-              )}
-              <div>
-		            <h2 className="sr-only">{title}</h2>
-		            {description && <p className="text-sm text-black mt-1">{description}</p>}
-              </div>
-		        </div>
-
-        <div className="flex flex-wrap gap-2 items-center">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-200 flex items-center gap-3 overflow-x-auto">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-2.5 text-indigo-600" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search all columns (Task, Assignee, Status, etc)..." 
+            className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm transition-colors ${searchTerm ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-medium' : 'border-indigo-300 text-indigo-700'}`} 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-nowrap gap-2 items-center shrink-0 ml-auto">
           {selectedIds.length > 0 && isAdmin ? (
             <div className="flex flex-wrap gap-2 animate-in fade-in zoom-in duration-200">
                 <button onClick={() => openBulkUpdate('status')} className="flex items-center space-x-1 px-4 py-2 bg-indigo-50 text-indigo-700 border-2 border-indigo-200 rounded-md hover:bg-indigo-100 text-sm font-bold shadow-sm transition-colors uppercase tracking-wider">
@@ -647,7 +640,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 </button>
             </div>
           ) : (
-            <button onClick={() => onAddTask(isVendorView)} className="flex items-center space-x-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors"><Plus size={16} /><span>Add Task</span></button>
+            <button onClick={() => onAddTask(isVendorView)} className="flex items-center space-x-1 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors"><Plus size={16} /><span className="whitespace-nowrap">Add Task</span></button>
           )}
           <button onClick={handleExportExcelLocal} title="Export Excel" className="flex items-center justify-center p-2.5 bg-white border border-indigo-600 text-indigo-600 rounded-md hover:bg-indigo-50 shadow-sm transition-colors"><FileText size={16} className="text-green-600" /></button>
           <button onClick={handleDownloadPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-white border border-indigo-600 text-indigo-600 rounded-md hover:bg-indigo-50 shadow-sm transition-colors"><Download size={16} className="text-red-500" /></button>
@@ -660,7 +653,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-200 space-y-4">
+      <div className={`bg-white p-4 rounded-lg shadow-sm border border-indigo-200 space-y-4 ${showFilters || activeFilterBadges.length > 0 ? '' : 'hidden'}`}>
         {activeFilterBadges.length > 0 && (
             <div className="flex flex-wrap gap-2 pb-2">
                 {activeFilterBadges.map((badge, idx) => (
@@ -672,16 +665,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
             </div>
         )}
 
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-indigo-600" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search all columns (Task, Assignee, Status, etc)..." 
-            className={`w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm transition-colors ${searchTerm ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-medium' : 'border-indigo-300 text-indigo-700'}`} 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+
         
         <div className={`${showFilters ? 'grid' : 'hidden'} grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end`}>
              <SearchableSelect label="Status" options={statusOptions} value={filterStatus} onChange={setFilterStatus} multiple={true} placeholder="All Statuses" className="text-sm"/>
