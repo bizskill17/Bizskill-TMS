@@ -19,10 +19,11 @@ try{
         $entries=dsc_all($conn,'SELECT * FROM compliance_entries WHERE tenant_id=? ORDER BY due_date,id DESC',[$tenant]);
         if(!$admin){$entries=array_values(array_filter($entries,fn($r)=>in_array($actorName,array_map('trim',explode(',',$r['assigned_user_name'])),true)));foreach($entries as &$entry){unset($entry['fee'],$entry['billing_type'],$entry['billing_status']);}unset($entry);}
         $templates=dsc_all($conn,'SELECT * FROM compliance_templates WHERE tenant_id=? ORDER BY name',[$tenant]);
-        foreach($templates as &$t){$t['stages']=dsc_all($conn,'SELECT name,is_completion FROM compliance_stages WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY sequence_no,id',[$tenant,$t['id']]);$t['schedules']=array_map(fn($s)=>json_decode($s['definition'],true),dsc_all($conn,'SELECT definition FROM compliance_schedules WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY id',[$tenant,$t['id']]));}unset($t);
+        foreach($templates as &$t){$t['stages']=dsc_all($conn,'SELECT name,is_completion FROM compliance_stages WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY sequence_no,id',[$tenant,$t['id']]);$t['schedules']=array_map(fn($s)=>json_decode($s['definition'],true),dsc_all($conn,'SELECT definition FROM compliance_schedules WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY id LIMIT 1',[$tenant,$t['id']]));}unset($t);
+        $categories=array_map(fn($c)=>['id'=>$c['id'],'name'=>$c['name']],cp_rows($conn,'categories'));
         $users=array_map(fn($u)=>['id'=>$u['id'],'name'=>$u['name'],'isActive'=>$u['isActive']],cp_rows($conn,'users'));
         $clients=array_map(fn($f)=>['id'=>$f['id'],'name'=>$f['name']],cp_rows($conn,'firms'));
-        cp_reply(['success'=>true,'entries'=>$entries,'templates'=>$templates,'assignments'=>$admin?dsc_all($conn,'SELECT * FROM client_compliances WHERE tenant_id=?',[$tenant]):[],'users'=>$users,'clients'=>$clients,'bills'=>$admin?dsc_all($conn,'SELECT * FROM billing_records WHERE tenant_id=? ORDER BY id DESC',[$tenant]):[],'billItems'=>$admin?dsc_all($conn,'SELECT * FROM billing_record_items WHERE tenant_id=?',[$tenant]):[],'admin'=>$admin,'csrf'=>$csrf]);
+        cp_reply(['success'=>true,'entries'=>$entries,'templates'=>$templates,'assignments'=>$admin?dsc_all($conn,'SELECT * FROM client_compliances WHERE tenant_id=?',[$tenant]):[],'users'=>$users,'clients'=>$clients,'categories'=>$categories,'bills'=>$admin?dsc_all($conn,'SELECT * FROM billing_records WHERE tenant_id=? ORDER BY id DESC',[$tenant]):[],'billItems'=>$admin?dsc_all($conn,'SELECT * FROM billing_record_items WHERE tenant_id=?',[$tenant]):[],'admin'=>$admin,'csrf'=>$csrf]);
     }
     if($_SERVER['REQUEST_METHOD']!=='POST')cp_reply(['success'=>false,'error'=>'Method not allowed.'],405);
     $data=app_get_raw_input_data();if($csrf===''||!hash_equals($csrf,(string)($data['csrf']??'')))cp_reply(['success'=>false,'error'=>'Session expired. Reload and try again.'],403);
@@ -47,9 +48,10 @@ try{
         $id=(int)($data['id']??0);$row=$id?cp_find($conn,'compliance_templates',$id,true):null;
         if($row&&(int)$data['version']!==(int)$row['version'])throw new InvalidArgumentException('Record changed. Refresh and try again.');
         $values=['name'=>dsc_text($data,'name',190,true),'category'=>dsc_text($data,'category',190),'kind'=>(string)($data['kind']??''),'active'=>!empty($data['active'])?1:0];
+        if($values['category']!=='' && !in_array($values['category'],array_column(cp_rows($conn,'categories'),'name'),true))throw new InvalidArgumentException('Select a task category from this organisation.');
         if(!in_array($values['kind'],['Filing','Payment','Combined'],true))throw new InvalidArgumentException('Select compliance type.');
         $stages=$data['stages']??[];$schedules=$data['schedules']??[];
-        if(!is_array($stages)||count($stages)<2||count($stages)>30||!is_array($schedules)||!$schedules||count($schedules)>24)throw new InvalidArgumentException('Enter 2–30 stages and 1–24 schedules.');
+        if(!is_array($stages)||count($stages)<2||count($stages)>30||!is_array($schedules)||!$schedules||count($schedules)!==1)throw new InvalidArgumentException('Enter 2–30 stages and exactly one schedule.');
         $names=[];$complete=0;foreach($stages as $stage){$name=dsc_text($stage,'name',190,true);if(in_array(strtolower($name),$names,true))throw new InvalidArgumentException('Stage names must be unique.');$names[]=strtolower($name);$complete+=!empty($stage['is_completion'])?1:0;}
         if(!$complete||!empty($stages[0]['is_completion']))throw new InvalidArgumentException('Choose a completion stage after the initial stage.');
         $schedules=array_map('cp_schedule',$schedules);

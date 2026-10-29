@@ -43,7 +43,7 @@ function cp_generate(mysqli $db,?string $through=null,?int $onlyAssignment=null)
     $assignments=dsc_all($db,'SELECT a.*,t.name title,t.category FROM client_compliances a JOIN compliance_templates t ON t.id=a.template_id AND t.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.active=1 AND t.active=1'.($onlyAssignment?' AND a.id=?':''),$onlyAssignment?[$tenant,$onlyAssignment]:[$tenant]);$count=0;
     foreach($assignments as $a){
         $stages=dsc_all($db,'SELECT name,is_completion FROM compliance_stages WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY sequence_no,id',[$tenant,$a['template_id']]);if(!$stages)continue;
-        $schedules=dsc_all($db,'SELECT * FROM compliance_schedules WHERE tenant_id=? AND template_id=? AND active=1',[$tenant,$a['template_id']]);
+        $schedules=dsc_all($db,'SELECT * FROM compliance_schedules WHERE tenant_id=? AND template_id=? AND active=1 ORDER BY id LIMIT 1',[$tenant,$a['template_id']]);
         foreach($schedules as $s){$rule=json_decode($s['definition'],true);$end=$through??(new DateTimeImmutable($today))->modify('+'.$rule['lead_days'].' days')->format('Y-m-d');$rangeEnd=$a['end_date']?min($end,$a['end_date']):$end;if($rangeEnd<$a['start_date'])continue;
             foreach(cp_periods($rule,$a['start_date'],$rangeEnd) as $p){
                 if($a['due_day']){$dm=new DateTimeImmutable(substr($p['due'],0,7).'-01');$p['due']=$dm->format('Y-m-').str_pad((string)min((int)$a['due_day'],(int)$dm->format('t')),2,'0',STR_PAD_LEFT);}
