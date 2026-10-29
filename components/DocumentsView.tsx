@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, X, RefreshCw, Search, CheckCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { SearchableSelect } from './SearchableSelect';
 import { User, Firm } from '../types';
 import { localDate, matchesTab, documentStatus } from './documentRules.mjs';
 
@@ -77,8 +78,8 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
    <div className="relative"><Search className="absolute left-3 top-2.5 text-indigo-400" size={18}/><input aria-label="Search documents" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, clients or people..." className={input+' pl-10'}/></div>
    <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
     <label className="text-xs text-gray-600">In / Out<select aria-label="Filter movement" className={input} value={direction} onChange={e=>setDirection(e.target.value)}><option value="">All</option><option>In</option><option>Out</option></select></label>
-    <label className="text-xs text-gray-600">Client<select aria-label="Filter client" className={input} value={clientFilter} onChange={e=>setClientFilter(e.target.value)}><option value="">All Clients</option>{Array.from(new Set(rows.map(r=>r.client_name).filter(Boolean))).sort().map(n=><option key={n}>{n}</option>)}</select></label>
-    <label className="text-xs text-gray-600">Office User<select aria-label="Filter office user" className={input} value={userFilter} onChange={e=>setUserFilter(e.target.value)}><option value="">All Users</option>{Array.from(new Map(rows.map(r=>[String(r.office_user_id),r.office_user_name])).entries()).map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>
+    <div className="text-xs text-gray-600">Client<SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name).filter(Boolean))).sort().map(n=>({value:n,label:n}))]} value={clientFilter} onChange={setClientFilter}/></div>
+    <div className="text-xs text-gray-600">Office User<SearchableSelect compact options={[{value:'',label:'All Users'},...Array.from(new Map(rows.map(r=>[String(r.office_user_id),r.office_user_name])).entries()).map(([id,name])=>({value:id,label:name}))]} value={userFilter} onChange={setUserFilter}/></div>
     <label className="text-xs text-gray-600">From Date<input aria-label="From date" type="date" value={from} onChange={e=>setFrom(e.target.value)} className={input}/></label>
     <label className="text-xs text-gray-600">To Date<input aria-label="To date" type="date" value={to} min={from} onChange={e=>setTo(e.target.value)} className={input}/></label>
     <button onClick={()=>{setSearch('');setDirection('');setClientFilter('');setUserFilter('');setFrom('');setTo('');}} className="self-end py-2 rounded-lg border border-indigo-200 text-indigo-600 text-sm">Clear Filters</button>
@@ -105,9 +106,9 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
      <label><span className={label}>Date *</span><input required type="date" className={input} value={form.movement_date} onChange={e=>formField('movement_date',e.target.value)}/></label>
      <label><span className={label}>In / Out *</span><select className={input} value={form.direction} onChange={e=>formField('direction',e.target.value)}><option>In</option><option>Out</option></select></label>
      <label className="md:col-span-2"><span className={label}>Document Name *</span><input required maxLength={255} className={input} value={form.document_name} onChange={e=>formField('document_name',e.target.value)}/></label>
-     <label><span className={label}>Client Name (Optional)</span><select className={input} value={form.client_name} onChange={e=>formField('client_name',e.target.value)}><option value="">Select</option>{clients.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}</select></label>
+     <div><span className={label}>Client Name (Optional)</span><SearchableSelect compact options={[{value:'',label:'None'},...clients.map(c=>({value:c.name,label:c.name}))]} value={form.client_name} onChange={value=>formField('client_name',value)} /></div>
      <label><span className={label}>{form.direction==='In'?'Received From':'Handed To'} *</span><input required maxLength={190} className={input} value={form.external_person} onChange={e=>formField('external_person',e.target.value)}/></label>
-     <label><span className={label}>{form.direction==='In'?'Receiving User':'Giving User'} *</span><select required className={input} value={form.office_user_id} onChange={e=>formField('office_user_id',e.target.value)}><option value="">Select</option>{activeUsers.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+     <div><span className={label}>{form.direction==='In'?'Receiving User':'Giving User'} *</span><SearchableSelect compact required options={activeUsers.map(u=>({value:String(u.id),label:u.name}))} value={form.office_user_id} onChange={value=>formField('office_user_id',value)} /></div>
      <label><span className={label}>Returnable?</span><select className={input} value={form.returnable?'Yes':'No'} onChange={e=>formField('returnable',e.target.value==='Yes')}><option>No</option><option>Yes</option></select></label>
      {form.returnable&&<label><span className={label}>Return Due Date *</span><input required min={form.movement_date} type="date" className={input} value={form.return_due_date} onChange={e=>formField('return_due_date',e.target.value)}/></label>}
      <label className="md:col-span-2"><span className={label}>Remarks</span><textarea maxLength={10000} className={input} value={form.remarks} onChange={e=>formField('remarks',e.target.value)} rows={2}/></label>
@@ -120,7 +121,7 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
     <h2 id="return-title" className="text-xl font-bold text-indigo-700">Mark Returned</h2><p className="font-medium">{returnRow.document_name}</p>
     {error&&<p role="alert" className="text-red-600">{error}</p>}
     <label className={label}>Returned On *<input required type="date" min={returnRow.movement_date} className={input} value={returnedOn} onChange={e=>setReturnedOn(e.target.value)}/></label>
-    <label className={label}>{returnRow.direction==='In'?'Given By':'Received By'} *<select required className={input} value={returnUser} onChange={e=>setReturnUser(e.target.value)}><option value="">Select</option>{activeUsers.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></label>
+    <div><span className={label}>{returnRow.direction==='In'?'Given By':'Received By'} *</span><SearchableSelect compact required options={activeUsers.map(u=>({value:String(u.id),label:u.name}))} value={returnUser} onChange={setReturnUser} /></div>
     <div className="flex justify-end gap-3"><button disabled={saving} type="button" onClick={()=>setReturnRow(null)}>Cancel</button><button disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50">{saving?'Saving...':'Confirm Return'}</button></div>
    </form>
   </div>}
