@@ -1,4 +1,4 @@
-import { ChecklistProvider, ChecklistsView } from './components/Checklists';
+import { ChecklistsView } from './components/Checklists';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ComplianceView } from './components/ComplianceView';
 import { DscRegisterView } from './components/DscRegisterView';
@@ -1361,7 +1361,7 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
-      case 'checklists': return <ChecklistsView key={tenantCode || currentUser?.tenantCode || ''}/>;
+      case 'checklists': return <ChecklistsView key={tenantCode || currentUser?.tenantCode || ''} tenantCode={tenantCode || currentUser?.tenantCode || ''} categories={categories}/>;
       case 'billing': if (!isAdmin) return null; return <ComplianceView key={'billing:'+tenantCode} billing tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
@@ -1458,7 +1458,6 @@ export default function App() {
     isFirmModalOpen;
 
 	  return (
-		    <ChecklistProvider tenantCode={tenantCode || currentUser?.tenantCode || ''} categories={categories}>
             <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-[calc(100dvh/0.9)] overflow-hidden' : 'min-h-screen'}`}>
 	      {!currentUser ? (
 	        <LoginView onLogin={handleLogin} isAuthenticating={isLoading} />
@@ -1755,7 +1754,6 @@ export default function App() {
 	      <RecurringTaskHistoryModal isOpen={isRecurringHistoryModalOpen} onClose={() => setIsRecurringHistoryModalOpen(false)} task={selectedRecurringTask} actions={recurringActions} />
 	      </LabelProvider>
 	    </div>
-	      </ChecklistProvider>
   );
 }
 
