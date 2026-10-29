@@ -1455,7 +1455,7 @@ export default function App() {
     isFirmModalOpen;
 
 	  return (
-		    <div className="flex min-h-screen bg-gray-50 overflow-hidden font-inter">
+		    <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-dvh overflow-hidden' : 'min-h-screen'}`}>
 	      {!currentUser ? (
 	        <LoginView onLogin={handleLogin} isAuthenticating={isLoading} />
 	      ) : (
@@ -1480,7 +1480,7 @@ export default function App() {
 	            />
 	          )}
 
-          <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
             {layoutMode === 'top' ? (
               <TopBar 
                 items={navItemsWithCounts} 
@@ -1519,7 +1519,7 @@ export default function App() {
 
 			              return (
 			                <main
-			                  className="flex-1 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative"
+			                  className="flex-1 min-h-0 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative"
 			                >
 				              {isLoading ? (
 		                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
@@ -1547,7 +1547,7 @@ export default function App() {
 			                  )}
 			                  <div className="flex-1">
 			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing') && (
-                              <section className="mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
+                              <section className="sticky top-0 z-40 bg-gray-50 mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
                                 {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
                                   onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
                                   aria-label={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
