@@ -86,3 +86,8 @@ jobs:
           PW_BASE_URL: http://127.0.0.1:8081
           PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: ubuntu24.04-x64
         run: npx playwright test tests/compliance-ui.spec.ts
+      - name: Browser failure details
+        if: failure()
+        run: |
+          cat test-results/*/error-context.md 2>/dev/null || true
+          tail -60 /tmp/compliance-ui.log 2>/dev/null || true

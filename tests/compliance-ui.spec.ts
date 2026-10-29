@@ -8,7 +8,7 @@ test('Compliance and billing navigation, setup, task fields and mobile controls'
  await page.getByRole('button',{name:'Compliance',exact:true}).click();
  await expect(page.getByRole('tab',{name:/Compliance Setup/})).toBeVisible();
  await page.getByRole('tab',{name:/Compliance Setup/}).click();
- await expect(page.getByText('Test GST',{exact:true})).toBeVisible();
+ await expect(page.getByRole('cell',{name:/Test GST/})).toBeVisible();
  await page.getByRole('button',{name:'Add compliance',exact:true}).click();
  await expect(page.getByRole('dialog')).toBeVisible();
  await expect(page.getByLabel('Compliance Name')).toBeVisible();
