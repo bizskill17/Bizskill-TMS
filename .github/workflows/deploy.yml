@@ -23,6 +23,9 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Check document return rules
+        run: node --test tests/documents.test.mjs
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 

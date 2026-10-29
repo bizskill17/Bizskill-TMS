@@ -2,6 +2,15 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+session_start(['cookie_httponly'=>true,'cookie_secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off','cookie_samesite'=>'Lax']);
+unset($_SESSION['documents_tenant'], $_SESSION['documents_user'], $_SESSION['documents_platform_admin'], $_SESSION['documents_csrf']);
+function documents_login_session(int $id, bool $platformAdmin): void {
+    session_regenerate_id(true);
+    $_SESSION['documents_tenant'] = app_tenant_id();
+    $_SESSION['documents_user'] = $id;
+    $_SESSION['documents_platform_admin'] = $platformAdmin;
+    $_SESSION['documents_csrf'] = bin2hex(random_bytes(32));
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -37,6 +46,7 @@ if ($tenantStatus !== 'active') {
 }
 
 if (app_is_platform_admin_credentials($platformConn, $email, $password)) {
+    documents_login_session(0, true);
     $platformAdminEmail = strtolower(trim($email));
     echo json_encode([
         'success' => true,
@@ -108,6 +118,7 @@ if (!$isActive) {
     exit;
 }
 
+documents_login_session((int)$user['id'], false);
 unset($user['password']);
 
 echo json_encode([

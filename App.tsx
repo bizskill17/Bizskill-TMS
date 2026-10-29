@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { DocumentsView } from './components/DocumentsView';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { Footer } from './components/Footer';
@@ -87,6 +88,8 @@ const navItems: NavItem[] = [
   { id: 'due-recurring-tasks', label: 'Due Recurring', icon: <AlertCircle size={20} />, section: 'Recurring Tasks' },
   { id: 'recurring-actions', label: 'Recurring Log', icon: <History size={20} />, section: 'Recurring Tasks' },
   
+  { id: 'documents', label: 'Documents In / Out', icon: <FileText size={20} />, section: 'Documents' },
+
   // Master Section
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
   { id: 'firms', label: 'Clients', icon: <Building2 size={20} />, section: 'Master' },
@@ -1340,6 +1343,7 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
+      case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
 		        return <Dashboard 
 		          isAdmin={isAdmin} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
@@ -1452,8 +1456,8 @@ export default function App() {
 	              isSyncing={isSyncing}
 	              onSync={fetchData}
 	              hasError={!!apiError}
-	              onLogout={() => { setCurrentUser(null); setTenantCode(''); setOrganizations([]); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
-	              onExitWorkspace={() => { setCurrentUser(null); setTenantCode(''); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
+	              onLogout={() => { void fetch('/api/logout.php', {method:'POST'}); setCurrentUser(null); setTenantCode(''); setOrganizations([]); localStorage.removeItem('taskpro_user'); localStorage.removeItem('taskpro_tenant_code'); }}
+	              onExitWorkspace={() => { void fetch('/api/logout.php', {method:'POST'}); setCurrentUser(null); setTenantCode(''); setWorkspaceId(''); setApiUrl(''); localStorage.clear(); }}
 	              workspaceId={workspaceId}
                 brandName={loginOrgName}
 	            />

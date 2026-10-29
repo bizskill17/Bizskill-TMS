@@ -229,7 +229,7 @@ export const TopBar: React.FC<TopBarProps> = ({
             </li>
           ))}
 
-          {['Tasks', 'Vendor', 'Master', 'Recurring Tasks', 'Documentation'].map(section => groupedItems[section] && (
+          {['Tasks', 'Vendor', 'Master', 'Recurring Tasks', 'Documents', 'Documentation'].map(section => groupedItems[section] && (
             <li key={section} className="relative">
               <button
                 onClick={() => toggleDropdown(section)}
