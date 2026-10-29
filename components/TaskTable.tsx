@@ -1,4 +1,3 @@
-import { CopyChecklistButton } from './Checklists';
 import React, { useState } from 'react';
 import { Task, Project, User as UserType } from '../types';
 import { Edit2, Info, Calendar, Clock, User, Users, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Trash2, Tag, Layout, Building2, AlertTriangle, ChevronDown, ChevronUp, Hammer, X } from 'lucide-react';
@@ -284,7 +283,6 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 	      <span>{isSyncing ? 'Updating' : 'Update'}</span>
 	    </button>
 	    <button onClick={() => onEditTask(task)} disabled={isSyncing} className="p-1 text-blue-600 hover:text-blue-800 disabled:opacity-30 shrink-0"><Edit2 size={16} /></button>
-                    <CopyChecklistButton task={task}/>
 	    <button onClick={() => onViewHistory(task)} disabled={isSyncing} className="p-1 text-red-500 hover:text-red-700 disabled:opacity-30 shrink-0"><Info size={16} /></button>
 	    {canDelete && <button onClick={() => onDeleteTask(task.id, isVendorView)} disabled={isSyncing} className="p-1 text-red-600 hover:text-red-800 disabled:opacity-30 shrink-0"><Trash2 size={16} /></button>}
 	  </div>
@@ -443,7 +441,6 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                     {task.status}
                 </span>
                 <div className="flex items-center gap-2" onDoubleClick={(e) => e.stopPropagation()}>
-                    <CopyChecklistButton task={task}/>
 	                    <button onClick={() => onViewHistory(task)} disabled={isSyncing} className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors shadow-sm disabled:opacity-40"><Info size={18} /></button>
 	                    <button onClick={() => onEditTask(task)} className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors shadow-sm"><Edit2 size={18} /></button>
 	                    {canDelete && <button onClick={() => onDeleteTask(task.id, isVendorView)} className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors shadow-sm"><Trash2 size={18} /></button>}
