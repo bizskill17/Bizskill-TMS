@@ -12,7 +12,6 @@ import { ProjectsView } from './components/ProjectsView';
 import { ClientsView } from './components/ClientsView';
 import { FirmsView } from './components/FirmsView';
 import { ActionLogView } from './components/ActionLogView';
-import { ActivityDashboardView } from './components/ActivityDashboardView';
 import { RecurringTasksView } from './components/RecurringTasksView';
 import { RecurringTaskActionsView } from './components/RecurringTaskActionsView';
 import { UpdateMultipleView } from './components/UpdateMultipleView';
@@ -79,7 +78,6 @@ const navItems: NavItem[] = [
   { id: 'pending-group', label: 'Pending', icon: <Clock size={20} />, section: 'Tasks' },
   { id: 'pending', label: 'Pending Tasks', icon: <Clock size={20} />, section: 'Tasks' },
   { id: 'completed', label: 'Completed Tasks', icon: <CheckCircle size={20} />, section: 'Tasks' },
-  { id: 'activity-dashboard', label: 'Activity Dashboard', icon: <BarChart3 size={20} />, section: 'Tasks' },
   { id: 'action-log', label: 'Action Log', icon: <History size={20} />, section: 'Tasks' },
   
 	  // Recurring Tasks Section
@@ -1409,7 +1407,6 @@ export default function App() {
       case 'pending': return <TasksView title={getViewLabel('pending', 'Pending Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status !== 'Completed')} {...commonTaskProps} filterType="pending" />;
 		      case 'completed': return <TasksView title={getViewLabel('completed', 'Completed Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status === 'Completed')} {...commonTaskProps} filterType="completed" />;
       case 'update-multiple': return <UpdateMultipleView projects={projects} tasks={visibleTasks.filter(t => t.status !== 'Completed')} onUpdateTasks={async (updates) => { for (const u of updates) await handleUpdateTaskOptimistic(u); setActiveTab('pending'); }} />;
-      case 'activity-dashboard': return <ActivityDashboardView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} users={users} currentUser={currentUser} />;
       case 'action-log': return <ActionLogView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} isAdmin={isAdmin} projects={projects} onDeleteLog={(logId, taskId) => handleDeleteLog(logId, taskId, false)} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
       case 'due-recurring-tasks': return <RecurringTasksView title={getViewLabel('due-recurring-tasks', 'Due Recurring Tasks')} filterType="due" tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
       case 'recurring-tasks': return <RecurringTasksView title={getViewLabel('recurring-tasks', 'Recurring Tasks')} tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
