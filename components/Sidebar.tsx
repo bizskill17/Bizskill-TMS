@@ -45,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'Simple Tasks': false,
     Master: false,
     'Recurring Tasks': false,
-    Documentation: false,
     Documents: false,
     DSC: false,
     Vendor: false,
@@ -73,7 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       Master: sectionLabel === 'Master',
       'Simple Tasks': sectionLabel === 'Simple Tasks',
       'Recurring Tasks': sectionLabel === 'Recurring Tasks',
-      Documentation: sectionLabel === 'Documentation',
       Documents: sectionLabel === 'Documents',
       DSC: sectionLabel === 'DSC',
       Vendor: sectionLabel === 'Vendor',
@@ -209,7 +207,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { key: 'Billing', source: 'Billing' },
             { key: 'Documents', source: 'Documents' },
             { key: 'DSC', source: 'DSC' },
-            { key: 'Documentation', source: 'Documentation' },
             ...(groupedItems['Vendor'] ? [{ key: 'Vendor', source: 'Vendor' }] : [])
           ].map(sectionInfo => {
             const sectionItems = groupedItems[sectionInfo.source] || [];
@@ -259,5 +256,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </>
   );
 };
+
 
 

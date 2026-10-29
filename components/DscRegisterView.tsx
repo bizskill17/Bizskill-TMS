@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, RefreshCw, Search, Settings, X, History, FileText } from 'lucide-react';
+import { Plus, RefreshCw, Search, Settings, X, History } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { todayISO, daysLeft, dscStatus, matchesDscTab } from './dscRules.mjs';
 
@@ -13,9 +13,9 @@ type Certificate = {
 };
 type RegisterData = {certificates:Certificate[]; users:any[]; clients:any[]; documents:any[]; settings:any; canConfigure:boolean; csrf:string};
 const emptyData:RegisterData={certificates:[],users:[],clients:[],documents:[],settings:{enabled:0,office_reminders:1,client_reminders:0,expired_reminder:1,intervals:[60,30,15,7,1]},canConfigure:false,csrf:''};
-const tabItems=[['all','All DSCs'],['expiring','Expiring Soon'],['expired','Expired'],['pending','Pending Renewal'],['followup','Follow-up Due'],['renewed','Renewed / Closed'],['inactive','Inactive'],['trash','Trash']];
+const tabItems=[['all','All DSCs'],['expiring','Expiring Soon'],['expired','Expired'],['pending','Pending Renewal'],['renewed','Renewed / Closed'],['inactive','Inactive'],['trash','Trash']];
 const dateText=(value:any)=>value?String(value).slice(0,10).split('-').reverse().join('/'):'—';
-const detailLabels:Record<string,string>={client_name:'Client',holder_name:'Certificate Holder',organisation:'Organisation',designation:'Designation',mobile:'Mobile',email:'Email',issue_date:'Issued On',expiry_date:'Expiry Date',responsible_user_name:'Responsible User',token_location:'Token Location',token_details:'Location Details',last_followup_date:'Last Follow-up',next_followup_date:'Next Follow-up',remarks:'Remarks',lifecycle:'Status',inactive_reason:'Deactivation Reason',inactive_by_name:'Deactivated By',pending_renewal:'Pending Renewal'};
+const detailLabels:Record<string,string>={client_name:'Client',holder_name:'Certificate Holder',organisation:'Organisation',mobile:'Mobile',email:'Email',issue_date:'Issued On',expiry_date:'Expiry Date',responsible_user_name:'Responsible User',token_location:'Token Location',remarks:'Remarks',lifecycle:'Status',inactive_reason:'Deactivation Reason',inactive_by_name:'Deactivated By',pending_renewal:'Pending Renewal'};
 function eventDetails(raw:string):[string,string][] {
  try {const parsed=JSON.parse(raw);const values=parsed.changes||parsed.new_certificate||parsed;
  return Object.entries(detailLabels).filter(([key])=>Object.prototype.hasOwnProperty.call(values,key)).map(([key,title])=>[title,key.endsWith('_date')?dateText(values[key]):key==='pending_renewal'?(Number(values[key])?'Yes':'No'):String(values[key]??'—')]);}
@@ -109,16 +109,15 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  }
  const rows=data.certificates||[];
  const today=todayISO();
- const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.designation,r.mobile,r.email,r.responsible_user_name,r.token_details,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.mobile,r.email,r.responsible_user_name,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
  const eligible=filtered.filter(r=>r.lifecycle==='active'&&!r.deleted_at);
  const userOptions=data.users.filter(activeUser).map(u=>({value:String(u.id),label:u.name}));
  const clientOptions=Array.from(new Set(data.clients.map(c=>String(c.name)))).map(name=>({value:name,label:name}));
- const selectedDocument=selected?.document_movement_id?data.documents.find(d=>Number(d.id)===Number(selected.document_movement_id)):null;
  function actions(row:Certificate):string[] {
   if(row.deleted_at)return ['restore'];
   if(row.lifecycle==='inactive')return ['edit','reactivate','trash'];
   if(row.lifecycle!=='active')return ['trash'];
-  return ['edit','followup',...(!Number(row.pending_renewal)?['startRenewal']:[]),'renew','deactivate','close','trash'];
+  return ['edit',...(!Number(row.pending_renewal)?['startRenewal']:[]),'renew','deactivate','close','trash'];
  }
  const field=(key:string,title:string,type='text',required=false,maxLength=190)=><label><span className={label}>{title}{required?' *':''}</span><input className={input} type={type} required={required} maxLength={maxLength} value={form[key]||''} onChange={e=>setField(key,e.target.value)}/></label>;
  return <div className="p-4 md:p-6 space-y-4">
@@ -146,20 +145,23 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
    </div>
   </div>
   <div className="bg-white border border-indigo-200 rounded-xl overflow-x-auto">
-   <table className="w-full text-sm text-left border-collapse">
-    <thead className="bg-indigo-600 text-white"><tr><th className="p-3"><input aria-label="Select visible active DSCs" type="checkbox" checked={eligible.length>0&&eligible.every(r=>selectedIds.includes(r.id))} onChange={e=>setSelectedIds(p=>e.target.checked?Array.from(new Set([...p,...eligible.map(r=>r.id)])):p.filter(id=>!eligible.some(r=>r.id===id)))}/></th>{['Client','Certificate Holder / Contact','Certificate Dates','Days Left','Token Location','Next Follow-up','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
+   <table className="w-full min-w-[1200px] text-sm text-left border-collapse">
+    <thead className="bg-indigo-600 text-white"><tr><th className="p-3"><input aria-label="Select visible active DSCs" type="checkbox" checked={eligible.length>0&&eligible.every(r=>selectedIds.includes(r.id))} onChange={e=>setSelectedIds(p=>e.target.checked?Array.from(new Set([...p,...eligible.map(r=>r.id)])):p.filter(id=>!eligible.some(r=>r.id===id)))}/></th>{['Client','Certificate Holder','Organisation','Mobile','Email','Issued On','Expiry Date','Days Left','Token Location','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
     <tbody>{filtered.map(r=>{const status=dscStatus(r,today),left=daysLeft(r.expiry_date,today);return <tr key={r.id} className="border-b border-indigo-100 hover:bg-indigo-50">
      <td className="p-3">{r.lifecycle==='active'&&!r.deleted_at&&<input type="checkbox" aria-label={'Select DSC for '+r.holder_name} checked={selectedIds.includes(r.id)} onChange={e=>setSelectedIds(p=>e.target.checked?[...p,r.id]:p.filter(id=>id!==r.id))}/>}</td>
      <td className="p-3 font-medium">{r.client_name}</td>
-     <td className="p-3"><div className="font-semibold">{r.holder_name}</div>{r.mobile&&<div className="text-xs text-gray-500">{r.mobile}</div>}{r.email&&<div className="text-xs text-gray-500 break-all">{r.email}</div>}</td>
-     <td className="p-3 whitespace-nowrap"><div className="text-xs text-gray-500">Issued: {dateText(r.issue_date)}</div><div className="font-medium">Expiry: {dateText(r.expiry_date)}</div></td>
+     <td className="p-3 font-semibold">{r.holder_name}</td>
+     <td className="p-3">{r.organisation||'—'}</td>
+     <td className="p-3 whitespace-nowrap">{r.mobile||'—'}</td>
+     <td className="p-3 break-all">{r.email||'—'}</td>
+     <td className="p-3 whitespace-nowrap">{dateText(r.issue_date)}</td>
+     <td className="p-3 whitespace-nowrap">{dateText(r.expiry_date)}</td>
      <td className={'p-3 font-semibold '+(left<0?'text-red-600':left<=15?'text-amber-700':'text-gray-700')}>{r.lifecycle==='active'&&!r.deleted_at?(left<0?Math.abs(left)+' days overdue':left===0?'Today':left+' days'):'—'}</td>
-     <td className="p-3">{r.token_location}{r.token_details&&<div className="text-xs text-gray-500">{r.token_details}</div>}{r.document_movement_id&&<button onClick={()=>void open('history',r)} className="block mt-1 text-xs text-indigo-600 underline">View custody</button>}</td>
-     <td className={'p-3 whitespace-nowrap '+(r.lifecycle==='active'&&!r.deleted_at&&r.next_followup_date&&r.next_followup_date<today?'text-red-600':'')}>{dateText(r.next_followup_date)}</td>
+     <td className="p-3">{r.token_location}</td>
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs font-semibold '+(status==='Expired'?'bg-red-100 text-red-700':status==='Inactive'||status==='Trash'?'bg-gray-100 text-gray-600':status==='Renewed'||status==='Closed'?'bg-green-100 text-green-700':'bg-indigo-50 text-indigo-700')}>{status}</span></td>
      <td className="p-3 max-w-xs break-words">{r.remarks||'—'}</td>
      <td className="p-3 min-w-[145px]"><button className="flex gap-1 items-center text-indigo-700 font-medium mb-2" onClick={()=>void open('history',r)}><History size={15}/>Details & History</button><select aria-label={'Actions for '+r.holder_name} className={input} value="" onChange={e=>{if(e.target.value)void open(e.target.value,r);}}><option value="">Actions</option>{actions(r).map(a=><option key={a} value={a}>{actionTitles[a]}</option>)}</select></td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={10} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
+    </tr>})}{!filtered.length&&<tr><td colSpan={13} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
    </table>
   </div>
   {mode&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dsc-dialog-title">
@@ -170,17 +172,13 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     {(mode==='create'||mode==='edit')&&<div className="grid md:grid-cols-2 gap-4">
      <div><span className={label}>Client Name *</span><SearchableSelect compact required options={clientOptions} value={form.client_name} onChange={v=>setField('client_name',v)}/></div>
      {field('holder_name','Certificate Holder','text',true)}
-     {field('organisation','Organisation')}{field('designation','Designation','text',false,120)}
+     {field('organisation','Organisation')}
      {field('mobile','Mobile','tel',false,30)}{field('email','Email','email')}
      {field('issue_date','Issued On','date')}{field('expiry_date','Expiry Date','date',true)}
      <label><span className={label}>Token Location</span><select className={input} value={form.token_location} onChange={e=>setField('token_location',e.target.value)}>{['Office','Client','Other'].map(v=><option key={v}>{v}</option>)}</select></label>
-     {field('token_details','Location Details','text',false,255)}
-     <div><span className={label}>Document Entry (Optional)</span><SearchableSelect compact options={[{value:'',label:'None'},...data.documents.map(d=>({value:String(d.id),label:d.document_name+' · '+dateText(d.movement_date)+' · '+d.direction}))]} value={form.document_movement_id} onChange={v=>setField('document_movement_id',v)}/></div>
-     {field('last_followup_date','Last Follow-up Date','date')}{field('next_followup_date','Next Follow-up Date','date')}
      <label className="md:col-span-2"><span className={label}>Remarks</span><textarea className={input} rows={2} maxLength={10000} value={form.remarks} onChange={e=>setField('remarks',e.target.value)}/></label>
     </div>}
     {mode==='renew'&&<><p className="text-sm text-gray-600">Previous expiry: {dateText(selected?.expiry_date)}. The existing certificate will remain in history and a new active entry will be created.</p><div className="grid grid-cols-2 gap-3">{field('issue_date','New Issue Date','date',true)}{field('expiry_date','New Expiry Date','date',true)}</div>{field('notes','Renewal Remarks','text',false,10000)}</>}
-    {mode==='followup'&&<><div className="grid grid-cols-2 gap-3">{field('last_followup_date','Follow-up Date','date',true)}{field('next_followup_date','Next Follow-up Date','date')}</div><label><span className={label}>Follow-up Remarks *</span><textarea required maxLength={10000} className={input} rows={3} value={form.notes} onChange={e=>setField('notes',e.target.value)}/></label></>}
     {mode==='deactivate'&&<><p className="text-sm text-gray-600">This stops expiry reminders and renewal follow-up. It does not revoke the DSC certificate.</p><label><span className={label}>Reason *</span><textarea required className={input} maxLength={1000} rows={3} value={form.reason} onChange={e=>setField('reason',e.target.value)}/></label></>}
     {mode==='reactivate'&&<p className="text-sm text-gray-600">Reactivate this entry and resume tracking using its existing expiry date?</p>}
     {mode==='trash'&&<p className="text-sm text-gray-600">Move this entry to Trash? Reminders will stop. Its details and history will be retained and you can restore it later.</p>}
@@ -194,9 +192,8 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      {field('intervals','Days Before Expiry (comma separated)','text',true,255)}
     </div>}
     {mode==='history'&&selected&&<div className="space-y-4">
-     <dl className="grid grid-cols-2 gap-3 text-sm">{[['Organisation',selected.organisation],['Designation',selected.designation],['Issued On',dateText(selected.issue_date)],['Expiry Date',dateText(selected.expiry_date)],['Responsible User',selected.responsible_user_name],['Mobile',selected.mobile],['Email',selected.email],['Token Location',selected.token_location],['Location Details',selected.token_details],['Last Follow-up',dateText(selected.last_followup_date)],['Next Follow-up',dateText(selected.next_followup_date)],['Remarks',selected.remarks],['Deactivation Reason',selected.inactive_reason],['Deactivated By',selected.inactive_by_name],['Deactivated On',dateText(selected.inactive_on)]].map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="font-medium break-words">{value||'—'}</dd></div>)}</dl>
+     <dl className="grid grid-cols-2 gap-3 text-sm">{[['Organisation',selected.organisation],['Issued On',dateText(selected.issue_date)],['Expiry Date',dateText(selected.expiry_date)],['Responsible User',selected.responsible_user_name],['Mobile',selected.mobile],['Email',selected.email],['Token Location',selected.token_location],['Remarks',selected.remarks],['Deactivation Reason',selected.inactive_reason],['Deactivated By',selected.inactive_by_name],['Deactivated On',dateText(selected.inactive_on)]].map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="font-medium break-words">{value||'—'}</dd></div>)}</dl>
      {(selected.previous_certificate_id||selected.renewed_to_id)&&<p className="text-sm text-indigo-700">{selected.previous_certificate_id?'This entry was created through renewal.':'This certificate has been renewed.'} Related certificate records remain in All DSCs and Renewed / Closed.</p>}
-     {selectedDocument&&<div className="rounded-xl border border-indigo-100 p-3 text-sm"><h3 className="font-bold text-indigo-700 flex items-center gap-1"><FileText size={16}/>Linked Document</h3><p>{selectedDocument.document_name} · {dateText(selectedDocument.movement_date)} · {selectedDocument.direction}</p><p>Office User: {selectedDocument.office_user_name} · Outside Person: {selectedDocument.external_person}</p><p>{selectedDocument.returned_on?'Returned on '+dateText(selectedDocument.returned_on):'Return not recorded'}</p></div>}
      <h3 className="font-bold text-indigo-700">History</h3>
      {historyLoading?<p className="text-gray-500">Loading history...</p>:!history.length?<p className="text-gray-500 text-sm">No history found.</p>:history.map((event,i)=><div key={i} className="border-l-2 border-indigo-200 pl-3 py-2 text-sm"><div className="font-semibold">{event.action} · {event.actor_name}</div><div className="text-xs text-gray-500">{dateText(event.created_at)}</div>{event.notes&&<p className="whitespace-pre-wrap">{event.notes}</p>}{event.snapshot&&<details className="mt-1"><summary className="text-xs text-indigo-600 cursor-pointer">Recorded details</summary><dl className="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded">{eventDetails(event.snapshot).map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="text-xs break-words">{value}</dd></div>)}</dl></details>}</div>)}
      <h3 className="font-bold text-indigo-700">Reminder History</h3>
@@ -208,3 +205,4 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   </div>}
  </div>;
 }
+
