@@ -1455,7 +1455,7 @@ export default function App() {
     isFirmModalOpen;
 
 	  return (
-		    <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-dvh overflow-hidden' : 'min-h-screen'}`}>
+		    <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-[calc(100dvh/0.9)] overflow-hidden' : 'min-h-screen'}`}>
 	      {!currentUser ? (
 	        <LoginView onLogin={handleLogin} isAuthenticating={isLoading} />
 	      ) : (
