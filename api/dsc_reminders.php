@@ -24,7 +24,7 @@ function dsc_reminder_message(array $row,string $today,string $audience): string
 }
 function dsc_queue_reminder(mysqli $db,array $row,int $stage,string $audience,string $targetName,string $target,string $provider,string $today,string $batch=''): int {
     $tenant=app_tenant_id();
-    $key=hash('sha256',$batch.'|'.implode('|',[$tenant,$row['id'],$row['expiry_date'],$stage,$audience,$target]));
+    $key=hash('sha256',($batch!==''?$batch.'|':'').implode('|',[$tenant,$row['id'],$row['expiry_date'],$stage,$audience,$target]));
     $db->begin_transaction();
     try {
         $stmt=dsc_query($db,"INSERT IGNORE INTO dsc_reminder_events (tenant_id,certificate_id,event_key,expiry_date,stage,audience,target_name,target) VALUES (?,?,?,?,?,?,?,?)",[$tenant,$row['id'],$key,$row['expiry_date'],$stage,$audience,$targetName,$target]);
