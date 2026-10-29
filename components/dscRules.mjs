@@ -19,7 +19,7 @@ export function dscStatus(row,today=todayISO()) {
 export function matchesDscTab(row,tab,today=todayISO()) {
  if(tab==='trash') return Boolean(row.deleted_at);
  if(row.deleted_at) return false;
- if(tab==='all') return true;
+ if(tab==='all') return row.lifecycle!=='renewed' && !Number(row.renewed_to_id);
  if(tab==='inactive') return row.lifecycle==='inactive';
  if(tab==='renewed') return ['renewed','closed'].includes(row.lifecycle);
  if(row.lifecycle!=='active') return false;
@@ -29,4 +29,17 @@ export function matchesDscTab(row,tab,today=todayISO()) {
  if(tab==='pending') return Boolean(Number(row.pending_renewal));
  if(tab==='followup') return Boolean(row.next_followup_date && row.next_followup_date<=today);
  return false;
+}
+
+export function dscRenewalChain(rows,certificateId) {
+ const connected=new Set([Number(certificateId)]);
+ let changed=true;
+ while(changed) {
+  changed=false;
+  for(const row of rows) {
+   const ids=[row.id,row.previous_certificate_id,row.renewed_to_id].map(Number).filter(id=>id>0);
+   if(ids.some(id=>connected.has(id))) for(const id of ids) if(!connected.has(id)) {connected.add(id);changed=true;}
+  }
+ }
+ return rows.filter(row=>connected.has(Number(row.id))).sort((a,b)=>Number(a.id)-Number(b.id));
 }

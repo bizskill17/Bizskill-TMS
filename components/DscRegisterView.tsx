@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, RefreshCw, Search, Settings, X, History } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
-import { todayISO, daysLeft, dscStatus, matchesDscTab } from './dscRules.mjs';
+import { todayISO, daysLeft, dscStatus, matchesDscTab, dscRenewalChain } from './dscRules.mjs';
 
 type Certificate = {
  id:number; version:number; client_name:string; holder_name:string; organisation:string; designation:string;
@@ -109,6 +109,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  }
  const rows=data.certificates||[];
  const today=todayISO();
+ const renewalChain=selected?dscRenewalChain(rows,selected.id):[];
  const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.mobile,r.email,r.responsible_user_name,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
  const eligible=filtered.filter(r=>r.lifecycle==='active'&&!r.deleted_at);
  const userOptions=data.users.filter(activeUser).map(u=>({value:String(u.id),label:u.name}));
@@ -193,7 +194,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     </div>}
     {mode==='history'&&selected&&<div className="space-y-4">
      <dl className="grid grid-cols-2 gap-3 text-sm">{[['Organisation',selected.organisation],['Issued On',dateText(selected.issue_date)],['Expiry Date',dateText(selected.expiry_date)],['Responsible User',selected.responsible_user_name],['Mobile',selected.mobile],['Email',selected.email],['Token Location',selected.token_location],['Remarks',selected.remarks],['Deactivation Reason',selected.inactive_reason],['Deactivated By',selected.inactive_by_name],['Deactivated On',dateText(selected.inactive_on)]].map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="font-medium break-words">{value||'—'}</dd></div>)}</dl>
-     {(selected.previous_certificate_id||selected.renewed_to_id)&&<p className="text-sm text-indigo-700">{selected.previous_certificate_id?'This entry was created through renewal.':'This certificate has been renewed.'} Related certificate records remain in All DSCs and Renewed / Closed.</p>}
+     {renewalChain.length>1&&<div className="space-y-2"><h3 className="font-bold text-indigo-700">Renewal History</h3><div className="overflow-x-auto"><table className="w-full text-sm text-left border border-indigo-100"><thead className="bg-indigo-50"><tr>{['Issued On','Expiry Date','Status','Details'].map(title=><th key={title} className="p-2">{title}</th>)}</tr></thead><tbody>{renewalChain.map(r=><tr key={r.id} className="border-t border-indigo-100"><td className="p-2">{dateText(r.issue_date)}</td><td className="p-2">{dateText(r.expiry_date)}</td><td className="p-2">{dscStatus(r,today)}</td><td className="p-2">{Number(r.id)===Number(selected.id)?'Viewing':<button type="button" className="text-indigo-700 underline" onClick={()=>void open('history',r)}>View Details &amp; History</button>}</td></tr>)}</tbody></table></div></div>}
      <h3 className="font-bold text-indigo-700">History</h3>
      {historyLoading?<p className="text-gray-500">Loading history...</p>:!history.length?<p className="text-gray-500 text-sm">No history found.</p>:history.map((event,i)=><div key={i} className="border-l-2 border-indigo-200 pl-3 py-2 text-sm"><div className="font-semibold">{event.action} · {event.actor_name}</div><div className="text-xs text-gray-500">{dateText(event.created_at)}</div>{event.notes&&<p className="whitespace-pre-wrap">{event.notes}</p>}{event.snapshot&&<details className="mt-1"><summary className="text-xs text-indigo-600 cursor-pointer">Recorded details</summary><dl className="grid grid-cols-2 gap-2 bg-gray-50 p-2 rounded">{eventDetails(event.snapshot).map(([title,value])=><div key={title}><dt className="text-xs text-gray-500">{title}</dt><dd className="text-xs break-words">{value}</dd></div>)}</dl></details>}</div>)}
      <h3 className="font-bold text-indigo-700">Reminder History</h3>
