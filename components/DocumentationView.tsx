@@ -56,6 +56,7 @@ export const DocumentationView: React.FC = () => {
           'Update a task: open Update, change Status, add Remarks where required, add Hours/Achieved (if goal is set), then Confirm Update.',
           'Edit a task: open Edit and Save Changes.',
           'Open Pending and Completed views and confirm the task appears as expected after status updates.',
+          'Open Activity Dashboard and verify it renders.',
           'Open Action Log and verify updates appear; test Filters; open Photo/PDF from a log if available.',
         ],
       },
