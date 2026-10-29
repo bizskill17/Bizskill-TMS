@@ -1,3 +1,4 @@
+import { BillingFields } from './BillingFields';
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { User, Category, RecurringTask, Firm, Client } from '../types';
@@ -17,6 +18,8 @@ interface AddRecurringTaskModalProps {
 
 export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ isOpen, onClose, onSave, users, categories, firms, clients, initialData }) => {
   const { getFieldLabel } = useLabels();
+  const [billingType,setBillingType]=useState('');
+  const [professionalFee,setProfessionalFee]=useState('');
 				  const [formData, setFormData] = useState<{
 			    title: string;
           notes: string;
@@ -70,7 +73,8 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
 
     // Prepare task data based on periodicity
 			    const taskData: any = {
-			      title: formData.title,
+			      billingType,professionalFee,
+              title: formData.title,
             notes: formData.notes,
             firm: formData.firm,
             owner: formData.owner,
@@ -94,6 +98,7 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
     try {
       await onSave(taskData);
 
+      setBillingType('');setProfessionalFee('');
       // Reset form
       setFormData({
         title: '',
@@ -172,6 +177,7 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
         </div>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+            <BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>
 	            <div className="space-y-1">
 	              <label className="text-sm font-medium text-black">{getFieldLabel('recurringTask.title', 'Task')} <span className="text-red-500">*</span></label>
 	              <input 
@@ -421,3 +427,4 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
     </div>
   );
 };
+

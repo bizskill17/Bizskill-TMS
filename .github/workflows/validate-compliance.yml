@@ -1,0 +1,93 @@
+name: Validate Compliance and Billing
+on:
+  push:
+    branches: [feature/compliance-billing]
+  pull_request:
+    paths:
+      - 'api/compliance*'
+      - 'components/ComplianceView.tsx'
+      - 'components/BillingFields.tsx'
+      - 'tests/compliance*'
+      - 'App.tsx'
+      - '.github/workflows/validate-compliance.yml'
+      - 'api/dsc*'
+      - 'components/DscRegisterView.tsx'
+      - 'components/dscRules.mjs'
+      - 'tests/dsc*'
+      - '.github/workflows/validate-dsc.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: tms_test
+          MYSQL_ROOT_HOST: '%'
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_NAME: tms_test
+      DB_USER: root
+      DB_PASS: test_password
+      APP_DEFAULT_TENANT_CODE: test-a
+      APP_DEFAULT_TENANT_NAME: Test A
+      PLATFORM_ADMIN_EMAIL: test-admin@example.com
+      PLATFORM_ADMIN_PASSWORD: test-admin-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, curl
+          coverage: none
+      - name: PHP syntax
+        run: find api tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Return and expiry rules
+        run: |
+          node --test tests/documents.test.mjs tests/dsc.test.mjs
+          php tests/dsc-rules.php
+          php tests/compliance-rules.php
+      - name: Start test API
+        run: php -S 127.0.0.1:8080 -t . > /tmp/dsc-test-server.log 2>&1 &
+      - name: DSC lifecycle and tenant isolation
+        run: |
+          php tests/dsc-integration.php
+          php tests/compliance-integration.php
+      - name: API log on failure
+        if: failure()
+        run: tail -100 /tmp/dsc-test-server.log
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build application
+        run: npm run build
+
+      - name: Install browser
+        env:
+          PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: ubuntu24.04-x64
+        run: npx playwright install --with-deps chromium
+      - name: Serve built application with disposable API
+        run: |
+          mkdir -p /tmp/compliance-web
+          cp -r dist/. /tmp/compliance-web/
+          ln -s "$GITHUB_WORKSPACE/api" /tmp/compliance-web/api
+          php -S 127.0.0.1:8081 -t /tmp/compliance-web > /tmp/compliance-ui.log 2>&1 &
+      - name: Compliance UI smoke test
+        env:
+          PW_BASE_URL: http://127.0.0.1:8081
+          PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: ubuntu24.04-x64
+        run: npx playwright test tests/compliance-ui.spec.ts
+      - name: Browser failure details
+        if: failure()
+        run: |
+          cat test-results/*/error-context.md 2>/dev/null || true
+          tail -60 /tmp/compliance-ui.log 2>/dev/null || true

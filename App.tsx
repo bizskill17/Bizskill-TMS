@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { ComplianceView } from './components/ComplianceView';
 import { DscRegisterView } from './components/DscRegisterView';
 import { DocumentsView } from './components/DocumentsView';
 import { Sidebar } from './components/Sidebar';
@@ -92,6 +93,9 @@ const navItems: NavItem[] = [
   { id: 'documents', label: 'Documents In / Out', icon: <FileText size={20} />, section: 'Documents' },
 
   { id: 'dsc-register', label: 'DSC Register', icon: <FileText size={20} />, section: 'DSC' },
+
+  { id: 'compliance', label: 'Compliance', icon: <CheckSquare size={20}/>, section: 'Compliance' },
+  { id: 'billing', label: 'Billing', icon: <FileText size={20}/>, section: 'Billing' },
 
   // Master Section
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
@@ -413,7 +417,7 @@ export default function App() {
   const filteredNavItems = useMemo(() => {
     if (isAdmin) return resolvedNavItems;
     // Completely hide 'Master' section items for Employees
-    return resolvedNavItems.filter(item => item.section !== 'Master');
+    return resolvedNavItems.filter(item => item.section !== 'Master' && item.section !== 'Billing');
   }, [isAdmin, resolvedNavItems]);
 
   // Data subsets based on user role
@@ -660,6 +664,15 @@ export default function App() {
 	        redirect: 'follow'
 	      });
 	      const result = await safeJsonParse(response, action);
+          if (result.success && data.billingType && ((action === 'addTask' && target === 'MainTasks') || (action === 'addMaster' && target === 'RecurringTasks'))) {
+            try {
+              const cpUrl='/api/compliance.php?tenantCode='+encodeURIComponent(tenantCode || currentUser?.tenantCode || '');
+              const session=await fetch(cpUrl+'&session=1').then(r=>r.json());
+              const saved=await fetch(cpUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'taskDefaults',csrf:session.csrf,source_type:target==='MainTasks'?'Simple':'Recurring Master',source_id:Number(result.data?.id||data.id),billing_type:data.billingType,fee:data.professionalFee})}).then(r=>r.json());
+              if(!saved.success)throw Error(saved.error);
+            } catch (e) {setApiError('Task saved, but Billing Type needs review. Open Billing → Billing Type Review. '+(e instanceof Error?e.message:''));}
+          }
+
 	      if (result.success && !options?.skipRefresh) setTimeout(() => fetchData(false), 1500);
 	      return result;
 	    } catch (err: any) {
@@ -1350,6 +1363,8 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
+      case 'compliance': return <ComplianceView key={'compliance:'+tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
+      case 'billing': if (!isAdmin) return null; return <ComplianceView key={'billing:'+tenantCode} billing tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
@@ -1537,7 +1552,7 @@ export default function App() {
 			                    </div>
 			                  )}
 			                  <div className="flex-1">
-			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register') && (
+			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'compliance' || activeTab === 'billing') && (
                               <section className="mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
                                 {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
                                   onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
@@ -1742,4 +1757,5 @@ export default function App() {
 	    </div>
 	  );
 }
+
 
