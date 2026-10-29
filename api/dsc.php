@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/dsc_module.php';
+require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/dsc_reminders.php';
 function dsc_reply(array $payload,int $status=200): void { http_response_code($status); echo json_encode($payload); exit; }
 session_start(['cookie_httponly'=>true,'cookie_secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off','cookie_samesite'=>'Lax']);
 if (empty($_SESSION['documents_tenant']) || (int)$_SESSION['documents_tenant']!==app_tenant_id()) dsc_reply(['success'=>false,'error'=>'Please sign out and sign in again to access the DSC Register.'],401);
@@ -53,12 +55,38 @@ try {
     $data=app_get_raw_input_data();
     if ($csrf==='' || !hash_equals($csrf,(string)($data['csrf'] ?? ''))) dsc_reply(['success'=>false,'error'=>'Session expired. Reload the DSC Register and try again.'],403);
     $action=(string)($data['action'] ?? '');
+
+    if (in_array($action,['previewClientReminders','sendClientReminders'],true)) {
+        $ids=$data['ids'] ?? [];
+        if (!is_array($ids) || !$ids || count($ids)>100) throw new InvalidArgumentException('Select between 1 and 100 DSC entries.');
+        foreach ($ids as $value) if (!ctype_digit((string)$value) || (int)$value<1) throw new InvalidArgumentException('Invalid selection.');
+        $ids=array_values(array_unique(array_map('intval',$ids))); sort($ids);
+        $provider=notifications_pick_whatsapp_provider(notifications_get_settings($conn));
+        if ($provider==='' || !db_table_exists($conn,'notification_queue')) throw new InvalidArgumentException('Configure WhatsApp messaging first.');
+        $rows=dsc_all($conn,'SELECT * FROM dsc_certificates WHERE tenant_id=? AND id IN ('.implode(',',array_fill(0,count($ids),'?')).') ORDER BY id',array_merge([$tenant],$ids));
+        if (count($rows)!==count($ids)) throw new InvalidArgumentException('A selected certificate is unavailable.');
+        $today=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+        $preview=[];
+        foreach ($rows as $row) {
+            $phone=dsc_phone((string)$row['mobile'],$provider);
+            if ($row['lifecycle']!=='active' || $row['deleted_at'] || $phone==='') throw new InvalidArgumentException('Select active DSC entries with valid client mobile numbers.');
+            $preview[]=['id'=>(int)$row['id'],'version'=>(int)$row['version'],'client_name'=>$row['client_name'],'holder_name'=>$row['holder_name'],'mobile'=>$phone,'message'=>dsc_reminder_message($row,$today,'client')];
+        }
+        $batch=$action==='previewClientReminders'?bin2hex(random_bytes(16)):(string)($data['batch'] ?? '');
+        $token=hash_hmac('sha256',$batch.'|'.$provider.'|'.json_encode($preview),$csrf);
+        if ($action==='previewClientReminders') dsc_reply(['success'=>true,'recipients'=>$preview,'batch'=>$batch,'token'=>$token]);
+        if (!preg_match('/^[a-f0-9]{32}$/',$batch) || !hash_equals($token,(string)($data['token'] ?? ''))) throw new InvalidArgumentException('Selection changed. Preview the messages again.');
+        $queued=0;
+        foreach ($rows as $i=>$row) $queued+=dsc_queue_reminder($conn,$row,-2,'client',(string)$row['holder_name'],$preview[$i]['mobile'],$provider,$today,$batch);
+        dsc_reply(['success'=>true,'queued'=>$queued]);
+    }
+
     if ($action==='settings') {
         if (!$canConfigure) dsc_reply(['success'=>false,'error'=>'Only an Admin can configure reminders.'],403);
         $intervals=dsc_intervals($data['intervals'] ?? []);
         $enabled=!empty($data['enabled'])?1:0;
         $office=!empty($data['office_reminders'])?1:0;
-        $client=!empty($data['client_reminders'])?1:0;
+        $client=0;
         $expired=!empty($data['expired_reminder'])?1:0;
         if ($enabled && !$office && !$client) throw new InvalidArgumentException('Choose at least one reminder recipient.');
         $responsibleId=(int)($data['responsible_user_id'] ?? 0);
