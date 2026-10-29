@@ -1,3 +1,4 @@
+import { BillingFields } from './BillingFields';
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Clock3 } from 'lucide-react';
@@ -47,6 +48,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   onClearLastAdded
 }) => {
   const { getFieldLabel } = useLabels();
+  const [billingType,setBillingType]=useState('');
+  const [professionalFee,setProfessionalFee]=useState('');
   const [formData, setFormData] = useState<{
     title: string;
     assignees: string[]; 
@@ -163,6 +166,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     if (!isFormValid()) return;
     
     const taskPayload: any = {
+      billingType,professionalFee,
       title: formData.title,
       priority: formData.priority as any,
       dueDate: formData.dueDate,
@@ -190,6 +194,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     }
 
     onSave(taskPayload);
+    setBillingType('');setProfessionalFee('');
     
     setFormData({
       title: '',
@@ -227,6 +232,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="p-4 md:p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+            {!isVendorView&&<BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>}
             
 		            <div className="space-y-1">
 		              <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('task.title', 'Task')} <span className="text-red-500">*</span></label>
@@ -461,3 +467,4 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
     </div>
   );
 };
+

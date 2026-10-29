@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/notifications.php';
 require_once __DIR__ . '/dsc_reminders.php';
+require_once __DIR__ . '/compliance_module.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -156,6 +157,8 @@ foreach ($tenantsToProcess as $tenant) {
             $GLOBALS['currentTenant'] = $tenant;
             $tenantConnection = worker_open_connection($platformConn, $tenant);
             $GLOBALS['conn'] = $tenantConnection;
+            try { cp_schema($tenantConnection); cp_sync_work($tenantConnection); $entry['complianceGenerated']=cp_generate($tenantConnection); }
+            catch (Throwable $error) { $entry['complianceError']='Compliance generation failed; check server log'; error_log('Compliance tenant '.(int)$tenant['id'].': '.$error->getMessage()); }
             try { $entry['dscQueued']=dsc_schedule_reminders($tenantConnection); }
             catch (Throwable $error) {
                 $entry['dscReminderError']='DSC reminder scheduling failed; check server log';
@@ -190,3 +193,4 @@ foreach ($tenantsToProcess as $tenant) {
     $summary['organisations'][] = $entry;
 }
 echo json_encode($summary);
+

@@ -1,0 +1,73 @@
+name: Validate Compliance and Billing
+on:
+  push:
+    branches: [feature/compliance-billing]
+  pull_request:
+    paths:
+      - 'api/compliance*'
+      - 'components/ComplianceView.tsx'
+      - 'components/BillingFields.tsx'
+      - 'tests/compliance*'
+      - 'App.tsx'
+      - '.github/workflows/validate-compliance.yml'
+      - 'api/dsc*'
+      - 'components/DscRegisterView.tsx'
+      - 'components/dscRules.mjs'
+      - 'tests/dsc*'
+      - '.github/workflows/validate-dsc.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: tms_test
+          MYSQL_ROOT_HOST: '%'
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ptest_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_NAME: tms_test
+      DB_USER: root
+      DB_PASS: test_password
+      APP_DEFAULT_TENANT_CODE: test-a
+      APP_DEFAULT_TENANT_NAME: Test A
+      PLATFORM_ADMIN_EMAIL: test-admin@example.com
+      PLATFORM_ADMIN_PASSWORD: test-admin-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, curl
+          coverage: none
+      - name: PHP syntax
+        run: find api tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Return and expiry rules
+        run: |
+          node --test tests/documents.test.mjs tests/dsc.test.mjs
+          php tests/dsc-rules.php
+          php tests/compliance-rules.php
+      - name: Start test API
+        run: php -S 127.0.0.1:8080 -t . > /tmp/dsc-test-server.log 2>&1 &
+      - name: DSC lifecycle and tenant isolation
+        run: |
+          php tests/dsc-integration.php
+          php tests/compliance-integration.php
+      - name: API log on failure
+        if: failure()
+        run: tail -100 /tmp/dsc-test-server.log
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+      - name: Build application
+        run: npm run build
+
