@@ -15,10 +15,12 @@ test('Compliance and billing navigation, setup, task fields and mobile controls'
  await page.getByRole('button',{name:'Add Stage',exact:true}).click();
  await expect(page.getByLabel('Stage 3',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Close',exact:true}).last().click();
+ await page.getByRole('button',{name:'Show menu',exact:true}).click();
  await page.getByRole('button',{name:'Billing',exact:true}).click();
  await expect(page.getByRole('tab',{name:/Billing Type Review/})).toBeVisible();
  await page.getByRole('tab',{name:/Recurring Defaults/}).click();
  await expect(page.getByText('Bookkeeping',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Show menu',exact:true}).click();
  await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
  await page.getByRole('button',{name:'Add Task',exact:true}).click();
  await expect(page.getByLabel('Billing Type')).toBeVisible();
