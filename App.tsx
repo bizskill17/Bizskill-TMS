@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { DscRegisterView } from './components/DscRegisterView';
 import { DocumentsView } from './components/DocumentsView';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -89,6 +90,8 @@ const navItems: NavItem[] = [
   { id: 'recurring-actions', label: 'Recurring Log', icon: <History size={20} />, section: 'Recurring Tasks' },
   
   { id: 'documents', label: 'Documents In / Out', icon: <FileText size={20} />, section: 'Documents' },
+
+  { id: 'dsc-register', label: 'DSC Register', icon: <FileText size={20} />, section: 'DSC' },
 
   // Master Section
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
@@ -1343,6 +1346,7 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
+      case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
 		        return <Dashboard 

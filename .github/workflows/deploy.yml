@@ -24,7 +24,9 @@ jobs:
           cache: npm
 
       - name: Check document return rules
-        run: node --test tests/documents.test.mjs
+        run: |
+          node --test tests/documents.test.mjs tests/dsc.test.mjs
+          php tests/dsc-rules.php
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
