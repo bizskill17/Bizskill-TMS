@@ -189,8 +189,6 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 	                <th className={thClass} style={{ width: '100px' }} onClick={() => requestSort('time')}><div className="flex items-center">Time {getSortIcon('time')}</div></th>
 	                <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">Photo</div></th>
 	                <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">PDF</div></th>
-		                <th className={thClass} style={{ width: '140px' }}></th>
-		                <th className={thClass} style={{ width: '120px' }}></th>
 	                <th className={thClass} style={{ width: '120px' }} onClick={() => requestSort('dueDate')}><div className="flex items-center">Due Date {getSortIcon('dueDate')}</div></th>
 	                <th className={thClass} style={{ width: '150px' }} onClick={() => requestSort('lastUpdateDate')}><div className="flex items-center">Last Update {getSortIcon('lastUpdateDate')}</div></th>
 	                <th className={thClass} style={{ width: '120px' }} onClick={() => requestSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
