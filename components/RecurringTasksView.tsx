@@ -490,34 +490,8 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className={`flex justify-between items-start md:block ${sidebarCollapsed ? 'pl-14 md:pl-16' : ''}`}>
-            <div>
-                <h2 className="sr-only">
-                    {filterType === 'due' && <AlertCircle className="text-red-500" size={24} />}
-                    {title}
-                </h2>
-            </div>
-            <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
-                <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
-                <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
-            </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {isAdmin && selectedIds.length > 0 && (
-             <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center space-x-1 px-4 py-2 bg-red-600 text-white border-2 border-red-700 rounded-md hover:bg-red-700 text-sm font-bold shadow-sm transition-colors uppercase tracking-wider animate-in fade-in zoom-in duration-200">
-                <Trash2 size={16} /><span>Bulk Delete ({selectedIds.length})</span>
-             </button>
-          )}
-          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center space-x-1 px-3 py-2 border rounded-md text-sm font-medium shadow-sm transition-all duration-200 ${showFilters ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-indigo-50 border-indigo-300 text-indigo-600 hover:bg-indigo-100'}`}><Filter size={16} /><span>Filters</span></button>
-          {filterType !== 'due' && (
-	            <button onClick={onAdd} className="flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm"><Plus size={16} /><span>New Recurring Task</span></button>
-            )}
-        </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-300 space-y-4">
-        <div className="relative">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-300 flex items-center gap-3 overflow-x-auto">
+        <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-2.5 text-indigo-600" size={18} />
           <input 
             type="text" 
@@ -527,6 +501,25 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
+        <div className="flex items-center flex-nowrap gap-2 shrink-0 ml-auto">
+          {isAdmin && selectedIds.length > 0 && (
+             <button onClick={() => setShowDeleteConfirm(true)} className="flex items-center space-x-1 px-4 py-2 bg-red-600 text-white border-2 border-red-700 rounded-md hover:bg-red-700 text-sm font-bold shadow-sm transition-colors uppercase tracking-wider animate-in fade-in zoom-in duration-200">
+                <Trash2 size={16} /><span>Bulk Delete ({selectedIds.length})</span>
+             </button>
+          )}
+          <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center space-x-1 px-3 py-2 border rounded-md text-sm font-medium shadow-sm transition-all duration-200 ${showFilters ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-indigo-50 border-indigo-300 text-indigo-600 hover:bg-indigo-100'}`}><Filter size={16} /><span>Filters</span></button>
+          {filterType !== 'due' && (
+	            <button onClick={onAdd} className="flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm"><Plus size={16} /><span className="whitespace-nowrap">New Recurring Task</span></button>
+            )}
+            <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
+                <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
+                <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
+            </div>
+        </div>
+      </div>
+
+      <div className={`bg-white p-4 rounded-lg shadow-sm border border-indigo-300 space-y-4 ${showFilters ? '' : 'hidden'}`}>
+
         {showFilters && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
 	            <SearchableSelect label="Category" labelKey="recurringTask.category" options={categories.map(c => ({ value: c, label: c }))} value={filterCategory} onChange={setFilterCategory} />
