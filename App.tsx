@@ -1518,7 +1518,31 @@ export default function App() {
 			            {(() => {
 
 			              return (
-			                <main
+			                <>
+{(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing') && (
+                              <section className="relative z-40 shrink-0 bg-gray-50 px-3 md:px-6 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
+                                {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
+                                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
+                                  aria-label={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
+                                  title={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
+                                  aria-expanded={!isSidebarCollapsed}
+                                  className="hidden md:inline-flex shrink-0 w-9 h-9 items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
+                                <nav id="section-view-tabs" aria-label="Section views" className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-1">
+                                {sectionTabs.length > 1 && <>
+
+                                  {sectionTabs.map(item => (
+                                    <button key={item.id} type="button" onClick={() => handleTabChange(item.id)}
+                                      aria-current={activeTab === item.id ? 'page' : undefined}
+                                      className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 ${activeTab === item.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`}>
+                                      <span aria-hidden="true">{item.icon}</span>{item.label}
+                                      {typeof item.count === 'number' && <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === item.id ? 'bg-white/20' : 'bg-indigo-50'}`}>{item.count}</span>}
+                                    </button>
+                                  ))}
+                                </>}
+                                </nav>
+                              </section>
+                            )}
+<main
 			                  className="flex-1 min-h-0 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative"
 			                >
 				              {isLoading ? (
@@ -1546,35 +1570,13 @@ export default function App() {
 			                    </div>
 			                  )}
 			                  <div className="flex-1">
-			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing') && (
-                              <section className="sticky top-0 z-40 bg-gray-50 mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
-                                {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
-                                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
-                                  aria-label={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
-                                  title={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
-                                  aria-expanded={!isSidebarCollapsed}
-                                  className="hidden md:inline-flex shrink-0 w-9 h-9 items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
-                                <nav id="section-view-tabs" aria-label="Section views" className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-1">
-                                {sectionTabs.length > 1 && <>
-
-                                  {sectionTabs.map(item => (
-                                    <button key={item.id} type="button" onClick={() => handleTabChange(item.id)}
-                                      aria-current={activeTab === item.id ? 'page' : undefined}
-                                      className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 ${activeTab === item.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`}>
-                                      <span aria-hidden="true">{item.icon}</span>{item.label}
-                                      {typeof item.count === 'number' && <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === item.id ? 'bg-white/20' : 'bg-indigo-50'}`}>{item.count}</span>}
-                                    </button>
-                                  ))}
-                                </>}
-                                </nav>
-                              </section>
-                            )}
-                            {renderContent()}
+			                            {renderContent()}
 			                  </div>
 			                  <Footer />
 			                </div>
 	              )}
 			            </main>
+                        </>
 			              );
 				            })()}
 				          </div>
