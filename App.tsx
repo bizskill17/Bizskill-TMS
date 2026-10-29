@@ -1,3 +1,4 @@
+import { ChecklistProvider, ChecklistsView } from './components/Checklists';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ComplianceView } from './components/ComplianceView';
 import { DscRegisterView } from './components/DscRegisterView';
@@ -96,6 +97,7 @@ const navItems: NavItem[] = [
   { id: 'billing', label: 'Billing', icon: <FileText size={20}/>, section: 'Billing' },
 
   // Master Section
+  { id: 'checklists', label: 'Checklists', icon: <CheckSquare size={20} />, section: 'Master' },
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
   { id: 'firms', label: 'Clients', icon: <Building2 size={20} />, section: 'Master' },
   { id: 'categories', label: 'Categories', icon: <Tags size={20} />, section: 'Master' },
@@ -378,7 +380,7 @@ export default function App() {
   }, []);
 
   // Master item IDs for filtering
-	  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
+	  const masterIds = ['checklists', 'users', 'firms', 'categories', 'statuses', 'designations', ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
   const pendingStatusNavItems = useMemo<NavItem[]>(() => {
     return statuses
       .map(s => String(s.name || '').trim())
@@ -413,7 +415,7 @@ export default function App() {
   const filteredNavItems = useMemo(() => {
     if (isAdmin) return resolvedNavItems;
     // Completely hide 'Master' section items for Employees
-    return resolvedNavItems.filter(item => item.section !== 'Master' && item.section !== 'Billing');
+    return resolvedNavItems.filter(item => (item.section !== 'Master' || item.id === 'checklists') && item.section !== 'Billing');
   }, [isAdmin, resolvedNavItems]);
 
   // Data subsets based on user role
@@ -1359,6 +1361,7 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
+      case 'checklists': return <ChecklistsView key={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'billing': if (!isAdmin) return null; return <ComplianceView key={'billing:'+tenantCode} billing tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
@@ -1455,7 +1458,8 @@ export default function App() {
     isFirmModalOpen;
 
 	  return (
-		    <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-[calc(100dvh/0.9)] overflow-hidden' : 'min-h-screen'}`}>
+		    <ChecklistProvider tenantCode={tenantCode || currentUser?.tenantCode || ''} categories={categories}>
+            <div className={`flex bg-gray-50 font-inter ${currentUser ? 'h-[calc(100dvh/0.9)] overflow-hidden' : 'min-h-screen'}`}>
 	      {!currentUser ? (
 	        <LoginView onLogin={handleLogin} isAuthenticating={isLoading} />
 	      ) : (
@@ -1751,7 +1755,8 @@ export default function App() {
 	      <RecurringTaskHistoryModal isOpen={isRecurringHistoryModalOpen} onClose={() => setIsRecurringHistoryModalOpen(false)} task={selectedRecurringTask} actions={recurringActions} />
 	      </LabelProvider>
 	    </div>
-	  );
+	      </ChecklistProvider>
+  );
 }
 
 

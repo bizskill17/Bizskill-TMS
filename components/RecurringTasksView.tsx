@@ -1,3 +1,4 @@
+import { CopyChecklistButton } from './Checklists';
 import React, { useState, useMemo, useEffect } from 'react';
 import { RotateCcw, Plus, Search, Filter, X, Info, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Edit2, LayoutGrid, LayoutList, AlertCircle, Calendar, Loader2 } from 'lucide-react';
 import { RecurringTask, RecurringTaskAction } from '../types';
@@ -640,6 +641,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                       <div className="flex items-center gap-1 justify-center" onDoubleClick={(e) => e.stopPropagation()}>
                         <button onClick={() => onUpdate(task)} className="px-2 py-1 bg-indigo-600 text-white rounded text-[10px] font-bold hover:bg-indigo-700">Update</button>
                         <button onClick={() => onEdit(task)} className="p-1 text-indigo-600 hover:bg-indigo-50 rounded" title="Edit Master"><Edit2 size={16} /></button>
+                    <CopyChecklistButton task={task}/>
                         <button onClick={() => onViewHistory(task)} className="p-1 text-indigo-500 hover:bg-indigo-50 rounded"><Info size={16} /></button>
                         {isAdmin && (
                           <button 
@@ -721,6 +723,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                     <div className="flex gap-2 pt-3 border-t border-gray-100 flex-wrap">
                         <button onClick={() => onUpdate(task)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-normal break-words"><RotateCcw size={14} />Update</button>
                         <div className="flex gap-1 w-full sm:w-auto justify-end" onDoubleClick={(e) => e.stopPropagation()}>
+                    <CopyChecklistButton task={task}/>
                             <button onClick={() => onViewHistory(task)} className="p-2 text-indigo-500 hover:bg-gray-100 rounded-full border border-gray-100"><Info size={18} /></button>
                             <button onClick={() => onEdit(task)} className="p-2 text-indigo-600 hover:bg-gray-100 rounded-full border border-gray-100"><Edit2 size={18} /></button>
                             {isAdmin && (
