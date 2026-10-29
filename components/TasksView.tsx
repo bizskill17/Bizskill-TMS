@@ -25,7 +25,7 @@ interface TasksViewProps {
   onUpdateTask: (task: Task) => void;
   onEditTask: (task: Task) => void;
   onBulkUpdateTask: (ids: number[], updates: Partial<Task>) => void;
-  onDeleteTask: (id: number, isVendor: boolean) => void;
+  onDeleteTask: (id: number, isVendor: boolean, alreadyConfirmed?: boolean) => void;
   onExportExcel: (tasks: Task[]) => void;
   onViewHistory: (task: Task) => void;
   filterType?: 'all' | 'pending' | 'completed';
@@ -570,7 +570,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleEditTaskClick = (task: Task) => { setSelectedTask(task); setIsEditModalOpen(true); };
   const openBulkUpdate = (mode: 'status' | 'priority' | 'assignee' | 'category') => { setBulkMode(mode); setIsBulkUpdateModalOpen(true); };
   const handleBulkUpdate = (updates: Partial<Task>) => { onBulkUpdateTask(selectedIds, updates); setSelectedIds([]); };
-  const confirmBulkDelete = () => { selectedIds.forEach(id => onDeleteTask(id, isVendorView)); setSelectedIds([]); setShowBulkDeleteConfirm(false); };
+  const confirmBulkDelete = () => { selectedIds.forEach(id => onDeleteTask(id, isVendorView, true)); setSelectedIds([]); setShowBulkDeleteConfirm(false); };
 
   const handleClearFiltersLocal = () => {
     setFilterStatus([]);

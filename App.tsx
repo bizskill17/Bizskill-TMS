@@ -1309,8 +1309,8 @@ export default function App() {
 	      lastUpdateFrom, setLastUpdateFrom, lastUpdateTo, setLastUpdateTo, searchTerm, setSearchTerm, filterVendor, setFilterVendor,
       lastAddedCategory, lastAddedProject, lastAddedVendorCategory, onClearLastAdded: () => { setLastAddedCategory(''); setLastAddedProject(''); setLastAddedVendorCategory(''); },
       onUpdateTask: handleUpdateTaskOptimistic, onEditTask: handleEditTaskOptimistic,
-      onDeleteTask: (id: number, isVendor: boolean) => {
-        if (!confirmDelete('this task')) return;
+      onDeleteTask: (id: number, isVendor: boolean, alreadyConfirmed = false) => {
+        if (!alreadyConfirmed && !confirmDelete('this task')) return;
         setTasks(prev => prev.filter(t => t.id !== id));
         apiPost('deleteRecord', { id }, isVendor ? 'VendorTasks' : 'MainTasks');
       },
