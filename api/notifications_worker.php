@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/dsc_reminders.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -90,6 +91,12 @@ foreach ($rows as $row) {
     $id = (int)($row['id'] ?? 0);
     if ($id <= 0) continue;
 
+    if (!dsc_reminder_current($conn,$row)) {
+        $cancelSql="UPDATE notification_queue SET status='cancelled',updatedAt=NOW() WHERE id=? AND status='pending'";
+        if (app_table_is_scoped($conn,'notification_queue')) $cancelSql.=" AND tenant_id=".app_tenant_id();
+        dsc_query($conn,$cancelSql,[$id]);
+        continue;
+    }
     $dispatch = notifications_dispatch($conn, $row);
     $ok = (bool)($dispatch['ok'] ?? false);
     $err = (string)($dispatch['error'] ?? '');
@@ -149,6 +156,12 @@ foreach ($tenantsToProcess as $tenant) {
             $GLOBALS['currentTenant'] = $tenant;
             $tenantConnection = worker_open_connection($platformConn, $tenant);
             $GLOBALS['conn'] = $tenantConnection;
+            try { $entry['dscQueued']=dsc_schedule_reminders($tenantConnection); }
+            catch (Throwable $error) {
+                $entry['dscReminderError']='DSC reminder scheduling failed; check server log';
+                $summary['success']=false;
+                error_log('DSC reminders tenant '.(int)$tenant['id'].': '.$error->getMessage());
+            }
             $entry = array_merge($entry, worker_process_queue($tenantConnection, $limit));
             $entry['status'] = 'processed';
             foreach (['processed', 'sent', 'failed'] as $key) $summary[$key] += $entry[$key];

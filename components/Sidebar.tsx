@@ -47,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     'Recurring Tasks': false,
     Documentation: false,
     Documents: false,
+    DSC: false,
     Vendor: false,
   });
 
@@ -74,6 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       'Recurring Tasks': sectionLabel === 'Recurring Tasks',
       Documentation: sectionLabel === 'Documentation',
       Documents: sectionLabel === 'Documents',
+      DSC: sectionLabel === 'DSC',
       Vendor: sectionLabel === 'Vendor',
     });
   }, [activeTab, items]);
@@ -204,6 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { key: 'Simple Tasks', source: 'Tasks' },
             { key: 'Recurring Tasks', source: 'Recurring Tasks' },
             { key: 'Documents', source: 'Documents' },
+            { key: 'DSC', source: 'DSC' },
             { key: 'Documentation', source: 'Documentation' },
             ...(groupedItems['Vendor'] ? [{ key: 'Vendor', source: 'Vendor' }] : [])
           ].map(sectionInfo => {
@@ -224,6 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         'Recurring Tasks': false,
                         Documentation: false,
     Documents: false,
+    DSC: false,
                         Vendor: false,
                         [sectionInfo.key]: willOpen,
                       };
