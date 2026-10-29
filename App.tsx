@@ -1290,7 +1290,7 @@ export default function App() {
 	    const commonTaskProps = {
 		      users, projects, vendors, firms, clients, categories, syncingIds, vendorCategories, currentUser,
           taskStatuses: taskStatusOptions,
-        showCollapsedMenuButton: layoutMode === 'side' && isSidebarCollapsed && !isAnyFormModalOpen,
+        showCollapsedMenuButton: false,
         onShowMenu: () => setIsSidebarCollapsed(false),
 	      sidebarCollapsed: layoutMode === 'side' && isSidebarCollapsed,
 	      filterStatus, setFilterStatus, filterPriority, setFilterPriority, 
@@ -1507,32 +1507,12 @@ export default function App() {
             )}
 
 			            {(() => {
-			              const showCollapsedMenuButton =
-			                layoutMode === 'side' &&
-			                isSidebarCollapsed &&
-			                !isAnyFormModalOpen &&
-			                activeTab !== 'all-tasks' &&
-			                activeTab !== 'pending' &&
-			                !activeTab.startsWith('pending-status:') &&
-			                activeTab !== 'completed';
 
 			              return (
 			                <main
-			                  className={`flex-1 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative ${
-			                    showCollapsedMenuButton ? 'md:pl-20' : ''
-			                  }`}
+			                  className="flex-1 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative"
 			                >
-				              {showCollapsedMenuButton && (
-				                <button
-				                  type="button"
-				                  onClick={() => setIsSidebarCollapsed(false)}
-				                  className="hidden md:inline-flex items-center justify-center fixed top-6 left-4 z-[120] w-11 h-11 bg-white border-2 border-indigo-200 text-indigo-700 rounded-xl shadow-lg hover:bg-indigo-50"
-				                  title="Show menu"
-				                >
-			                  <Menu size={18} />
-			                </button>
-			              )}
-			              {isLoading ? (
+				              {isLoading ? (
 		                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
 		                    <div className="relative w-20 h-20">
 		                        <div className="absolute inset-0 border-4 border-indigo-100 rounded-full"></div>
@@ -1557,17 +1537,26 @@ export default function App() {
 			                    </div>
 			                  )}
 			                  <div className="flex-1">
-			                    {sectionTabs.length > 1 && (
-                              <section className="mx-4 md:mx-6 pt-5 pb-4 border-b border-indigo-100">
-                                <nav aria-label="Section views" className="flex flex-wrap gap-2">
+			                    {(layoutMode === 'side' || sectionTabs.length > 1) && (
+                              <section className="mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
+                                {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
+                                  onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
+                                  aria-label={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
+                                  title={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
+                                  aria-expanded={!isSidebarCollapsed}
+                                  className="shrink-0 w-9 h-9 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
+                                <nav aria-label="Section views" className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-1">
+                                {sectionTabs.length > 1 && <>
+
                                   {sectionTabs.map(item => (
                                     <button key={item.id} type="button" onClick={() => handleTabChange(item.id)}
                                       aria-current={activeTab === item.id ? 'page' : undefined}
-                                      className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 ${activeTab === item.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`}>
+                                      className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 ${activeTab === item.id ? 'bg-indigo-600 border-indigo-600 text-white shadow-sm' : 'bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`}>
                                       <span aria-hidden="true">{item.icon}</span>{item.label}
                                       {typeof item.count === 'number' && <span className={`rounded-full px-2 py-0.5 text-xs ${activeTab === item.id ? 'bg-white/20' : 'bg-indigo-50'}`}>{item.count}</span>}
                                     </button>
                                   ))}
+                                </>}
                                 </nav>
                               </section>
                             )}
