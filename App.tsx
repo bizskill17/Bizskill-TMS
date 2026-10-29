@@ -93,7 +93,6 @@ const navItems: NavItem[] = [
 
   { id: 'dsc-register', label: 'DSC Register', icon: <FileText size={20} />, section: 'DSC' },
 
-  { id: 'compliance', label: 'Compliance', icon: <CheckSquare size={20}/>, section: 'Compliance' },
   { id: 'billing', label: 'Billing', icon: <FileText size={20}/>, section: 'Billing' },
 
   // Master Section
@@ -1360,7 +1359,6 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
-      case 'compliance': return <ComplianceView key={'compliance:'+tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'billing': if (!isAdmin) return null; return <ComplianceView key={'billing:'+tenantCode} billing tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
@@ -1548,7 +1546,7 @@ export default function App() {
 			                    </div>
 			                  )}
 			                  <div className="flex-1">
-			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'compliance' || activeTab === 'billing') && (
+			                    {(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing') && (
                               <section className="mx-1 md:mx-2 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
                                 {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
                                   onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}

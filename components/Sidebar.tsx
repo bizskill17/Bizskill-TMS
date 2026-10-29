@@ -203,7 +203,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { key: 'Master', source: 'Master' },
             { key: 'Simple Tasks', source: 'Tasks' },
             { key: 'Recurring Tasks', source: 'Recurring Tasks' },
-            { key: 'Compliance', source: 'Compliance' },
             { key: 'Billing', source: 'Billing' },
             { key: 'Documents', source: 'Documents' },
             { key: 'DSC', source: 'DSC' },
