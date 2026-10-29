@@ -48,6 +48,14 @@ $schema = "CREATE TABLE IF NOT EXISTS document_movements (
  KEY idx_documents_returns (tenant_id, direction, returnable, returned_on, return_due_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 if (!$conn->query($schema)) documents_reply(['success'=>false,'error'=>'Unable to prepare Documents table.'],500);
+// Keep historical returns intact while adding the selected handover user.
+foreach (['return_user_id'=>'BIGINT NULL', 'return_user_name'=>"VARCHAR(190) NOT NULL DEFAULT ''"] as $column=>$definition) {
+    if (!db_has_column($conn, 'document_movements', $column)) {
+        if (!$conn->query("ALTER TABLE document_movements ADD COLUMN `{$column}` {$definition}") && !db_has_column($conn, 'document_movements', $column)) {
+            documents_reply(['success'=>false,'error'=>'Unable to update Documents table.'],500);
+        }
+    }
+}
 $tenantId = app_tenant_id();
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $stmt = $conn->prepare("SELECT * FROM document_movements WHERE tenant_id=? ORDER BY movement_date DESC, id DESC");
@@ -92,8 +100,17 @@ if ($action === 'return') {
     $id=(int)($data['id'] ?? 0);
     $returned=trim((string)($data['returned_on'] ?? ''));
     if (!documents_date($returned)) documents_reply(['success'=>false,'error'=>'Enter a valid return date.'],422);
-    $stmt=$conn->prepare("UPDATE document_movements SET returned_on=?,returned_by=? WHERE id=? AND tenant_id=? AND returnable=1 AND returned_on IS NULL AND movement_date<=?");
-    $stmt->bind_param('siiis',$returned,$actorId,$id,$tenantId,$returned);
+    $returnUserId=(int)($data['return_user_id'] ?? 0);
+    $userSql="SELECT name, isActive FROM users WHERE id=?" . (app_table_is_scoped($conn,'users') ? " AND tenant_id=".$tenantId : '');
+    $check=$conn->prepare($userSql);
+    $check->bind_param('i',$returnUserId);
+    $check->execute();
+    $returnUser=$check->get_result()->fetch_assoc();
+    $check->close();
+    if (!$returnUser || !in_array(strtolower((string)$returnUser['isActive']),['1','true','yes'],true)) documents_reply(['success'=>false,'error'=>'Select an active user for the return.'],422);
+    $returnUserName=(string)$returnUser['name'];
+    $stmt=$conn->prepare("UPDATE document_movements SET returned_on=?,returned_by=?,return_user_id=?,return_user_name=? WHERE id=? AND tenant_id=? AND returnable=1 AND returned_on IS NULL AND movement_date<=?");
+    $stmt->bind_param('siisiis',$returned,$actorId,$returnUserId,$returnUserName,$id,$tenantId,$returned);
     if (!$stmt->execute()) documents_reply(['success'=>false,'error'=>'Unable to record return.'],500);
     if ($stmt->affected_rows !== 1) documents_reply(['success'=>false,'error'=>'This document is already returned or the return date precedes its movement date. Refresh and check the entry.'],409);
     documents_reply(['success'=>true]);
