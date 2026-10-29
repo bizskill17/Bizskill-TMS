@@ -383,6 +383,7 @@ export const TaskTable: React.FC<TaskTableProps> = ({
 
                 {isExpanded && (
                   <>
+                      {(task.time || parsePhotos(task.photos).length > 0 || task.pdf) && (
                       <div className="grid grid-cols-2 gap-x-3 gap-y-4 mt-2">
                         <div>
                           <span className="text-[10px] uppercase font-black text-blue-900/60 block">Time</span>
