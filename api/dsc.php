@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/dsc_module.php';
+require_once __DIR__ . '/notifications.php';
+require_once __DIR__ . '/dsc_reminders.php';
 function dsc_reply(array $payload,int $status=200): void { http_response_code($status); echo json_encode($payload); exit; }
 session_start(['cookie_httponly'=>true,'cookie_secure'=>!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS']!=='off','cookie_samesite'=>'Lax']);
 if (empty($_SESSION['documents_tenant']) || (int)$_SESSION['documents_tenant']!==app_tenant_id()) dsc_reply(['success'=>false,'error'=>'Please sign out and sign in again to access the DSC Register.'],401);
@@ -36,6 +38,12 @@ try {
             dsc_reply(['success'=>true,'history'=>$history,'reminders'=>$reminders]);
         }
         $rows=dsc_all($conn,'SELECT * FROM dsc_certificates WHERE tenant_id=? ORDER BY expiry_date,id DESC',[$tenant]);
+        $globalSettings=dsc_settings($conn,$tenant);
+        foreach ($rows as &$certificate) {
+            $certificate['responsible_user_id']=(int)($globalSettings['responsible_user_id'] ?? 0);
+            $certificate['responsible_user_name']=(string)($globalSettings['responsible_user_name'] ?? '');
+        }
+        unset($certificate);
         $userScope=app_table_is_scoped($conn,'users')?' WHERE tenant_id=?':'';
         $users=dsc_all($conn,'SELECT id,name,isActive FROM users'.$userScope.' ORDER BY name', $userScope?[$tenant]:[]);
         $firmScope=app_table_is_scoped($conn,'firms')?' WHERE tenant_id=?':'';
@@ -47,15 +55,48 @@ try {
     $data=app_get_raw_input_data();
     if ($csrf==='' || !hash_equals($csrf,(string)($data['csrf'] ?? ''))) dsc_reply(['success'=>false,'error'=>'Session expired. Reload the DSC Register and try again.'],403);
     $action=(string)($data['action'] ?? '');
+
+    if (in_array($action,['previewClientReminders','sendClientReminders'],true)) {
+        $ids=$data['ids'] ?? [];
+        if (!is_array($ids) || !$ids || count($ids)>100) throw new InvalidArgumentException('Select between 1 and 100 DSC entries.');
+        foreach ($ids as $value) if (!ctype_digit((string)$value) || (int)$value<1) throw new InvalidArgumentException('Invalid selection.');
+        $ids=array_values(array_unique(array_map('intval',$ids))); sort($ids);
+        $provider=notifications_pick_whatsapp_provider(notifications_get_settings($conn));
+        if ($provider==='' || !db_table_exists($conn,'notification_queue')) throw new InvalidArgumentException('Configure WhatsApp messaging first.');
+        $rows=dsc_all($conn,'SELECT * FROM dsc_certificates WHERE tenant_id=? AND id IN ('.implode(',',array_fill(0,count($ids),'?')).') ORDER BY id',array_merge([$tenant],$ids));
+        if (count($rows)!==count($ids)) throw new InvalidArgumentException('A selected certificate is unavailable.');
+        $today=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+        $preview=[];
+        foreach ($rows as $row) {
+            $phone=dsc_phone((string)$row['mobile'],$provider);
+            if ($row['lifecycle']!=='active' || $row['deleted_at'] || $phone==='') throw new InvalidArgumentException('Select active DSC entries with valid client mobile numbers.');
+            $preview[]=['id'=>(int)$row['id'],'version'=>(int)$row['version'],'client_name'=>$row['client_name'],'holder_name'=>$row['holder_name'],'mobile'=>$phone,'message'=>dsc_reminder_message($row,$today,'client')];
+        }
+        $batch=$action==='previewClientReminders'?bin2hex(random_bytes(16)):(string)($data['batch'] ?? '');
+        $token=hash_hmac('sha256',$batch.'|'.$provider.'|'.json_encode($preview),$csrf);
+        if ($action==='previewClientReminders') dsc_reply(['success'=>true,'recipients'=>$preview,'batch'=>$batch,'token'=>$token]);
+        if (!preg_match('/^[a-f0-9]{32}$/',$batch) || !hash_equals($token,(string)($data['token'] ?? ''))) throw new InvalidArgumentException('Selection changed. Preview the messages again.');
+        $queued=0;
+        foreach ($rows as $i=>$row) $queued+=dsc_queue_reminder($conn,$row,-2,'client',(string)$row['holder_name'],$preview[$i]['mobile'],$provider,$today,$batch);
+        dsc_reply(['success'=>true,'queued'=>$queued]);
+    }
+
     if ($action==='settings') {
         if (!$canConfigure) dsc_reply(['success'=>false,'error'=>'Only an Admin can configure reminders.'],403);
         $intervals=dsc_intervals($data['intervals'] ?? []);
         $enabled=!empty($data['enabled'])?1:0;
         $office=!empty($data['office_reminders'])?1:0;
-        $client=!empty($data['client_reminders'])?1:0;
+        $client=0;
         $expired=!empty($data['expired_reminder'])?1:0;
         if ($enabled && !$office && !$client) throw new InvalidArgumentException('Choose at least one reminder recipient.');
-        dsc_query($conn,'INSERT INTO dsc_settings (tenant_id,enabled,office_reminders,client_reminders,expired_reminder,intervals_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),office_reminders=VALUES(office_reminders),client_reminders=VALUES(client_reminders),expired_reminder=VALUES(expired_reminder),intervals_json=VALUES(intervals_json)',[$tenant,$enabled,$office,$client,$expired,json_encode($intervals)]);
+        $responsibleId=(int)($data['responsible_user_id'] ?? 0);
+        $responsibleName='';
+        if ($responsibleId) $responsibleName=(string)dsc_active_user($conn,$responsibleId,$tenant)['name'];
+        if ($enabled && $office && !$responsibleId) throw new InvalidArgumentException('Select the Responsible User in DSC Settings.');
+        $conn->begin_transaction();
+        dsc_query($conn,'INSERT INTO dsc_settings (tenant_id,enabled,office_reminders,client_reminders,expired_reminder,intervals_json,responsible_user_id,responsible_user_name) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),office_reminders=VALUES(office_reminders),client_reminders=VALUES(client_reminders),expired_reminder=VALUES(expired_reminder),intervals_json=VALUES(intervals_json),responsible_user_id=VALUES(responsible_user_id),responsible_user_name=VALUES(responsible_user_name)',[$tenant,$enabled,$office,$client,$expired,json_encode($intervals),$responsibleId?:null,$responsibleName]);
+        dsc_event($conn,$tenant,0,'Settings Updated',$actor,$actorName,'Organisation Responsible User updated',['responsible_user_name'=>$responsibleName]);
+        $conn->commit();
         dsc_reply(['success'=>true]);
     }
     $conn->begin_transaction();
@@ -108,10 +149,11 @@ try {
                 if (!dsc_valid_date($issue)) throw new InvalidArgumentException('Enter the new issue date.');
                 dsc_check_dates($issue,$expiry);
                 if ($expiry <= $row['expiry_date']) throw new InvalidArgumentException('New expiry must be later than the previous expiry.');
-                $renewUser=dsc_active_user($conn,(int)$row['responsible_user_id'],$tenant);
+                $renewSettings=dsc_settings($conn,$tenant);
                 $new=[];
                 foreach (['client_name','holder_name','organisation','designation','mobile','email','responsible_user_id','responsible_user_name','token_location','token_details','document_movement_id','remarks'] as $field) $new[$field]=$row[$field];
-                $new['responsible_user_name']=(string)$renewUser['name'];
+                $new['responsible_user_id']=(int)($renewSettings['responsible_user_id'] ?? 0);
+                $new['responsible_user_name']=(string)($renewSettings['responsible_user_name'] ?? '');
                 $new=array_merge($new,['tenant_id'=>$tenant,'created_by'=>$actor,'issue_date'=>$issue,'expiry_date'=>$expiry,'previous_certificate_id'=>$id]);
                 $newId=dsc_insert($conn,'dsc_certificates',$new);
                 $values=['lifecycle'=>'renewed','pending_renewal'=>0,'renewed_to_id'=>$newId];

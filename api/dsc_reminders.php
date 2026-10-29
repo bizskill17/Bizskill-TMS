@@ -22,16 +22,16 @@ function dsc_reminder_message(array $row,string $today,string $audience): string
     $lines[]=(string)app_tenant_name();
     return implode("\n",$lines);
 }
-function dsc_queue_reminder(mysqli $db,array $row,int $stage,string $audience,string $targetName,string $target,string $provider,string $today): int {
+function dsc_queue_reminder(mysqli $db,array $row,int $stage,string $audience,string $targetName,string $target,string $provider,string $today,string $batch=''): int {
     $tenant=app_tenant_id();
-    $key=hash('sha256',implode('|',[$tenant,$row['id'],$row['expiry_date'],$stage,$audience,$target]));
+    $key=hash('sha256',($batch!==''?$batch.'|':'').implode('|',[$tenant,$row['id'],$row['expiry_date'],$stage,$audience,$target]));
     $db->begin_transaction();
     try {
         $stmt=dsc_query($db,"INSERT IGNORE INTO dsc_reminder_events (tenant_id,certificate_id,event_key,expiry_date,stage,audience,target_name,target) VALUES (?,?,?,?,?,?,?,?)",[$tenant,$row['id'],$key,$row['expiry_date'],$stage,$audience,$targetName,$target]);
         $inserted=$stmt->affected_rows;
         $eventId=(int)$stmt->insert_id; $stmt->close();
         if (!$inserted) { $db->commit(); return 0; }
-        $meta=json_encode(['event'=>'dsc_expiry','tenant_id'=>$tenant,'certificate_id'=>(int)$row['id'],'expiry_date'=>$row['expiry_date'],'stage'=>$stage,'audience'=>$audience,'responsible_user_id'=>(int)$row['responsible_user_id']]);
+        $meta=json_encode(['event'=>$batch!==''?'dsc_client_manual':'dsc_expiry','tenant_id'=>$tenant,'certificate_id'=>(int)$row['id'],'expiry_date'=>$row['expiry_date'],'stage'=>$stage,'audience'=>$audience,'responsible_user_id'=>(int)$row['responsible_user_id']]);
         $values=['channel'=>'whatsapp','provider'=>$provider,'targetType'=>'personal','target'=>$target,'message'=>dsc_reminder_message($row,$today,$audience),'meta'=>$meta,'status'=>'pending','attempts'=>0,'createdAt'=>gmdate('Y-m-d H:i:s'),'updatedAt'=>gmdate('Y-m-d H:i:s')];
         if (app_table_is_scoped($db,'notification_queue')) $values=['tenant_id'=>$tenant]+$values;
         $queue=dsc_insert($db,'notification_queue',$values);
@@ -52,6 +52,8 @@ function dsc_schedule_reminders(mysqli $db): int {
     $rows=dsc_all($db,"SELECT * FROM dsc_certificates WHERE tenant_id=? AND lifecycle='active' AND deleted_at IS NULL AND expiry_date<=?",[app_tenant_id(),$latest]);
     $count=0;
     foreach ($rows as $row) {
+        $row['responsible_user_id']=(int)($settings['responsible_user_id'] ?? 0);
+        $row['responsible_user_name']=(string)($settings['responsible_user_name'] ?? '');
         $stage=dsc_reminder_stage($row,$settings['intervals'],$today,(bool)$settings['expired_reminder']);
         if ($stage===null) continue;
         if ((int)$settings['office_reminders']) {
@@ -61,22 +63,22 @@ function dsc_schedule_reminders(mysqli $db): int {
                 if ($phone!=='') $count+=dsc_queue_reminder($db,$row,$stage,'office',(string)$user['name'],$phone,$provider,$today);
             } catch (InvalidArgumentException $error) { /* Inactive user: no reminder. */ }
         }
-        if ((int)$settings['client_reminders']) {
-            $phone=dsc_phone((string)$row['mobile'],$provider);
-            if ($phone!=='') $count+=dsc_queue_reminder($db,$row,$stage,'client',(string)$row['holder_name'],$phone,$provider,$today);
-        }
+
     }
     return $count;
 }
 // Recheck pending reminders immediately before sending, including changed contacts.
 function dsc_reminder_current(mysqli $db,array $queue): bool {
     $meta=json_decode((string)($queue['meta'] ?? ''),true) ?: [];
-    if (($meta['event'] ?? '')!=='dsc_expiry') return true;
+    $manual=($meta['event'] ?? '')==='dsc_client_manual';
+    if (!$manual && ($meta['event'] ?? '')!=='dsc_expiry') return true;
     if ((int)($meta['tenant_id'] ?? 0)!==app_tenant_id() || !db_table_exists($db,'dsc_certificates')) return false;
     $found=dsc_all($db,'SELECT * FROM dsc_certificates WHERE id=? AND tenant_id=?',[(int)($meta['certificate_id'] ?? 0),app_tenant_id()]);
     if (!$found) return false;
     $row=$found[0];
-    if ($row['expiry_date']!==($meta['expiry_date'] ?? '') || (int)$row['responsible_user_id']!==(int)($meta['responsible_user_id'] ?? 0)) return false;
+    if ($row['expiry_date']!==($meta['expiry_date'] ?? '')) return false;
+    if ($manual) return $row['lifecycle']==='active' && !$row['deleted_at'] && dsc_phone((string)$row['mobile'],(string)$queue['provider'])===(string)$queue['target'];
+    if (($meta['audience'] ?? '')==='client') return false;
     $settings=dsc_settings($db,app_tenant_id());
     if (!(int)$settings['enabled']) return false;
     $today=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
@@ -86,6 +88,8 @@ function dsc_reminder_current(mysqli $db,array $queue): bool {
         return (int)$settings['client_reminders']===1 && dsc_phone((string)$row['mobile'],(string)$queue['provider'])===(string)$queue['target'];
     }
     if (!(int)$settings['office_reminders']) return false;
+    $row['responsible_user_id']=(int)($settings['responsible_user_id'] ?? 0);
+    if ((int)$row['responsible_user_id']!==(int)($meta['responsible_user_id'] ?? 0)) return false;
     try { $user=dsc_active_user($db,(int)$row['responsible_user_id'],app_tenant_id()); }
     catch (InvalidArgumentException $error) { return false; }
     return dsc_phone((string)$user['mobile'],(string)$queue['provider'])===(string)$queue['target'];

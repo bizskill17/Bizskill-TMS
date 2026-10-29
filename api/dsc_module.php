@@ -79,6 +79,8 @@ function dsc_schema(mysqli $db): void {
         office_reminders TINYINT(1) NOT NULL DEFAULT 1,
         client_reminders TINYINT(1) NOT NULL DEFAULT 0,
         expired_reminder TINYINT(1) NOT NULL DEFAULT 1,
+        responsible_user_id BIGINT NULL,
+        responsible_user_name VARCHAR(190) NOT NULL DEFAULT '',
         intervals_json VARCHAR(255) NOT NULL DEFAULT '[60,30,15,7,1]',
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -99,10 +101,16 @@ function dsc_schema(mysqli $db): void {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
     ];
     foreach ($definitions as $sql) if (!$db->query($sql)) throw new RuntimeException('Unable to prepare DSC Register tables.');
+    foreach (['responsible_user_id'=>'BIGINT NULL','responsible_user_name'=>"VARCHAR(190) NOT NULL DEFAULT ''"] as $column=>$definition) {
+        $check=$db->query("SHOW COLUMNS FROM dsc_settings LIKE '{$column}'");
+        $exists=$check && $check->num_rows>0;
+        if ($check) $check->free();
+        if (!$exists && !$db->query("ALTER TABLE dsc_settings ADD COLUMN `{$column}` {$definition}")) throw new RuntimeException('Unable to prepare DSC Register tables.');
+    }
 }
 function dsc_settings(mysqli $db, int $tenant): array {
     $rows = dsc_all($db, 'SELECT * FROM dsc_settings WHERE tenant_id=?', [$tenant]);
-    $data = $rows[0] ?? ['enabled'=>0,'office_reminders'=>1,'client_reminders'=>0,'expired_reminder'=>1,'intervals_json'=>'[60,30,15,7,1]'];
+    $data = $rows[0] ?? ['enabled'=>0,'office_reminders'=>1,'client_reminders'=>0,'expired_reminder'=>1,'responsible_user_id'=>null,'responsible_user_name'=>'','intervals_json'=>'[60,30,15,7,1]'];
     $data['intervals'] = dsc_intervals(json_decode((string)$data['intervals_json'],true) ?? [60,30,15,7,1]);
     return $data;
 }
@@ -133,9 +141,9 @@ function dsc_fields(mysqli $db, array $data, int $tenant): array {
         if ($fields[$key] && !dsc_valid_date($fields[$key])) throw new InvalidArgumentException('Enter valid follow-up dates.');
     }
     if ($fields['last_followup_date'] && $fields['next_followup_date'] && $fields['next_followup_date']<$fields['last_followup_date']) throw new InvalidArgumentException('Next follow-up cannot precede the last follow-up.');
-    $user = dsc_active_user($db,(int)($data['responsible_user_id'] ?? 0),$tenant);
-    $fields['responsible_user_id'] = (int)$user['id'];
-    $fields['responsible_user_name'] = (string)$user['name'];
+    $settings=dsc_settings($db,$tenant);
+    $fields['responsible_user_id'] = (int)($settings['responsible_user_id'] ?? 0);
+    $fields['responsible_user_name'] = (string)($settings['responsible_user_name'] ?? '');
     $fields['token_location'] = (string)($data['token_location'] ?? 'Client');
     if (!in_array($fields['token_location'],['Office','Client','Other'],true)) throw new InvalidArgumentException('Select a token location.');
     $fields['document_movement_id'] = (int)($data['document_movement_id'] ?? 0) ?: null;
