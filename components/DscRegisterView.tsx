@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, RefreshCw, Search, Settings, X, History, FileText } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
@@ -38,6 +39,8 @@ async function readDscResponse(response:Response) {
 }
 
 export function DscRegisterView({tenantCode}:{tenantCode:string}) {
+ const [tabsTarget,setTabsTarget]=useState<HTMLElement|null>(null);
+ useEffect(()=>{setTabsTarget(document.getElementById('section-view-tabs'));},[]);
  const [data,setData]=useState<RegisterData>(emptyData);
  const [loading,setLoading]=useState(false);
  const [saving,setSaving]=useState(false);
@@ -120,7 +123,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const field=(key:string,title:string,type='text',required=false,maxLength=190)=><label><span className={label}>{title}{required?' *':''}</span><input className={input} type={type} required={required} maxLength={maxLength} value={form[key]||''} onChange={e=>setField(key,e.target.value)}/></label>;
  return <div className="p-4 md:p-6 space-y-4">
   <div className="flex flex-wrap justify-between items-center gap-3">
-   <div><h1 className="text-2xl font-bold text-indigo-700">DSC Register</h1><p className="text-sm text-indigo-600 mt-1">Responsible User: {data.settings.responsible_user_name||'Not set in DSC Settings'}</p></div>
+   <div><p className="text-sm text-indigo-600 mt-1">Responsible User: {data.settings.responsible_user_name||'Not set in DSC Settings'}</p></div>
    <div className="flex flex-wrap items-center gap-2">
     <span className={'text-xs px-3 py-2 rounded-full '+(Number(data.settings.enabled)?'bg-green-50 text-green-700':'bg-gray-100 text-gray-600')}>Office Reminders {Number(data.settings.enabled)?'On':'Off'}</span>
     {data.canConfigure&&<button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void open('settings')} aria-label="Reminder settings"><Settings size={18}/></button>}
@@ -132,7 +135,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   </div>
   {error&&!mode&&<p role="alert" className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">{error}</p>}
   {notice&&<p role="status" className="bg-green-50 border border-green-200 rounded-lg p-3 text-green-700">{notice}</p>}
-  <div role="tablist" aria-label="DSC views" className="flex flex-wrap gap-2">{tabItems.map(([id,title])=><button key={id} role="tab" aria-selected={id===tab} onClick={()=>setTab(id)} className={'px-3 py-2 text-sm font-semibold rounded-lg border '+(tab===id?'bg-indigo-600 text-white border-indigo-600':'bg-white text-indigo-700 border-indigo-200')}>{title} <span className="ml-1 opacity-75">{rows.filter(r=>matchesDscTab(r,id,today)).length}</span></button>)}</div>
+  {tabsTarget && createPortal(<div role="tablist" aria-label="DSC views" className="flex flex-nowrap items-center gap-2">{tabItems.map(([id,title])=><button key={id} role="tab" aria-selected={id===tab} onClick={()=>setTab(id)} className={'shrink-0 whitespace-nowrap px-3 py-2 text-sm font-semibold rounded-full border '+(tab===id?'bg-indigo-600 text-white border-indigo-600':'bg-white text-indigo-700 border-indigo-200')}>{title} <span className="ml-1 opacity-75">{rows.filter(r=>matchesDscTab(r,id,today)).length}</span></button>)}</div>,tabsTarget)}
   <div className="bg-white border border-indigo-100 rounded-xl p-3 space-y-3">
    <div className="relative"><Search size={18} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search DSC Register" placeholder="Search clients, certificate holders or contact details..." className={input+' pl-10'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
