@@ -127,7 +127,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     <button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void load()} aria-label="Refresh DSC Register"><RefreshCw size={18}/></button>
     <button disabled={!selectedIds.length||loading||saving||!data.csrf} onClick={()=>void open('clientReminders')} className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg disabled:opacity-50">Client Reminder ({selectedIds.length})</button>
     {selectedIds.length>0&&<button onClick={()=>setSelectedIds([])} className="text-sm text-indigo-700">Clear Selection</button>}
-    <button disabled={loading||saving||!data.csrf} onClick={()=>void open('create')} className="flex gap-2 items-center px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/>Add DSC</button>
+    <button aria-label="Add DSC" title="Add DSC" disabled={loading||saving||!data.csrf} onClick={()=>void open('create')} className="flex gap-0 md:gap-2 items-center px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add DSC</span></button>
    </div>
   </div>
   {error&&!mode&&<p role="alert" className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700">{error}</p>}

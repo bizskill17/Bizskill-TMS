@@ -509,7 +509,7 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
           )}
           <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center space-x-1 px-3 py-2 border rounded-md text-sm font-medium shadow-sm transition-all duration-200 ${showFilters ? 'bg-indigo-600 border-indigo-700 text-white' : 'bg-indigo-50 border-indigo-300 text-indigo-600 hover:bg-indigo-100'}`}><Filter size={16} /><span>Filters</span></button>
           {filterType !== 'due' && (
-	            <button onClick={onAdd} className="flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm"><Plus size={16} /><span className="whitespace-nowrap">New Recurring Task</span></button>
+	            <button aria-label="New Recurring Task" title="New Recurring Task" onClick={onAdd} className="flex items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm"><Plus size={16} /><span className="sr-only md:not-sr-only whitespace-nowrap">New Recurring Task</span></button>
             )}
             <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
                 <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>

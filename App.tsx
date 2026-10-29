@@ -1544,7 +1544,7 @@ export default function App() {
                                   aria-label={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
                                   title={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
                                   aria-expanded={!isSidebarCollapsed}
-                                  className="shrink-0 w-9 h-9 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
+                                  className="hidden md:inline-flex shrink-0 w-9 h-9 items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
                                 <nav aria-label="Section views" className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-1">
                                 {sectionTabs.length > 1 && <>
 

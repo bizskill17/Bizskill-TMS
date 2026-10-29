@@ -105,12 +105,12 @@ export const OrganizationsView: React.FC<OrganizationsViewProps> = ({
       <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-200 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-gray-500">Create and manage organizations for shared or dedicated database mode.</p>
-          <button
+          <button aria-label="Add Organization" title="Add Organization"
             onClick={openAdd}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm"
           >
             <Plus size={16} />
-            <span>Add Organization</span>
+            <span className="sr-only md:not-sr-only ">Add Organization</span>
           </button>
         </div>
 

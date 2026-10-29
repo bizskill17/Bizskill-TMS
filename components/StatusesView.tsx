@@ -51,9 +51,9 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
           <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
-          <button onClick={() => { setSelected(null); setIsEditOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
+          <button aria-label="Add Status" title="Add Status" onClick={() => { setSelected(null); setIsEditOpen(true); }} className="flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
             <Plus size={16} />
-            <span className="whitespace-nowrap">Add Status</span>
+            <span className="sr-only md:not-sr-only whitespace-nowrap">Add Status</span>
           </button>
         </div>
       </div>

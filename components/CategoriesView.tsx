@@ -96,7 +96,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
     <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between gap-3 md:gap-4">
         <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}><h2 className="sr-only">{getViewLabel('categories', 'Categories')}</h2></div>
-        <button
+        <button aria-label="" title=""
           onClick={onAddCategory}
           className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
           title="Add Category"
@@ -114,7 +114,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
             </div>
             <button onClick={handleExportPDF} title="Export PDF" className="hidden md:flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
             <button onClick={handleExportExcel} title="Export Excel" className="hidden md:flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
-            <button onClick={onAddCategory} className="hidden md:flex flex-1 md:flex-none items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span>Add Category</span></button>
+            <button aria-label="Add Category" title="Add Category" onClick={onAddCategory} className="hidden md:flex flex-none items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span className="sr-only md:not-sr-only ">Add Category</span></button>
         </div>
       </div>
 

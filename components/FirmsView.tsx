@@ -152,13 +152,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onBulkUp
         <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}>
           <h2 className="sr-only">{getViewLabel('firms', 'Clients')}</h2>
         </div>
-        <button
-          onClick={onAddFirm}
-          className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
-          title="Add Client"
-        >
-          <Plus size={18} />
-        </button>
+        
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-300 flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -190,9 +184,9 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onBulkUp
           <Download size={16} />
           <span>Template</span>
         </button>
-        <button onClick={onAddFirm} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
+        <button aria-label="Add Client" title="Add Client" onClick={onAddFirm} className="flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
           <Plus size={16} />
-          <span>Add Client</span>
+          <span className="sr-only md:not-sr-only ">Add Client</span>
         </button>
         </div>
       </div>

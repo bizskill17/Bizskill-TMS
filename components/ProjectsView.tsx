@@ -102,7 +102,7 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, clients, o
                 <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-indigo-400'}`}><LayoutGrid size={18} /></button>
                 <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
             </div>
-            <button onClick={() => setIsModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span>Add Project</span></button>
+            <button aria-label="Add Project" title="Add Project" onClick={() => setIsModalOpen(true)} className="flex-none flex items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span className="sr-only md:not-sr-only ">Add Project</span></button>
         </div>
       </div>
 

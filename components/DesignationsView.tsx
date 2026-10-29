@@ -85,7 +85,7 @@ export const DesignationsView: React.FC<DesignationsViewProps> = ({ designations
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
           <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
-          <button onClick={onAddDesignation} className="flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span>Add Designation</span></button>
+          <button aria-label="Add Designation" title="Add Designation" onClick={onAddDesignation} className="flex items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span className="sr-only md:not-sr-only ">Add Designation</span></button>
           <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
             <button aria-label="Card view" onClick={() => setViewMode('card')} className="p-1.5 text-indigo-600"><LayoutGrid size={18}/></button>
             <button aria-label="Table view" onClick={() => setViewMode('table')} className="p-1.5 text-indigo-600"><LayoutList size={18}/></button>

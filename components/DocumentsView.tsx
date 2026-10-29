@@ -70,7 +70,7 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
    <h1 className="text-2xl font-bold text-indigo-700">Documents</h1>
    <div className="flex gap-2">
     <button type="button" disabled={busy} onClick={()=>void load()} className="p-2 border border-indigo-200 rounded-lg text-indigo-600 disabled:opacity-50" aria-label="Refresh documents"><RefreshCw size={18}/></button>
-    <button type="button" disabled={busy||!csrf} onClick={()=>{setError('');setForm(blankForm());setOpen(true);}} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/>Add Document</button>
+    <button aria-label="Add Document" title="Add Document" type="button" disabled={busy||!csrf} onClick={()=>{setError('');setForm(blankForm());setOpen(true);}} className="inline-flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add Document</span></button>
    </div>
   </div>
   {error&&<div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 p-3">{error}</div>}

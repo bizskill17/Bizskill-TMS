@@ -245,7 +245,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, projects, onA
             </div>
             <button onClick={handleUploadClick} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Upload size={16} /><span>Upload</span></button>
             <button onClick={handleTemplateDownload} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 border border-indigo-200 text-indigo-600 bg-white rounded-md hover:bg-indigo-50 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Download size={16} /><span>Template</span></button>
-            <button onClick={() => setIsModalOpen(true)} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span>Add Client</span></button>
+            <button aria-label="Add Client" title="Add Client" onClick={() => setIsModalOpen(true)} className="flex-none flex items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span className="sr-only md:not-sr-only ">Add Client</span></button>
         </div>
       </div>
 

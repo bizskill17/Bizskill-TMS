@@ -154,7 +154,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
   return (
     <div className="space-y-6 pb-10">
       <div className="flex md:hidden items-center justify-end gap-3">
-        <button
+        <button aria-label="" title=""
           onClick={() => setIsAddModalOpen(true)}
           className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
           title="Add User"
@@ -188,12 +188,12 @@ export const UsersView: React.FC<UsersViewProps> = ({
             </div>
             
             <div className="flex gap-3 w-full md:w-auto">
-                <button 
+                <button aria-label="Add User" title="Add User" 
                   onClick={() => setIsAddModalOpen(true)}
-                  className="hidden md:flex flex-1 md:flex-none items-center justify-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"
+                  className="hidden md:flex flex-none items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"
                 >
                   <Plus size={16} />
-                  <span>Add User</span>
+                  <span className="sr-only md:not-sr-only ">Add User</span>
                 </button>
                 <button 
                     onClick={() => setShowFilters(!showFilters)} 
