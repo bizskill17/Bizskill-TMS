@@ -15,14 +15,22 @@ function call_cp(?array $data=null,string $org='test-a',string $jar='a',string $
 function post_cp(string $action,array $data=[]):array {global $csrf;[$code,$p]=call_cp(['csrf'=>$csrf,'action'=>$action]+$data);ck($code===200,'Action '.$action.': '.json_encode($p));return $p;}
 $tenant=(int)$db->query("SELECT id FROM tenants WHERE code='test-a'")->fetch_assoc()['id'];$other=(int)$db->query("SELECT id FROM tenants WHERE code='test-b'")->fetch_assoc()['id'];
 $user=(int)$db->query("SELECT id FROM users WHERE tenant_id={$tenant} AND name='User A'")->fetch_assoc()['id'];$otherUser=(int)$db->query("SELECT id FROM users WHERE tenant_id={$other} AND name='User B'")->fetch_assoc()['id'];$client=(int)$db->query("SELECT id FROM firms WHERE tenant_id={$tenant} AND name='Client A'")->fetch_assoc()['id'];$otherClient=(int)$db->query("SELECT id FROM firms WHERE tenant_id={$other} LIMIT 1")->fetch_assoc()['id'];
+$db->query("INSERT INTO categories (name,tenant_id) VALUES ('GST',{$tenant}),('Other Tenant Category',{$other})");
+[$code,$categoryData]=call_cp();ck(in_array('GST',array_column($categoryData['categories'],'name'),true),'Task categories returned');ck(!in_array('Other Tenant Category',array_column($categoryData['categories'],'name'),true),'Categories tenant isolated');
 [$code]=call_cp(['action'=>'template','csrf'=>'bad']);ck($code===403,'CSRF rejected');
 $stages=[['name'=>'Pending Documents','is_completion'=>false],['name'=>'Filed','is_completion'=>true]];
 $template=['name'=>'Test GST','category'=>'GST','kind'=>'Combined','active'=>true,'stages'=>$stages,'schedules'=>[['name'=>'Monthly','frequency'=>'Monthly','months'=>[],'due_day'=>20,'month_offset'=>1,'lead_days'=>30]]];
+[$code]=call_cp(['action'=>'template','csrf'=>$csrf]+array_replace($template,['schedules'=>[$template['schedules'][0],$template['schedules'][0]]]));ck($code===422,'Multiple schedules rejected');
+[$code]=call_cp(['action'=>'template','csrf'=>$csrf]+array_replace($template,['category'=>'Other Tenant Category']));ck($code===422,'Cross tenant category rejected');
 post_cp('template',$template);[$code,$data]=call_cp();$t=$data['templates'][0];$tid=(int)$t['id'];
 [$code]=call_cp(['action'=>'assign','csrf'=>$csrf,'template_id'=>$tid,'client_ids'=>[$otherClient],'assigned_user_id'=>$user,'start_date'=>'2026-04-01','billing_type'=>'Billable','active'=>true]);ck($code===422,'Cross tenant client rejected');
 [$code]=call_cp(['action'=>'assign','csrf'=>$csrf,'template_id'=>$tid,'client_ids'=>[$client],'assigned_user_id'=>$otherUser,'start_date'=>'2026-04-01','billing_type'=>'Billable','active'=>true]);ck($code===422,'Cross tenant user rejected');
 post_cp('assign',['template_id'=>$tid,'client_ids'=>[$client],'assigned_user_id'=>$user,'start_date'=>'2026-04-01','billing_type'=>'Billable','fee'=>'1500','active'=>true]);
-post_cp('generate',['through'=>'2026-12-31']);[$code,$data]=call_cp();$entries=array_values(array_filter($data['entries'],fn($r)=>$r['source_type']==='Compliance'));$count=count($entries);ck($count>1,'Multiple periods generated');
+// Older multi-schedule setups must not keep generating duplicate work.
+$definition=$db->real_escape_string(json_encode($template['schedules'][0]));
+$db->query("INSERT INTO compliance_schedules (tenant_id,template_id,definition,active) VALUES ({$tenant},{$tid},'{$definition}',1)");
+post_cp('generate',['through'=>'2026-12-31']);[$code,$data]=call_cp();$entries=array_values(array_filter($data['entries'],fn($r)=>$r['source_type']==='Compliance'));$count=count($entries);ck($count>1,'Multiple periods generated');ck(count(array_unique(array_column($entries,'period_start')))===$count,'Legacy extra schedules must not generate duplicate periods');ck(count($data['templates'][0]['schedules'])===1,'Setup exposes exactly one schedule');
+post_cp('template',['id'=>$tid,'version'=>$t['version']]+$template);ck((int)$db->query("SELECT COUNT(*) AS n FROM compliance_schedules WHERE tenant_id={$tenant} AND template_id={$tid} AND active=1")->fetch_assoc()['n']===1,'Saving setup deactivates legacy extra schedules');
 $p=post_cp('generate',['through'=>'2026-12-31']);ck($p['generated']===0,'Generation deduplicated');
 $entry=$entries[0];$id=(int)$entry['id'];
 [$code]=call_cp(['csrf'=>$csrf,'action'=>'updateEntry','id'=>$id,'version'=>$entry['version'],'current_stage'=>'Injected']);ck($code===422,'Invalid stage rejected');
