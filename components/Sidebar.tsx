@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavItem } from '../types';
-import { X, LogOut, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, LogOut, ExternalLink, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
 interface SidebarProps {
   items: NavItem[];
@@ -212,6 +212,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           ].map(sectionInfo => {
             const sectionItems = groupedItems[sectionInfo.source] || [];
             if (sectionItems.length === 0) return null;
+            if (sectionInfo.key === 'Master') {
+              const masterActive = activeTab === 'master' || sectionItems.some(item => item.id === activeTab);
+              return <div key="Master" className="mb-2 px-3">
+                <button type="button" onClick={() => { onTabChange('master'); if (window.innerWidth < 768) onClose?.(); }}
+                  className={`w-full px-4 py-3 flex items-center gap-3 rounded-lg text-sm font-semibold ${masterActive ? 'bg-indigo-600 text-white shadow-sm' : 'text-indigo-600 hover:bg-indigo-100/60'}`}
+                  aria-current={activeTab === 'master' ? 'page' : undefined}>
+                  <Layers size={20}/><span>Master</span>
+                </button>
+                <div className="mx-4 my-2 border-b border-indigo-200"></div>
+              </div>;
+            }
             const isOpenSection = !!openSections[sectionInfo.key];
             return (
               <div key={sectionInfo.key} className="mb-2 px-3">

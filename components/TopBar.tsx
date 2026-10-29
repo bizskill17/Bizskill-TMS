@@ -232,11 +232,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           {['Tasks', 'Vendor', 'Master', 'Recurring Tasks', 'Documents', 'DSC', 'Documentation'].map(section => groupedItems[section] && (
             <li key={section} className="relative">
               <button
-                onClick={() => toggleDropdown(section)}
+                onClick={() => section === 'Master' ? handleItemClick('master') : toggleDropdown(section)}
                 ref={(el) => {
                   dropdownAnchorRefs.current[section] = el;
                 }}
-                className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold ${isSectionActive(section) || openDropdown === section ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'}`}
+                className={`flex items-center px-4 py-2.5 rounded-lg text-sm font-semibold ${isSectionActive(section) || (section === 'Master' && activeTab === 'master') || openDropdown === section ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'}`}
               >
                 <span>{section}</span>
               </button>

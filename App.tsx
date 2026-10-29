@@ -1346,6 +1346,22 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
+      case 'master': if (!isAdmin) return null; return (
+        <section className="p-4 md:p-6 space-y-6">
+          <h1 className="text-2xl font-bold text-indigo-700">Master</h1>
+          <div className="bg-white border border-indigo-100 rounded-2xl p-4 md:p-6 shadow-sm">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
+              {navItemsWithCounts.filter(item => item.section === 'Master').map(item => (
+                <button key={item.id} type="button" onClick={() => handleTabChange(item.id)}
+                  className="group min-h-[140px] md:min-h-[175px] flex flex-col items-center justify-center gap-4 px-4 py-6 rounded-xl border border-indigo-200 bg-indigo-50/30 text-indigo-600 hover:bg-indigo-600 hover:border-indigo-600 hover:text-white hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-indigo-200 transition-colors">
+                  <span className="[&>svg]:w-10 [&>svg]:h-10" aria-hidden="true">{item.icon}</span>
+                  <span className="text-base md:text-lg font-semibold text-center">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      );
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
@@ -1553,7 +1569,8 @@ export default function App() {
 			                    </div>
 			                  )}
 			                  <div className="flex-1">
-			                    {renderContent()}
+			                    {masterIds.includes(activeTab) && <button type="button" onClick={() => handleTabChange('master')} className="mx-4 md:mx-6 mt-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800"><Layers size={16}/>Master</button>}
+                            {renderContent()}
 			                  </div>
 			                  <Footer />
 			                </div>
