@@ -27,6 +27,18 @@
 	        min-height: 100vh;
 	        height: 100%;
 	      }
+      /* Shared blue grid for every application table, including modal tables. */
+      #root table {
+        border-collapse: collapse;
+      }
+      #root table,
+      #root table tr {
+        border-color: #93c5fd !important;
+      }
+      #root table th,
+      #root table td {
+        border: 1px solid #93c5fd !important;
+      }
       /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 6px;
