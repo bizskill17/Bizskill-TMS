@@ -45,7 +45,7 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
   return (
     <div className="space-y-6 pb-10">
       <div className={`flex items-center justify-between gap-3 md:gap-4 ${sidebarCollapsed ? 'pl-14 md:pl-16' : ''}`}>
-        <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('statuses', 'Status')}</h2>
+        <h2 className="sr-only">{getViewLabel('statuses', 'Status')}</h2>
         <div className="flex items-center gap-2">
           <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
           <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>

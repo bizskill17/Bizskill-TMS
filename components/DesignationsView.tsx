@@ -80,7 +80,7 @@ export const DesignationsView: React.FC<DesignationsViewProps> = ({ designations
   return (
     <div className="space-y-6 pb-10">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div><h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('designations', 'Designations')}</h2></div>
+        <div><h2 className="sr-only">{getViewLabel('designations', 'Designations')}</h2></div>
         <div className="flex items-center gap-2">
           <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
           <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>

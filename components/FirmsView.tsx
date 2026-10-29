@@ -150,7 +150,7 @@ export const FirmsView: React.FC<FirmsViewProps> = ({ firms, onAddFirm, onBulkUp
     <div className="space-y-6 pb-10">
       <div className="flex items-center justify-between gap-3 md:gap-4">
         <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}>
-          <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('firms', 'Clients')}</h2>
+          <h2 className="sr-only">{getViewLabel('firms', 'Clients')}</h2>
         </div>
         <button
           onClick={onAddFirm}

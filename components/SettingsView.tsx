@@ -32,7 +32,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ settings, onUpdate }
     <div className="space-y-6 pb-10 max-w-5xl mx-auto">
 	      <div className="flex justify-between items-center">
 	        <div>
-	          <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('settings', 'Application Settings')}</h2>
+	          <h2 className="sr-only">{getViewLabel('settings', 'Application Settings')}</h2>
 	          <p className="text-sm text-gray-500 mt-1">Configure global tokens and external API credentials</p>
 	        </div>
         {isSaved && (
