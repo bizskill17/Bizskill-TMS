@@ -7,7 +7,7 @@ import { localDate, matchesTab, documentStatus } from './documentRules.mjs';
 type DocumentRow = {
  id: number; movement_date: string; direction: 'In'|'Out'; document_name: string;
  client_name: string; external_person: string; office_user_id: number; office_user_name: string;
- return_user_name?: string; returnable: number|string; return_due_date: string|null; returned_on: string|null; remarks: string;
+ return_person?: string; return_user_name?: string; returnable: number|string; return_due_date: string|null; returned_on: string|null; remarks: string;
 };
 const tabs = [{id:'all',label:'All Documents'},{id:'sending',label:'Pending Sending'},{id:'receipt',label:'Pending Receipt'},{id:'returned',label:'Returned'}];
 const blankForm = () => ({movement_date:localDate(),direction:'In' as 'In'|'Out',document_name:'',client_name:'',external_person:'',office_user_id:'',returnable:false,return_due_date:'',remarks:''});
@@ -29,6 +29,7 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
  const [open,setOpen]=useState(false);
  const [form,setForm]=useState(blankForm);
  const [returnRow,setReturnRow]=useState<DocumentRow|null>(null);
+ const [returnPerson,setReturnPerson]=useState('');
  const [returnUser,setReturnUser]=useState('');
  const [returnedOn,setReturnedOn]=useState(localDate());
  const endpoint='/api/documents.php?tenantCode='+encodeURIComponent(tenantCode);
@@ -58,7 +59,7 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
   && (!clientFilter || r.client_name===clientFilter)
   && (!userFilter || String(r.office_user_id)===userFilter)
   && (!from || r.movement_date>=from) && (!to || r.movement_date<=to)
-  && [r.document_name,r.client_name,r.external_person,r.office_user_name,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
+  && [r.document_name,r.client_name,r.external_person,r.office_user_name,r.return_user_name,r.return_person,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
  const input='w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-300';
  const label='block text-sm font-medium text-gray-700 mb-1';
  const activeUsers=users.filter(u=>u.isActive);
@@ -87,15 +88,15 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
   </div>
   <div className="bg-white border border-indigo-200 rounded-xl overflow-x-auto">
    <table className="w-full text-left text-sm border-collapse">
-    <thead className="bg-indigo-600 text-white"><tr>{['Date','In / Out','Document Name','Client','Received From / Handed To','Office User','Returnable','Return Due Date','Returned On','Received By / Given By','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 font-semibold border-r border-indigo-400 whitespace-normal">{h}</th>)}</tr></thead>
+    <thead className="bg-indigo-600 text-white"><tr>{['Date','In / Out','Document Name','Client','Received From / Handed To','Office User','Returnable','Return Due Date','Returned On','Return Office User','Received By / Given By','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 font-semibold border-r border-indigo-400 whitespace-normal">{h}</th>)}</tr></thead>
     <tbody>{filtered.map(r=>{const status=documentStatus(r);return <tr key={r.id} className="border-b border-indigo-100 hover:bg-indigo-50">
      <td className="p-3 whitespace-nowrap">{displayDate(r.movement_date)}</td>
      <td className="p-3"><span className={'inline-flex gap-1 items-center font-semibold '+(r.direction==='In'?'text-emerald-700':'text-blue-700')}>{r.direction==='In'?<ArrowDownLeft size={15}/>:<ArrowUpRight size={15}/>} {r.direction}</span></td>
      <td className="p-3 font-medium break-words">{r.document_name}</td><td className="p-3">{r.client_name||'—'}</td><td className="p-3">{r.external_person}</td><td className="p-3">{r.office_user_name}</td>
-     <td className="p-3">{Number(r.returnable)?'Yes':'No'}</td><td className="p-3 whitespace-nowrap">{displayDate(r.return_due_date)}</td><td className="p-3 whitespace-nowrap">{displayDate(r.returned_on)}</td><td className="p-3">{r.return_user_name ? (r.direction==='In'?'Given by: ':'Received by: ')+r.return_user_name : '—'}</td>
+     <td className="p-3">{Number(r.returnable)?'Yes':'No'}</td><td className="p-3 whitespace-nowrap">{displayDate(r.return_due_date)}</td><td className="p-3 whitespace-nowrap">{displayDate(r.returned_on)}</td><td className="p-3">{r.return_user_name ? (r.direction==='In'?'Giving User: ':'Receiving User: ')+r.return_user_name : '—'}</td><td className="p-3">{r.return_person ? (r.direction==='In'?'Received by: ':'Given by: ')+r.return_person : '—'}</td>
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs whitespace-nowrap '+(status==='Overdue'?'bg-red-100 text-red-700':status==='Returned'?'bg-green-100 text-green-700':'bg-gray-100 text-gray-700')}>{status}</span></td><td className="p-3 break-words">{r.remarks||'—'}</td>
-     <td className="p-3">{Number(r.returnable)===1&&!r.returned_on?<button disabled={busy} onClick={()=>{setError('');setReturnedOn(localDate());setReturnUser('');setReturnRow(r);}} className="inline-flex gap-1 text-indigo-700 font-medium whitespace-nowrap"><CheckCircle size={16}/>Mark Returned</button>:'—'}</td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={13} className="p-8 text-center text-gray-500">{loading?'Loading documents...':'No documents found.'}</td></tr>}</tbody>
+     <td className="p-3">{Number(r.returnable)===1&&!r.returned_on?<button disabled={busy} onClick={()=>{setError('');setReturnedOn(localDate());setReturnUser('');setReturnPerson('');setReturnRow(r);}} className="inline-flex gap-1 text-indigo-700 font-medium whitespace-nowrap"><CheckCircle size={16}/>Mark Returned</button>:'—'}</td>
+    </tr>})}{!filtered.length&&<tr><td colSpan={14} className="p-8 text-center text-gray-500">{loading?'Loading documents...':'No documents found.'}</td></tr>}</tbody>
    </table>
   </div>
   {open&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="document-form-title">
@@ -117,11 +118,12 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
    </form>
   </div>}
   {returnRow&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="return-title">
-   <form className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4" onSubmit={e=>{e.preventDefault();void submit({action:'return',id:returnRow.id,returned_on:returnedOn,return_user_id:returnUser});}}>
+   <form className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4" onSubmit={e=>{e.preventDefault();void submit({action:'return',id:returnRow.id,returned_on:returnedOn,return_user_id:returnUser,return_person:returnPerson});}}>
     <h2 id="return-title" className="text-xl font-bold text-indigo-700">Mark Returned</h2><p className="font-medium">{returnRow.document_name}</p>
     {error&&<p role="alert" className="text-red-600">{error}</p>}
     <label className={label}>Returned On *<input required type="date" min={returnRow.movement_date} className={input} value={returnedOn} onChange={e=>setReturnedOn(e.target.value)}/></label>
-    <div><span className={label}>{returnRow.direction==='In'?'Given By':'Received By'} *</span><SearchableSelect compact required options={activeUsers.map(u=>({value:String(u.id),label:u.name}))} value={returnUser} onChange={setReturnUser} /></div>
+    <div><span className={label}>{returnRow.direction==='In'?'Giving User':'Receiving User'} *</span><SearchableSelect compact required options={activeUsers.map(u=>({value:String(u.id),label:u.name}))} value={returnUser} onChange={setReturnUser} /></div>
+    <label className={label}>{returnRow.direction==='In'?'Received By':'Given By'} *<input required maxLength={190} className={input} value={returnPerson} onChange={e=>setReturnPerson(e.target.value)}/></label>
     <div className="flex justify-end gap-3"><button disabled={saving} type="button" onClick={()=>setReturnRow(null)}>Cancel</button><button disabled={saving} className="px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50">{saving?'Saving...':'Confirm Return'}</button></div>
    </form>
   </div>}
