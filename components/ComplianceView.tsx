@@ -5,7 +5,7 @@ import {SearchableSelect} from './SearchableSelect';
 
 const input='w-full border border-indigo-200 rounded-md px-3 py-2 text-sm bg-white';
 const button='inline-flex items-center gap-2 rounded-md border border-indigo-200 px-3 py-2 text-sm text-indigo-700 hover:bg-indigo-50 disabled:opacity-40 whitespace-nowrap';
-const primary=button+' bg-indigo-600 text-white hover:bg-indigo-700';
+const primary=button.replace('text-indigo-700','text-white').replace('hover:bg-indigo-50','hover:bg-indigo-700')+' bg-indigo-600';
 const dateText=(s:any)=>s?String(s).slice(0,10).split('-').reverse().join('/'):'—';
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const schedule=()=>({name:'Monthly',frequency:'Monthly',due_day:20,month_offset:1,lead_days:30,months:[4,6,9,12]});
