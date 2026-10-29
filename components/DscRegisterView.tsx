@@ -26,6 +26,17 @@ const input='w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-whi
 const label='block text-sm font-medium text-gray-700 mb-1';
 const actionTitles:Record<string,string>={create:'Add DSC',edit:'Edit DSC',renew:'Mark Renewed',followup:'Record Follow-up',deactivate:'Deactivate DSC',reactivate:'Reactivate DSC',trash:'Move to Trash',restore:'Restore DSC',close:'Close DSC',startRenewal:'Start Renewal',settings:'Reminder Settings',clientReminders:'Preview Client Reminders',history:'DSC Details & History'};
 
+
+async function readDscResponse(response:Response) {
+ const raw=await response.text();
+ try {return JSON.parse(raw);}
+ catch {
+  throw new Error(response.status===504||response.status===502||response.status===503
+   ? 'The server is temporarily unavailable. Please try Refresh shortly.'
+   : 'The DSC server returned an unexpected response. Please refresh; if this continues, contact support.');
+ }
+}
+
 export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const [data,setData]=useState<RegisterData>(emptyData);
  const [loading,setLoading]=useState(false);
@@ -51,7 +62,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   setLoading(true);setError('');
   try {
    const response=await fetch(endpoint,{cache:'no-store'});
-   const payload=await response.json();
+   const payload=await readDscResponse(response);
    if(!response.ok||!payload.success) throw new Error(payload.error||'Unable to load DSC Register.');
    setData(payload);
   } catch(e) {setError(e instanceof Error?e.message:'Unable to load DSC Register.');}
@@ -64,7 +75,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   setMode(action);setSelected(row);setError('');setNotice('');
   if(action==='clientReminders') {
    setPreview(null);setHistoryLoading(true);
-   try {const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'previewClientReminders',ids:selectedIds,csrf:data.csrf})});const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||'Unable to preview.');if(seq===request.current)setPreview(result);}catch(e){setError(e instanceof Error?e.message:'Unable to preview.');}finally{setHistoryLoading(false);}
+   try {const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'previewClientReminders',ids:selectedIds,csrf:data.csrf})});const result=await readDscResponse(response);if(!response.ok||!result.success)throw new Error(result.error||'Unable to preview.');if(seq===request.current)setPreview(result);}catch(e){setError(e instanceof Error?e.message:'Unable to preview.');}finally{setHistoryLoading(false);}
   }
   if(action==='settings') setForm({...blank(),...data.settings,enabled:Boolean(Number(data.settings.enabled)),office_reminders:Boolean(Number(data.settings.office_reminders)),client_reminders:Boolean(Number(data.settings.client_reminders)),expired_reminder:Boolean(Number(data.settings.expired_reminder)),intervals:(data.settings.intervals||[]).join(',')});
   else if(action==='edit'&&row) setForm({...blank(),...row,issue_date:row.issue_date||'',responsible_user_id:String(row.responsible_user_id),document_movement_id:row.document_movement_id?String(row.document_movement_id):'',last_followup_date:row.last_followup_date||'',next_followup_date:row.next_followup_date||''});
@@ -72,7 +83,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   if(action==='history'&&row) {
    setHistory([]);setReminders([]);setHistoryLoading(true);
    try {
-    const response=await fetch(endpoint+'&id='+row.id,{cache:'no-store'});const payload=await response.json();
+    const response=await fetch(endpoint+'&id='+row.id,{cache:'no-store'});const payload=await readDscResponse(response);
     if(!response.ok||!payload.success) throw new Error(payload.error||'Unable to load history.');
     if(seq===request.current) {setHistory(payload.history||[]);setReminders(payload.reminders||[]);}
    } catch(e) {if(seq===request.current)setError(e instanceof Error?e.message:'Unable to load history.');}
@@ -85,7 +96,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   try {
    const payload={...form,...(mode==='clientReminders'?{ids:preview?.recipients.map((r:any)=>r.id),batch:preview?.batch,token:preview?.token}:{}),action:mode==='clientReminders'?'sendClientReminders':mode,id:selected?.id,version:selected?.version,csrf:data.csrf,tenantCode};
    const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-   const result=await response.json();
+   const result=await readDscResponse(response);
    if(!response.ok||!result.success) throw new Error(result.error||'Unable to save DSC.');
    setMode('');setSelected(null);await load();
    if(mode==='clientReminders')setSelectedIds([]);
@@ -145,7 +156,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs font-semibold '+(status==='Expired'?'bg-red-100 text-red-700':status==='Inactive'||status==='Trash'?'bg-gray-100 text-gray-600':status==='Renewed'||status==='Closed'?'bg-green-100 text-green-700':'bg-indigo-50 text-indigo-700')}>{status}</span></td>
      <td className="p-3 max-w-xs break-words">{r.remarks||'—'}</td>
      <td className="p-3 min-w-[145px]"><button className="flex gap-1 items-center text-indigo-700 font-medium mb-2" onClick={()=>void open('history',r)}><History size={15}/>Details & History</button><select aria-label={'Actions for '+r.holder_name} className={input} value="" onChange={e=>{if(e.target.value)void open(e.target.value,r);}}><option value="">Actions</option>{actions(r).map(a=><option key={a} value={a}>{actionTitles[a]}</option>)}</select></td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={10} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':'No DSC entries found.'}</td></tr>}</tbody>
+    </tr>})}{!filtered.length&&<tr><td colSpan={10} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
    </table>
   </div>
   {mode&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dsc-dialog-title">
