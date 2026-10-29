@@ -1,7 +1,7 @@
 name: Validate DSC Register
 on:
   push:
-    branches: [feature/dsc-register]
+    branches: [feature/dsc-register, feature/dsc-settings-owner]
   pull_request:
     paths:
       - 'api/dsc*'

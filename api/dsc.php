@@ -36,6 +36,12 @@ try {
             dsc_reply(['success'=>true,'history'=>$history,'reminders'=>$reminders]);
         }
         $rows=dsc_all($conn,'SELECT * FROM dsc_certificates WHERE tenant_id=? ORDER BY expiry_date,id DESC',[$tenant]);
+        $globalSettings=dsc_settings($conn,$tenant);
+        foreach ($rows as &$certificate) {
+            $certificate['responsible_user_id']=(int)($globalSettings['responsible_user_id'] ?? 0);
+            $certificate['responsible_user_name']=(string)($globalSettings['responsible_user_name'] ?? '');
+        }
+        unset($certificate);
         $userScope=app_table_is_scoped($conn,'users')?' WHERE tenant_id=?':'';
         $users=dsc_all($conn,'SELECT id,name,isActive FROM users'.$userScope.' ORDER BY name', $userScope?[$tenant]:[]);
         $firmScope=app_table_is_scoped($conn,'firms')?' WHERE tenant_id=?':'';
@@ -55,7 +61,14 @@ try {
         $client=!empty($data['client_reminders'])?1:0;
         $expired=!empty($data['expired_reminder'])?1:0;
         if ($enabled && !$office && !$client) throw new InvalidArgumentException('Choose at least one reminder recipient.');
-        dsc_query($conn,'INSERT INTO dsc_settings (tenant_id,enabled,office_reminders,client_reminders,expired_reminder,intervals_json) VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),office_reminders=VALUES(office_reminders),client_reminders=VALUES(client_reminders),expired_reminder=VALUES(expired_reminder),intervals_json=VALUES(intervals_json)',[$tenant,$enabled,$office,$client,$expired,json_encode($intervals)]);
+        $responsibleId=(int)($data['responsible_user_id'] ?? 0);
+        $responsibleName='';
+        if ($responsibleId) $responsibleName=(string)dsc_active_user($conn,$responsibleId,$tenant)['name'];
+        if ($enabled && $office && !$responsibleId) throw new InvalidArgumentException('Select the Responsible User in DSC Settings.');
+        $conn->begin_transaction();
+        dsc_query($conn,'INSERT INTO dsc_settings (tenant_id,enabled,office_reminders,client_reminders,expired_reminder,intervals_json,responsible_user_id,responsible_user_name) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE enabled=VALUES(enabled),office_reminders=VALUES(office_reminders),client_reminders=VALUES(client_reminders),expired_reminder=VALUES(expired_reminder),intervals_json=VALUES(intervals_json),responsible_user_id=VALUES(responsible_user_id),responsible_user_name=VALUES(responsible_user_name)',[$tenant,$enabled,$office,$client,$expired,json_encode($intervals),$responsibleId?:null,$responsibleName]);
+        dsc_event($conn,$tenant,0,'Settings Updated',$actor,$actorName,'Organisation Responsible User updated',['responsible_user_name'=>$responsibleName]);
+        $conn->commit();
         dsc_reply(['success'=>true]);
     }
     $conn->begin_transaction();
@@ -108,10 +121,11 @@ try {
                 if (!dsc_valid_date($issue)) throw new InvalidArgumentException('Enter the new issue date.');
                 dsc_check_dates($issue,$expiry);
                 if ($expiry <= $row['expiry_date']) throw new InvalidArgumentException('New expiry must be later than the previous expiry.');
-                $renewUser=dsc_active_user($conn,(int)$row['responsible_user_id'],$tenant);
+                $renewSettings=dsc_settings($conn,$tenant);
                 $new=[];
                 foreach (['client_name','holder_name','organisation','designation','mobile','email','responsible_user_id','responsible_user_name','token_location','token_details','document_movement_id','remarks'] as $field) $new[$field]=$row[$field];
-                $new['responsible_user_name']=(string)$renewUser['name'];
+                $new['responsible_user_id']=(int)($renewSettings['responsible_user_id'] ?? 0);
+                $new['responsible_user_name']=(string)($renewSettings['responsible_user_name'] ?? '');
                 $new=array_merge($new,['tenant_id'=>$tenant,'created_by'=>$actor,'issue_date'=>$issue,'expiry_date'=>$expiry,'previous_certificate_id'=>$id]);
                 $newId=dsc_insert($conn,'dsc_certificates',$new);
                 $values=['lifecycle'=>'renewed','pending_renewal'=>0,'renewed_to_id'=>$newId];

@@ -52,6 +52,8 @@ function dsc_schedule_reminders(mysqli $db): int {
     $rows=dsc_all($db,"SELECT * FROM dsc_certificates WHERE tenant_id=? AND lifecycle='active' AND deleted_at IS NULL AND expiry_date<=?",[app_tenant_id(),$latest]);
     $count=0;
     foreach ($rows as $row) {
+        $row['responsible_user_id']=(int)($settings['responsible_user_id'] ?? 0);
+        $row['responsible_user_name']=(string)($settings['responsible_user_name'] ?? '');
         $stage=dsc_reminder_stage($row,$settings['intervals'],$today,(bool)$settings['expired_reminder']);
         if ($stage===null) continue;
         if ((int)$settings['office_reminders']) {
@@ -76,7 +78,7 @@ function dsc_reminder_current(mysqli $db,array $queue): bool {
     $found=dsc_all($db,'SELECT * FROM dsc_certificates WHERE id=? AND tenant_id=?',[(int)($meta['certificate_id'] ?? 0),app_tenant_id()]);
     if (!$found) return false;
     $row=$found[0];
-    if ($row['expiry_date']!==($meta['expiry_date'] ?? '') || (int)$row['responsible_user_id']!==(int)($meta['responsible_user_id'] ?? 0)) return false;
+    if ($row['expiry_date']!==($meta['expiry_date'] ?? '')) return false;
     $settings=dsc_settings($db,app_tenant_id());
     if (!(int)$settings['enabled']) return false;
     $today=(new DateTimeImmutable('today',new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
@@ -86,6 +88,8 @@ function dsc_reminder_current(mysqli $db,array $queue): bool {
         return (int)$settings['client_reminders']===1 && dsc_phone((string)$row['mobile'],(string)$queue['provider'])===(string)$queue['target'];
     }
     if (!(int)$settings['office_reminders']) return false;
+    $row['responsible_user_id']=(int)($settings['responsible_user_id'] ?? 0);
+    if ((int)$row['responsible_user_id']!==(int)($meta['responsible_user_id'] ?? 0)) return false;
     try { $user=dsc_active_user($db,(int)$row['responsible_user_id'],app_tenant_id()); }
     catch (InvalidArgumentException $error) { return false; }
     return dsc_phone((string)$user['mobile'],(string)$queue['provider'])===(string)$queue['target'];

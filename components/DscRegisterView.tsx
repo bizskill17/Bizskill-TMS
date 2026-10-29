@@ -35,7 +35,6 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const [tab,setTab]=useState('all');
  const [search,setSearch]=useState('');
  const [clientFilter,setClientFilter]=useState('');
- const [ownerFilter,setOwnerFilter]=useState('');
  const [dateFrom,setDateFrom]=useState('');
  const [dateTo,setDateTo]=useState('');
  const [mode,setMode]=useState('');
@@ -89,7 +88,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  }
  const rows=data.certificates||[];
  const today=todayISO();
- const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!ownerFilter||String(r.responsible_user_id)===ownerFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.designation,r.mobile,r.email,r.responsible_user_name,r.token_details,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
+ const filtered=rows.filter(r=>matchesDscTab(r,tab,today)&&(!clientFilter||r.client_name===clientFilter)&&(!dateFrom||r.expiry_date>=dateFrom)&&(!dateTo||r.expiry_date<=dateTo)&&[r.client_name,r.holder_name,r.organisation,r.designation,r.mobile,r.email,r.responsible_user_name,r.token_details,r.remarks].join(' ').toLowerCase().includes(search.toLowerCase()));
  const userOptions=data.users.filter(activeUser).map(u=>({value:String(u.id),label:u.name}));
  const clientOptions=Array.from(new Set(data.clients.map(c=>String(c.name)))).map(name=>({value:name,label:name}));
  const selectedDocument=selected?.document_movement_id?data.documents.find(d=>Number(d.id)===Number(selected.document_movement_id)):null;
@@ -102,7 +101,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const field=(key:string,title:string,type='text',required=false,maxLength=190)=><label><span className={label}>{title}{required?' *':''}</span><input className={input} type={type} required={required} maxLength={maxLength} value={form[key]||''} onChange={e=>setField(key,e.target.value)}/></label>;
  return <div className="p-4 md:p-6 space-y-4">
   <div className="flex flex-wrap justify-between items-center gap-3">
-   <div><h1 className="text-2xl font-bold text-indigo-700">DSC Register</h1><p className="text-sm text-gray-500">Certificate expiry and renewal follow-up</p></div>
+   <div><h1 className="text-2xl font-bold text-indigo-700">DSC Register</h1><p className="text-sm text-gray-500">Certificate expiry and renewal follow-up</p><p className="text-sm text-indigo-600 mt-1">Responsible User: {data.settings.responsible_user_name||'Not set in DSC Settings'}</p></div>
    <div className="flex flex-wrap items-center gap-2">
     <span className={'text-xs px-3 py-2 rounded-full '+(Number(data.settings.enabled)?'bg-green-50 text-green-700':'bg-gray-100 text-gray-600')}>Reminders {Number(data.settings.enabled)?'On':'Off'}</span>
     {data.canConfigure&&<button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void open('settings')} aria-label="Reminder settings"><Settings size={18}/></button>}
@@ -115,28 +114,27 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   <div role="tablist" aria-label="DSC views" className="flex flex-wrap gap-2">{tabItems.map(([id,title])=><button key={id} role="tab" aria-selected={id===tab} onClick={()=>setTab(id)} className={'px-3 py-2 text-sm font-semibold rounded-lg border '+(tab===id?'bg-indigo-600 text-white border-indigo-600':'bg-white text-indigo-700 border-indigo-200')}>{title} <span className="ml-1 opacity-75">{rows.filter(r=>matchesDscTab(r,id,today)).length}</span></button>)}</div>
   <div className="bg-white border border-indigo-100 rounded-xl p-3 space-y-3">
    <div className="relative"><Search size={18} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search DSC Register" placeholder="Search clients, certificate holders or contact details..." className={input+' pl-10'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
-   <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
     <div><span className={label}>Client</span><SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name))).map(name=>({value:name,label:name}))]} value={clientFilter} onChange={setClientFilter}/></div>
-    <div><span className={label}>Responsible User</span><SearchableSelect compact options={[{value:'',label:'All Users'},...Array.from(new Map(rows.map(r=>[String(r.responsible_user_id),r.responsible_user_name])).entries()).map(([value,name])=>({value,label:name}))]} value={ownerFilter} onChange={setOwnerFilter}/></div>
     <label><span className={label}>Expiry From</span><input aria-label="Expiry from" type="date" className={input} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/></label>
     <label><span className={label}>Expiry To</span><input aria-label="Expiry to" type="date" min={dateFrom} className={input} value={dateTo} onChange={e=>setDateTo(e.target.value)}/></label>
-    <button onClick={()=>{setSearch('');setClientFilter('');setOwnerFilter('');setDateFrom('');setDateTo('');}} className="self-end border border-indigo-200 rounded-lg py-2 text-indigo-700 text-sm">Clear Filters</button>
+    <button onClick={()=>{setSearch('');setClientFilter('');setDateFrom('');setDateTo('');}} className="self-end border border-indigo-200 rounded-lg py-2 text-indigo-700 text-sm">Clear Filters</button>
    </div>
   </div>
   <div className="bg-white border border-indigo-200 rounded-xl overflow-x-auto">
    <table className="w-full text-sm text-left border-collapse">
-    <thead className="bg-indigo-600 text-white"><tr>{['Client','Certificate Holder / Contact','Certificate Dates','Days Left','Responsible User','Token Location','Next Follow-up','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
+    <thead className="bg-indigo-600 text-white"><tr>{['Client','Certificate Holder / Contact','Certificate Dates','Days Left','Token Location','Next Follow-up','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
     <tbody>{filtered.map(r=>{const status=dscStatus(r,today),left=daysLeft(r.expiry_date,today);return <tr key={r.id} className="border-b border-indigo-100 hover:bg-indigo-50">
      <td className="p-3 font-medium">{r.client_name}</td>
      <td className="p-3"><div className="font-semibold">{r.holder_name}</div>{r.mobile&&<div className="text-xs text-gray-500">{r.mobile}</div>}{r.email&&<div className="text-xs text-gray-500 break-all">{r.email}</div>}</td>
      <td className="p-3 whitespace-nowrap"><div className="text-xs text-gray-500">Issued: {dateText(r.issue_date)}</div><div className="font-medium">Expiry: {dateText(r.expiry_date)}</div></td>
      <td className={'p-3 font-semibold '+(left<0?'text-red-600':left<=15?'text-amber-700':'text-gray-700')}>{r.lifecycle==='active'&&!r.deleted_at?(left<0?Math.abs(left)+' days overdue':left===0?'Today':left+' days'):'—'}</td>
-     <td className="p-3">{r.responsible_user_name}</td><td className="p-3">{r.token_location}{r.token_details&&<div className="text-xs text-gray-500">{r.token_details}</div>}{r.document_movement_id&&<button onClick={()=>void open('history',r)} className="block mt-1 text-xs text-indigo-600 underline">View custody</button>}</td>
+     <td className="p-3">{r.token_location}{r.token_details&&<div className="text-xs text-gray-500">{r.token_details}</div>}{r.document_movement_id&&<button onClick={()=>void open('history',r)} className="block mt-1 text-xs text-indigo-600 underline">View custody</button>}</td>
      <td className={'p-3 whitespace-nowrap '+(r.lifecycle==='active'&&!r.deleted_at&&r.next_followup_date&&r.next_followup_date<today?'text-red-600':'')}>{dateText(r.next_followup_date)}</td>
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs font-semibold '+(status==='Expired'?'bg-red-100 text-red-700':status==='Inactive'||status==='Trash'?'bg-gray-100 text-gray-600':status==='Renewed'||status==='Closed'?'bg-green-100 text-green-700':'bg-indigo-50 text-indigo-700')}>{status}</span></td>
      <td className="p-3 max-w-xs break-words">{r.remarks||'—'}</td>
      <td className="p-3 min-w-[145px]"><button className="flex gap-1 items-center text-indigo-700 font-medium mb-2" onClick={()=>void open('history',r)}><History size={15}/>Details & History</button><select aria-label={'Actions for '+r.holder_name} className={input} value="" onChange={e=>{if(e.target.value)void open(e.target.value,r);}}><option value="">Actions</option>{actions(r).map(a=><option key={a} value={a}>{actionTitles[a]}</option>)}</select></td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={10} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':'No DSC entries found.'}</td></tr>}</tbody>
+    </tr>})}{!filtered.length&&<tr><td colSpan={9} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':'No DSC entries found.'}</td></tr>}</tbody>
    </table>
   </div>
   {mode&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dsc-dialog-title">
@@ -150,7 +148,6 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      {field('organisation','Organisation')}{field('designation','Designation','text',false,120)}
      {field('mobile','Mobile','tel',false,30)}{field('email','Email','email')}
      {field('issue_date','Issued On','date')}{field('expiry_date','Expiry Date','date',true)}
-     <div><span className={label}>Responsible User *</span><SearchableSelect compact required options={userOptions} value={form.responsible_user_id} onChange={v=>setField('responsible_user_id',v)}/></div>
      <label><span className={label}>Token Location</span><select className={input} value={form.token_location} onChange={e=>setField('token_location',e.target.value)}>{['Office','Client','Other'].map(v=><option key={v}>{v}</option>)}</select></label>
      {field('token_details','Location Details','text',false,255)}
      <div><span className={label}>Document Entry (Optional)</span><SearchableSelect compact options={[{value:'',label:'None'},...data.documents.map(d=>({value:String(d.id),label:d.document_name+' · '+dateText(d.movement_date)+' · '+d.direction}))]} value={form.document_movement_id} onChange={v=>setField('document_movement_id',v)}/></div>
@@ -166,6 +163,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     {mode==='startRenewal'&&<p className="text-sm text-gray-600">Add this certificate to Pending Renewal?</p>}
     {mode==='close'&&<><p className="text-sm text-gray-600">Close this entry and stop reminders. Its details will remain under Renewed / Closed.</p><label><span className={label}>Closing Reason *</span><textarea required maxLength={10000} rows={3} className={input} value={form.notes} onChange={e=>setField('notes',e.target.value)}/></label></>}
     {mode==='settings'&&<div className="space-y-4">
+     <div><span className={label}>Responsible User{form.enabled&&form.office_reminders?' *':''}</span><SearchableSelect compact options={[{value:'',label:'None'},...userOptions]} value={String(form.responsible_user_id||'')} onChange={v=>setField('responsible_user_id',v)}/><p className="text-xs text-gray-500 mt-2">Applies to all DSCs in this organisation, including existing and renewed certificates.</p></div>
      {[['enabled','Enable expiry reminders'],['office_reminders','Remind Responsible User'],['client_reminders','Remind Certificate Holder / Client'],['expired_reminder','Send one reminder after expiry']].map(([key,title])=><label key={key} className="flex gap-3 items-center text-sm"><input type="checkbox" checked={Boolean(form[key])} onChange={e=>setField(key,e.target.checked)}/>{title}</label>)}
      {field('intervals','Days Before Expiry (comma separated)','text',true,255)}
      <p className="text-sm text-gray-500">WhatsApp reminders use this organisation’s messaging settings. Office reminders use the Responsible User’s mobile from Users; client reminders use the mobile saved on the DSC entry. The existing cron handles reminders automatically in Indian time.</p>
