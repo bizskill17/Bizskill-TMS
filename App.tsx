@@ -1555,7 +1555,6 @@ export default function App() {
 			                  <div className="flex-1">
 			                    {isAdmin && masterIds.includes(activeTab) && (
                               <section className="mx-4 md:mx-6 pt-5 pb-4 border-b border-indigo-100">
-                                <h1 className="text-2xl font-bold text-indigo-700 mb-5">Master</h1>
                                 <nav aria-label="Master sections" className="flex flex-wrap gap-2">
                                   {navItemsWithCounts.filter(item => item.section === 'Master').map(item => (
                                     <button key={item.id} type="button" onClick={() => handleTabChange(item.id)}

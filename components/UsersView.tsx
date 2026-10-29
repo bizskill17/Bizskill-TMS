@@ -153,10 +153,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center justify-between gap-3 md:gap-4">
-        <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}>
-          <h2 className="text-2xl font-bold text-indigo-600">{getViewLabel('users', 'Users')}</h2>
-        </div>
+      <div className="flex md:hidden items-center justify-end gap-3">
         <button
           onClick={() => setIsAddModalOpen(true)}
           className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
