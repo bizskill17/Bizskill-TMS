@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, FileText, Download } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, Download, Search } from 'lucide-react';
 import { StatusMaster } from '../types';
 import { AddStatusModal } from './AddStatusModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -15,6 +15,8 @@ interface StatusesViewProps {
 
 export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatus, onEditStatus, onDeleteStatus, sidebarCollapsed = false }) => {
   const { getViewLabel } = useLabels();
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredStatuses = statuses.filter(status => String(status.name || '').toLowerCase().includes(searchTerm.toLowerCase()));
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selected, setSelected] = useState<StatusMaster | null>(null);
@@ -23,7 +25,7 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
   const handleExportExcel = () => {
     const csv = [
       'S.No.,Status Name',
-      ...statuses.map((item, idx) => `${idx + 1},"${String(item.name || '').replace(/"/g, '""')}"`)
+      ...filteredStatuses.map((item, idx) => `${idx + 1},"${String(item.name || '').replace(/"/g, '""')}"`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -38,20 +40,20 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
     ]);
     const doc = new jsPDF();
     doc.text('Status', 14, 14);
-    autoTable(doc, { head: [['S.No.', 'Status Name']], body: statuses.map((s, i) => [i + 1, s.name || '-']), startY: 20 });
+    autoTable(doc, { head: [['S.No.', 'Status Name']], body: filteredStatuses.map((s, i) => [i + 1, s.name || '-']), startY: 20 });
     doc.save(`Status_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
     <div className="space-y-6 pb-10">
-      <div className={`flex items-center justify-between gap-3 md:gap-4 ${sidebarCollapsed ? 'pl-14 md:pl-16' : ''}`}>
-        <h2 className="sr-only">{getViewLabel('statuses', 'Status')}</h2>
-        <div className="flex items-center gap-2">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-300 flex items-center gap-3 overflow-x-auto">
+        <div className="relative flex-1 min-w-[150px]"><Search className="absolute left-3 top-2.5 text-indigo-600" size={18}/><input aria-label="Search statuses" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search statuses..." className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm"/></div>
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
           <button onClick={handleExportPDF} title="Export PDF" className="flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
           <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
           <button onClick={() => { setSelected(null); setIsEditOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm">
             <Plus size={16} />
-            <span>Add Status</span>
+            <span className="whitespace-nowrap">Add Status</span>
           </button>
         </div>
       </div>
@@ -67,7 +69,7 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
-              {statuses.map((status, index) => (
+              {filteredStatuses.map((status, index) => (
                 <tr key={status.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-sm text-gray-900 border-r border-black">{index + 1}</td>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900 border-r border-black">{status.name}</td>
@@ -83,7 +85,7 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
                   </td>
                 </tr>
               ))}
-              {statuses.length === 0 && (<tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">No status found.</td></tr>)}
+              {filteredStatuses.length === 0 && (<tr><td colSpan={3} className="px-6 py-8 text-center text-gray-500">No status found.</td></tr>)}
             </tbody>
           </table>
         </div>
