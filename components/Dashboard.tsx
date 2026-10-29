@@ -17,7 +17,6 @@ interface DashboardProps {
   onOpenAddCategory: () => void;
   onOpenAddProject: () => void;
   onOpenAddClient: () => void;
-  onOpenAddVendor: () => void;
   onFilterChange: (type: string, value: string) => void;
   onNavigate: (tab: string) => void;
   tasks: Task[];
@@ -38,7 +37,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenAddCategory,
   onOpenAddProject,
   onOpenAddClient,
-  onOpenAddVendor,
   onFilterChange,
   onNavigate,
   tasks, 
@@ -429,9 +427,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 		            <QuickAction label="New Recurring Task" icon={<RotateCcw size={18} />} colorClass="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={onOpenNewRecurringTask}/>
 	            <QuickAction label="Add User" icon={<UserPlus size={18} />} colorClass="bg-indigo-500 hover:bg-indigo-600 text-white" onClick={onOpenAddUser}/>
               <QuickAction label={`Add ${categoryLabel}`} icon={<Tags size={18} />} colorClass="bg-violet-500 hover:bg-violet-600 text-white" onClick={onOpenAddCategory}/>
-	            {VENDOR_MODULE_ENABLED && (
-	              <QuickAction label="Add Vendor" icon={<Truck size={18} />} colorClass="bg-orange-500 hover:bg-orange-600 text-white" onClick={onOpenAddVendor}/>
-	            )}
+	            
 	          </div>
 	        </div>
 	      )}
@@ -482,25 +478,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
            </div>
 
-	           {VENDOR_MODULE_ENABLED && (
-	             <div className="bg-white p-5 rounded-2xl border-2 border-orange-200 shadow-sm flex flex-col">
-	                <div className="flex items-center gap-2 mb-4 border-b border-orange-50 pb-2">
-	                   <Truck size={18} className="text-orange-600" />
-	                   <h4 className="text-sm font-black text-orange-900 uppercase">Vendor Updates</h4>
-	                </div>
-	                <div className="flex-1 space-y-2 max-h-[300px] overflow-y-auto pr-1">
-	                   {vendorUpdates.map(u => (
-	                      <div key={u.name} onClick={() => onFilterChange('vendor-log', u.name)} className="flex items-center justify-between p-2.5 hover:bg-orange-50 rounded-xl cursor-pointer transition-colors border border-orange-100 bg-orange-50/10 shadow-sm">
-	                         <span className="text-xs font-bold text-orange-900">{u.name}</span>
-	                         <span className="bg-orange-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black shadow-sm">{u.count}</span>
-	                      </div>
-	                   ))}
-	                   {vendorUpdates.length === 0 && (
-	                      <div className="flex flex-col items-center justify-center py-8 opacity-40">
-	                        <Clock size={32} className="text-gray-300 mb-2" />
-	                        <p className="text-[10px] text-gray-500 italic text-center uppercase font-bold tracking-widest">No vendor activity today</p>
-	                     </div>
-	                   )}
+	           
 	                </div>
 	             </div>
 	           )}
@@ -565,9 +543,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 	        <PendingTable title="Pending by Assignee" headerLabel="Assignee Name" data={assigneeData} onRowClick={(name) => onFilterChange('assignee', name)} statusColumns={dynamicPendingStatuses}/>
 	        <PendingTable title="Pending by Priority" headerLabel="Priority Level" data={priorityData} onRowClick={(name) => onFilterChange('priority', name)} className="bg-indigo-50/30" statusColumns={dynamicPendingStatuses}/>
 		        <PendingTable title={`Pending by ${categoryLabel}`} headerLabel={`${categoryLabel} Name`} data={categoryData} onRowClick={(name) => onFilterChange('category', name)} className="bg-indigo-50/30" statusColumns={dynamicPendingStatuses}/>
-	        {VENDOR_MODULE_ENABLED && (
-	          <PendingTable title="Pending by Vendor" headerLabel="Vendor Name" data={vendorData} onRowClick={(name) => onFilterChange('vendor', name)} className="bg-orange-50/30" statusColumns={dynamicPendingStatuses}/>
-	        )}
+	        
 	      </div>
     </div>
   );

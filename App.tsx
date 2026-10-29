@@ -6,14 +6,11 @@ import { Dashboard } from './components/Dashboard';
 import { TasksView } from './components/TasksView';
 import { UsersView } from './components/UsersView';
 import { DesignationsView } from './components/DesignationsView';
-import { DepartmentsView } from './components/DepartmentsView';
 import { CategoriesView } from './components/CategoriesView';
 import { StatusesView } from './components/StatusesView';
-import { VendorCategoriesView } from './components/VendorCategoriesView';
 import { ProjectsView } from './components/ProjectsView';
 import { ClientsView } from './components/ClientsView';
 import { FirmsView } from './components/FirmsView';
-import { VendorsView } from './components/VendorsView';
 import { ActionLogView } from './components/ActionLogView';
 import { ActivityDashboardView } from './components/ActivityDashboardView';
 import { RecurringTasksView } from './components/RecurringTasksView';
@@ -24,17 +21,13 @@ import { SettingsView } from './components/SettingsView';
 import { LoginView } from './components/LoginView';
 import { AddTaskModal } from './components/AddTaskModal';
 import { AddCategoryModal } from './components/AddCategoryModal';
-import { AddVendorCategoryModal } from './components/AddVendorCategoryModal';
 import { AddProjectModal } from './components/AddProjectModal';
 import { AddUserModal } from './components/AddUserModal';
 import { AddClientModal } from './components/AddClientModal';
-import { AddVendorModal } from './components/AddVendorModal';
 import { AddDesignationModal } from './components/AddDesignationModal';
-import { AddDepartmentModal } from './components/AddDepartmentModal';
 import { AddFirmModal } from './components/AddFirmModal';
 import { EditProjectModal } from './components/EditProjectModal';
 import { EditClientModal } from './components/EditClientModal';
-import { EditVendorModal } from './components/EditVendorModal';
 import { TaskHistoryModal } from './components/TaskHistoryModal';
 import { RecurringTaskHistoryModal } from './components/RecurringTaskHistoryModal';
 import { AddRecurringTaskModal } from './components/AddRecurringTaskModal';
@@ -89,15 +82,7 @@ const navItems: NavItem[] = [
   { id: 'activity-dashboard', label: 'Activity Dashboard', icon: <BarChart3 size={20} />, section: 'Tasks' },
   { id: 'action-log', label: 'Action Log', icon: <History size={20} />, section: 'Tasks' },
   
-	  // Vendor Section (hidden)
-	  ...(VENDOR_MODULE_ENABLED ? ([
-	    { id: 'pending-vendor-tasks', label: 'Vendor Pending', icon: <Hammer size={20} />, section: 'Vendor' },
-	    { id: 'vendor-tasks', label: 'Vendor All', icon: <Layers size={20} />, section: 'Vendor' },
-	    { id: 'completed-vendor-tasks', label: 'Vendor History', icon: <CheckCircle size={20} />, section: 'Vendor' },
-	    { id: 'vendor-action-log', label: 'Vendor Log', icon: <History size={20} />, section: 'Vendor' },
-	  ] as NavItem[]) : []),
-  
-  // Recurring Tasks Section
+	  // Recurring Tasks Section
   { id: 'recurring-tasks', label: 'Recurring Master', icon: <RotateCcw size={20} />, section: 'Recurring Tasks' },
   { id: 'due-recurring-tasks', label: 'Due Recurring', icon: <AlertCircle size={20} />, section: 'Recurring Tasks' },
   { id: 'recurring-actions', label: 'Recurring Log', icon: <History size={20} />, section: 'Recurring Tasks' },
@@ -108,11 +93,7 @@ const navItems: NavItem[] = [
   { id: 'categories', label: 'Categories', icon: <Tags size={20} />, section: 'Master' },
   { id: 'statuses', label: 'Status', icon: <Tags size={20} />, section: 'Master' },
   { id: 'designations', label: 'Designation', icon: <Briefcase size={20} />, section: 'Master' },
-  { id: 'departments', label: 'Departments', icon: <Building size={20} />, section: 'Master' },
-  ...(VENDOR_MODULE_ENABLED ? ([
-	    { id: 'vendor-categories', label: 'Vendor Categories', icon: <Tags size={20} />, section: 'Master' },
-	    { id: 'vendors', label: 'Vendors', icon: <Truck size={20} />, section: 'Master' },
-	  ] as NavItem[]) : []),
+
   { id: 'settings', label: 'Settings', icon: <Settings size={20} />, section: 'Master' },
   { id: 'telegram-setup', label: 'Telegram Setup', icon: <Send size={20} />, section: 'Master' },
 
@@ -393,7 +374,7 @@ export default function App() {
   }, []);
 
   // Master item IDs for filtering
-	  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', 'departments', ...(VENDOR_MODULE_ENABLED ? ['vendor-categories', 'vendors'] : []), ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
+	  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
   const pendingStatusNavItems = useMemo<NavItem[]>(() => {
     return statuses
       .map(s => String(s.name || '').trim())
@@ -1402,7 +1383,7 @@ export default function App() {
               else if (tab === 'pending-payment') setActiveTab(makePendingStatusId('Pending for Payment'));
               else setActiveTab(tab);
 	            }} onFilterChange={handleDashboardFilterChange} onOpenNewTask={() => { setIsTaskModalVendorMode(false); setIsTaskModalOpen(true); }} onOpenNewRecurringTask={() => setIsRecurringTaskModalOpen(true)}
-	          onOpenAddUser={() => setIsUserModalOpen(true)} onOpenAddCategory={() => setIsCategoryModalOpen(true)} onOpenAddProject={() => setIsProjectModalOpen(true)} onOpenAddClient={() => setIsClientModalOpen(true)} onOpenAddVendor={() => setIsVendorModalOpen(true)} 
+	          onOpenAddUser={() => setIsUserModalOpen(true)} onOpenAddCategory={() => setIsCategoryModalOpen(true)} onOpenAddProject={() => setIsProjectModalOpen(true)} onOpenAddClient={() => setIsClientModalOpen(true)} 
 	        />;
       case 'all-tasks': return <TasksView title={getViewLabel('all-tasks', 'All Tasks')} tasks={visibleTasks.filter(t => !t.vendor || t.vendor === '')} {...commonTaskProps} filterType="all" />;
       case 'add-multiple': return (
@@ -1430,18 +1411,11 @@ export default function App() {
       case 'update-multiple': return <UpdateMultipleView projects={projects} tasks={visibleTasks.filter(t => t.status !== 'Completed')} onUpdateTasks={async (updates) => { for (const u of updates) await handleUpdateTaskOptimistic(u); setActiveTab('pending'); }} />;
       case 'activity-dashboard': return <ActivityDashboardView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} users={users} currentUser={currentUser} />;
       case 'action-log': return <ActionLogView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} isAdmin={isAdmin} projects={projects} onDeleteLog={(logId, taskId) => handleDeleteLog(logId, taskId, false)} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
-      case 'vendors': if (!isAdmin) return null; return <VendorsView vendors={vendors} onAddVendor={(v) => { setVendors(p => [...p, { ...v, id: Date.now() } as any]); apiPost('addMaster', v, 'Vendors'); }} onDeleteVendor={(id) => { if (!confirmDelete('this vendor')) return; setVendors(p => p.filter(v => v.id !== id)); apiPost('deleteRecord', { id }, 'Vendors'); }} onEditVendor={(v) => { setVendors(p => p.map(x => x.id === v.id ? v : x)); apiPost('updateMaster', v, 'Vendors'); }} />;
-      case 'vendor-categories': if (!isAdmin) return null; return <VendorCategoriesView categories={vendorCategories} onAddCategory={() => setIsVendorCategoryModalOpen(true)} onDeleteCategory={(id) => { if (!confirmDelete('this vendor category')) return; setVendorCategories(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'VendorCategories'); }} onEditCategory={(vc) => { setVendorCategories(p => p.map(x => x.id === vc.id ? vc : x)); apiPost('updateMaster', vc, 'VendorCategories'); }} />;
-      case 'vendor-tasks': return <TasksView title={getViewLabel('vendor-tasks', 'All Vendor Tasks')} tasks={visibleTasks.filter(t => t.vendor && t.vendor !== '')} {...commonTaskProps} isVendorView={true} filterType="all" />;
-      case 'pending-vendor-tasks': return <TasksView title={getViewLabel('pending-vendor-tasks', 'Pending Vendor Tasks')} tasks={visibleTasks.filter(t => t.vendor && t.vendor !== '')} {...commonTaskProps} isVendorView={true} filterType="pending" />;
-      case 'completed-vendor-tasks': return <TasksView title={getViewLabel('completed-vendor-tasks', 'Completed Vendor Tasks')} tasks={visibleTasks.filter(t => t.vendor && t.vendor !== '')} {...commonTaskProps} isVendorView={true} filterType="completed" />;
-      case 'vendor-action-log': return <ActionLogView logs={visibleActionLogs.filter(l => l.vendor && l.vendor !== '')} isAdmin={isAdmin} projects={projects} isVendorView={true} onDeleteLog={(logId, taskId) => handleDeleteLog(logId, taskId, true)} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
       case 'due-recurring-tasks': return <RecurringTasksView title={getViewLabel('due-recurring-tasks', 'Due Recurring Tasks')} filterType="due" tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
       case 'recurring-tasks': return <RecurringTasksView title={getViewLabel('recurring-tasks', 'Recurring Tasks')} tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
       case 'recurring-actions': return <RecurringTaskActionsView actions={visibleRecurringActions} isAdmin={isAdmin} onDeleteAction={(logId, taskId) => { if (!confirmDelete('this recurring log')) return; apiPost('deleteRecord', { id: logId, taskId: taskId }, 'RecurringActions'); }} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
       case 'users': if (!isAdmin) return null; return <UsersView users={users} designations={designations} departments={departments} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddUser={(u) => { setUsers(p => [...p, { ...u, id: Date.now(), isActive: true } as any]); apiPost('addMaster', u, 'Users'); }} onEditUser={(u) => { setUsers(p => p.map(x => x.id === u.id ? u : x)); apiPost('updateMaster', u, 'Users'); }} onToggleStatus={(id) => { const user = users.find(u => u.id === id); if (!user) return; const newStatus = !user.isActive; setUsers(prev => prev.map(u => u.id === id ? { ...u, isActive: newStatus } : u)); apiPost('updateMaster', { id, isActive: newStatus ? 'TRUE' : 'FALSE' }, 'Users'); }} onDeleteUser={(id) => { if (!confirmDelete('this user')) return; setUsers(p => p.filter(u => u.id !== id)); apiPost('deleteRecord', { id }, 'Users'); }} onAddDesignation={() => { setEditingDesignation(null); setIsDesignationModalOpen(true); }} onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} />;
       case 'designations': if (!isAdmin) return null; return <DesignationsView designations={designations} onAddDesignation={() => { setEditingDesignation(null); setIsDesignationModalOpen(true); }} onDeleteDesignation={async (id) => { if (!confirmDelete('this designation')) return; setDesignations(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Designations'); }} onEditDesignation={(designation) => { setEditingDesignation(designation); setIsDesignationModalOpen(true); }} />;
-      case 'departments': if (!isAdmin) return null; return <DepartmentsView departments={departments} onAddDepartment={() => { setEditingDepartment(null); setIsDepartmentModalOpen(true); }} onDeleteDepartment={async (id) => { if (!confirmDelete('this department')) return; setDepartments(prev => prev.filter(x => x.id !== id)); await apiPost('deleteRecord', { id }, 'Departments'); }} onEditDepartment={(department) => { setEditingDepartment(department); setIsDepartmentModalOpen(true); }} />;
 	      case 'firms': if (!isAdmin) return null; return <FirmsView firms={firms} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} onAddFirm={() => setIsFirmModalOpen(true)} onBulkUploadFirms={handleBulkUploadFirms} onDeleteFirm={(id) => { const target = firms.find(f => f.id === id); if (!target) return; if (String(target.name || '').trim().toUpperCase() === 'GENERAL') return; if (!confirmDelete('this firm')) return; setFirms(p => p.filter(f => f.id !== id)); apiPost('deleteRecord', { id }, 'Firms'); }} onEditFirm={(f) => { if (String(f.name || '').trim().toUpperCase() === 'GENERAL') return; setFirms(p => p.map(x => x.id === f.id ? f : x)); apiPost('updateMaster', f, 'Firms'); }} />;
 	      case 'clients': if (!isAdmin) return null; return <ClientsView clients={clients} projects={projects} onAddClient={handleInstantAddClient} onDeleteClient={(id) => { if (!confirmDelete('this client')) return; setClients(p => p.filter(c => c.id !== id)); apiPost('deleteRecord', { id }, 'Clients'); }} onEditClient={(c) => { setClients(p => p.map(x => x.id === c.id ? c : x)); apiPost('updateMaster', c, 'Clients'); }} onBulkUploadClients={handleBulkUploadClients} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
       case 'projects': if (!isAdmin) return null; return <ProjectsView projects={projects} clients={clients} onAddProject={handleInstantAddProject} onDeleteProject={(id) => { if (!confirmDelete('this project')) return; setProjects(p => p.filter(x => x.id !== id)); apiPost('deleteRecord', { id }, 'Projects'); }} onEditProject={(p) => { setProjects(prev => prev.map(x => x.id === p.id ? p : x)); apiPost('updateMaster', p, 'Projects'); }} onAddClient={() => setIsClientModalOpen(true)} onNavigateToProjectTasks={handleDashboardFilterChange.bind(null, 'project')} />;
@@ -1646,7 +1620,6 @@ export default function App() {
         initialData={categoryModalInitialName ? ({ id: 0, name: categoryModalInitialName, type: '' } as any) : null}
         categories={categories}
       />
-      <AddVendorCategoryModal isOpen={isVendorCategoryModalOpen} onClose={() => setIsVendorCategoryModalOpen(false)} onSave={handleInstantAddVendorCategory} vendorCategories={vendorCategories} />
       <AddProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => {
@@ -1700,26 +1673,6 @@ export default function App() {
           return true;
         }
       }} designations={designations} />
-      <AddDepartmentModal isOpen={isDepartmentModalOpen} onClose={() => { setIsDepartmentModalOpen(false); setEditingDepartment(null); }} initialData={editingDepartment} onSave={async (dept) => {
-        if (editingDepartment) {
-          const updated = { ...editingDepartment, ...dept };
-          const result = await apiPost('updateMaster', { id: updated.id, name: updated.name }, 'Departments');
-          if (!result?.success) {
-            alert(result?.error || 'Failed to update department.');
-            return;
-          }
-          setDepartments(prev => prev.map(x => x.id === updated.id ? updated : x));
-        } else {
-          const result = await apiPost('addMaster', { name: dept.name }, 'Departments');
-          if (!result?.success) {
-            alert(result?.error || 'Failed to add department.');
-            return;
-          }
-          const newId = Number(result?.data?.id || Date.now());
-          setDepartments(prev => [...prev, { ...dept, id: newId } as any]);
-        }
-      }} departments={departments} />
-      <AddVendorModal isOpen={isVendorModalOpen} onClose={() => setIsVendorModalOpen(false)} onSave={(v) => { setVendors(p => [...p, { ...v, id: Date.now() } as any]); apiPost('addMaster', v, 'Vendors'); }} vendors={vendors} />
       <AddFirmModal isOpen={isFirmModalOpen} onClose={() => setIsFirmModalOpen(false)} onSave={handleInstantAddFirm} firms={firms} />
       
       <TaskHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} task={selectedTaskForHistory} logs={actionLogs} />

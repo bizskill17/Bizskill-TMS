@@ -229,20 +229,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                       <button type="button" onClick={onAddDesignation} className="px-3 py-2 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:bg-indigo-50 rounded-lg h-[42px]"><Plus size={18} /></button>
                     </div>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-900">{getFieldLabel('user.department', 'Department')}</label>
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <SearchableSelect 
-                          options={departmentOptions}
-                          value={formData.department}
-                          onChange={(val) => setFormData(prev => ({...prev, department: val}))}
-                          placeholder="Select..."
-                        />
-                      </div>
-                      <button type="button" onClick={onAddDepartment} className="px-3 py-2 text-gray-500 hover:text-indigo-600 border border-gray-200 hover:bg-indigo-50 rounded-lg h-[42px]"><Plus size={18} /></button>
-                    </div>
-                  </div>
+                  
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

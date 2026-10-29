@@ -48,7 +48,6 @@ export const UsersView: React.FC<UsersViewProps> = ({
   // Filter States
   const [filterName, setFilterName] = useState<string[]>([]);
   const [filterDesignation, setFilterDesignation] = useState<string[]>([]);
-  const [filterDepartment, setFilterDepartment] = useState<string[]>([]);
   const [filterRole, setFilterRole] = useState<string[]>([]);
 
   // Pagination
@@ -57,7 +56,7 @@ export const UsersView: React.FC<UsersViewProps> = ({
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterName, filterDesignation, filterDepartment, filterRole]);
+  }, [searchTerm, filterName, filterDesignation, filterRole]);
 
   const doesUserMatchAllFilters = (u: User, excludeKey?: string) => {
     if (searchTerm) {
@@ -66,21 +65,19 @@ export const UsersView: React.FC<UsersViewProps> = ({
         u.name.toLowerCase().includes(lowerTerm) || 
         u.email.toLowerCase().includes(lowerTerm) ||
         (u.employeeId && u.employeeId.toLowerCase().includes(lowerTerm)) ||
-        (u.department && u.department.toLowerCase().includes(lowerTerm)) ||
         (u.designation && u.designation.toLowerCase().includes(lowerTerm)) ||
         (u.role && u.role.toLowerCase().includes(lowerTerm));
       if (!matchesSearch) return false;
     }
     if (excludeKey !== 'name' && filterName.length > 0 && !filterName.includes(u.name)) return false;
     if (excludeKey !== 'designation' && filterDesignation.length > 0 && !filterDesignation.includes(u.designation || '')) return false;
-    if (excludeKey !== 'department' && filterDepartment.length > 0 && !filterDepartment.includes(u.department || '')) return false;
     if (excludeKey !== 'role' && filterRole.length > 0 && !filterRole.includes(u.role)) return false;
     return true;
   };
 
   const filteredUsers = useMemo(() => {
     return users.filter(u => doesUserMatchAllFilters(u));
-  }, [users, searchTerm, filterName, filterDesignation, filterDepartment, filterRole]);
+  }, [users, searchTerm, filterName, filterDesignation, filterRole]);
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const paginatedUsers = useMemo(() => {
@@ -96,7 +93,6 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const handleClearFilters = () => {
     setFilterName([]);
     setFilterDesignation([]);
-    setFilterDepartment([]);
     setFilterRole([]);
     setSearchTerm('');
   };
@@ -104,39 +100,34 @@ export const UsersView: React.FC<UsersViewProps> = ({
   const nameOptions = useMemo(() => {
     const matchedUsers = users.filter(u => doesUserMatchAllFilters(u, 'name'));
     return Array.from(new Set(matchedUsers.map(u => u.name))).sort().map(name => ({ value: name, label: name }));
-  }, [users, searchTerm, filterDesignation, filterDepartment, filterRole]);
+  }, [users, searchTerm, filterDesignation, filterRole]);
 
   const dOptions = useMemo(() => {
     const matchedUsers = users.filter(u => doesUserMatchAllFilters(u, 'designation'));
     return Array.from(new Set(matchedUsers.map(u => u.designation || '').filter(Boolean))).sort().map(d => ({ value: d, label: d }));
-  }, [users, searchTerm, filterName, filterDepartment, filterRole]);
+  }, [users, searchTerm, filterName, filterRole]);
 
-  const deptOptions = useMemo(() => {
-    const matchedUsers = users.filter(u => doesUserMatchAllFilters(u, 'department'));
-    return Array.from(new Set(matchedUsers.map(u => u.department || '').filter(Boolean))).sort().map(d => ({ value: d, label: d }));
-  }, [users, searchTerm, filterName, filterDesignation, filterRole]);
 
   const roleOptions = useMemo(() => {
     const matchedUsers = users.filter(u => doesUserMatchAllFilters(u, 'role'));
     return Array.from(new Set(matchedUsers.map(u => u.role))).sort().map(role => ({ value: role, label: role }));
-  }, [users, searchTerm, filterName, filterDesignation, filterDepartment]);
+  }, [users, searchTerm, filterName, filterDesignation]);
 
   const activeFilterBadges = useMemo(() => {
     const badges: { label: string; clear: () => void }[] = [];
     if (filterName.length > 0) badges.push({ label: `Name: ${filterName.join(', ')}`, clear: () => setFilterName([]) });
     if (filterDesignation.length > 0) badges.push({ label: `Designation: ${filterDesignation.join(', ')}`, clear: () => setFilterDesignation([]) });
-    if (filterDepartment.length > 0) badges.push({ label: `Department: ${filterDepartment.join(', ')}`, clear: () => setFilterDepartment([]) });
     if (filterRole.length > 0) badges.push({ label: `Role: ${filterRole.join(', ')}`, clear: () => setFilterRole([]) });
     return badges;
-  }, [filterName, filterDesignation, filterDepartment, filterRole]);
+  }, [filterName, filterDesignation, filterRole]);
 
   const startEntry = filteredUsers.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0;
   const endEntry = Math.min(currentPage * itemsPerPage, filteredUsers.length);
   
   const handleExportExcel = () => {
     const csv = [
-      'S.No.,Name,Employee Id,Email,Mobile,Designation,Department,Role,Status',
-      ...filteredUsers.map((u, i) => `${i + 1},"${String(u.name || '').replace(/"/g, '""')}","${String(u.employeeId || '').replace(/"/g, '""')}","${String(u.email || '').replace(/"/g, '""')}","${String(u.mobile || '').replace(/"/g, '""')}","${String(u.designation || '').replace(/"/g, '""')}","${String(u.department || '').replace(/"/g, '""')}","${String(u.role || '').replace(/"/g, '""')}","${u.isActive ? 'Active' : 'Inactive'}"`)
+      'S.No.,Name,Employee Id,Email,Mobile,Designation,Role,Status',
+      ...filteredUsers.map((u, i) => `${i + 1},"${String(u.name || '').replace(/"/g, '""')}","${String(u.employeeId || '').replace(/"/g, '""')}","${String(u.email || '').replace(/"/g, '""')}","${String(u.mobile || '').replace(/"/g, '""')}","${String(u.designation || '').replace(/"/g, '""')}","${String(u.role || '').replace(/"/g, '""')}","${u.isActive ? 'Active' : 'Inactive'}"`)
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -153,8 +144,8 @@ export const UsersView: React.FC<UsersViewProps> = ({
     const doc = new jsPDF('l', 'mm', 'a4');
     doc.text('Users', 14, 14);
     autoTable(doc, {
-      head: [['S.No.', 'Name', 'Employee Id', 'Email', 'Mobile', 'Designation', 'Department', 'Role', 'Status']],
-      body: filteredUsers.map((u, i) => [i + 1, u.name || '-', u.employeeId || '-', u.email || '-', u.mobile || '-', u.designation || '-', u.department || '-', u.role || '-', u.isActive ? 'Active' : 'Inactive']),
+      head: [['S.No.', 'Name', 'Employee Id', 'Email', 'Mobile', 'Designation', 'Role', 'Status']],
+      body: filteredUsers.map((u, i) => [i + 1, u.name || '-', u.employeeId || '-', u.email || '-', u.mobile || '-', u.designation || '-', u.role || '-', u.isActive ? 'Active' : 'Inactive']),
       startY: 20
     });
     doc.save(`Users_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -221,7 +212,6 @@ export const UsersView: React.FC<UsersViewProps> = ({
         <div className={`${showFilters ? 'grid' : 'hidden'} grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end`}>
             <SearchableSelect label="Name" options={nameOptions} value={filterName} onChange={setFilterName} multiple={true} placeholder="All Names" className="text-sm"/>
             <SearchableSelect label="Designation" options={dOptions} value={filterDesignation} onChange={setFilterDesignation} multiple={true} placeholder="All Designations" className="text-sm"/>
-            <SearchableSelect label="Department" options={deptOptions} value={filterDepartment} onChange={setFilterDepartment} multiple={true} placeholder="All Departments" className="text-sm"/>
             <SearchableSelect label="Role" options={roleOptions} value={filterRole} onChange={setFilterRole} multiple={true} placeholder="All Roles" className="text-sm"/>
             <div className="col-span-1">
                 <button onClick={handleClearFilters} className="w-full px-3 py-2 bg-red-600 text-white border border-red-700 rounded-md hover:bg-red-700 text-sm font-medium transition-colors h-[38px] flex items-center justify-center">Clear</button>
