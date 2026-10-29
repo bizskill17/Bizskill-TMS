@@ -135,6 +135,31 @@ expect_true(find_certificate($id)['lifecycle']==='renewed','Restore must preserv
 expect_true($code===200&&count($hist['history'])>=8,'History must retain all lifecycle actions');
 expect_true(count($hist['reminders'])===3,'Reminder history must retain queued records');
 expect_true(dsc_schedule_reminders($conn)===0,'Closed and renewed entries must not trigger reminders');
+// Permanent deletion requires Admin, Trash, confirmation, CSRF and current version.
+$temp=action_test('create',['id'=>0,'version'=>0],$fields);$first=(int)$temp['id'];
+$temp=action_test('renew',find_certificate($first),['issue_date'=>$today->format('Y-m-d'),'expiry_date'=>$today->modify('+365 days')->format('Y-m-d')]);$middle=(int)$temp['id'];
+$temp=action_test('renew',find_certificate($middle),['issue_date'=>$today->format('Y-m-d'),'expiry_date'=>$today->modify('+730 days')->format('Y-m-d')]);$last=(int)$temp['id'];
+$target=find_certificate($middle);
+$delete=['action'=>'deletePermanently','id'=>$middle,'version'=>$target['version'],'confirmDelete'=>true,'csrf'=>$data['csrf']];
+[$code]=http_call('/api/dsc.php?tenantCode=test-a',$delete);expect_true($code===422,'Deletion outside Trash must fail');
+action_test('trash',$target);$target=find_certificate($middle);$delete['version']=$target['version'];
+[$code]=http_call('/api/dsc.php?tenantCode=test-a',array_merge($delete,['csrf'=>'invalid']));expect_true($code===403,'Delete requires CSRF');
+[$code]=http_call('/api/dsc.php?tenantCode=test-a',array_merge($delete,['csrf'=>$ordinary['csrf']]),'ordinary');expect_true($code===403,'Only Admin can permanently delete');
+[$code]=http_call('/api/dsc.php?tenantCode=test-b',array_merge($delete,['csrf'=>$b['csrf']]),'b');expect_true($code===404,'Cross-tenant deletion must fail');
+[$code]=http_call('/api/dsc.php?tenantCode=test-a',array_merge($delete,['confirmDelete'=>false]));expect_true($code===422,'Delete requires explicit confirmation');
+[$code]=http_call('/api/dsc.php?tenantCode=test-a',array_merge($delete,['version'=>0]));expect_true($code===409,'Delete rejects stale versions');
+action_test('deletePermanently',$target,['confirmDelete'=>true]);
+[$code]=http_call('/api/dsc.php?tenantCode=test-a&id='.$middle,null);expect_true($code===404,'Deleted DSC must no longer be accessible');
+expect_true((int)find_certificate($first)['renewed_to_id']===$last,'Previous version must link to surviving next version');
+expect_true((int)find_certificate($last)['previous_certificate_id']===$first,'Next version must link to surviving previous version');
+foreach (['dsc_certificates'=>'id','dsc_events'=>'certificate_id','dsc_reminder_events'=>'certificate_id'] as $table=>$column) {
+ expect_true((int)$db->query("SELECT COUNT(*) AS n FROM {$table} WHERE tenant_id={$tenantA} AND {$column}={$middle}")->fetch_assoc()['n']===0,'Deleted certificate data must be removed');
+}
+foreach ([$first,$last] as $deleteId) {
+ action_test('trash',find_certificate($deleteId));
+ action_test('deletePermanently',find_certificate($deleteId),['confirmDelete'=>true]);
+}
+expect_true(count(load_dsc()['certificates'])===2,'Permanent deletion must preserve unrelated certificates');
 // Dedicated database isolation, using the same numeric user ID as a shared tenant.
 $db->query('CREATE DATABASE tms_dedicated');
 $dedicated=new mysqli(getenv('DB_HOST'),'root',getenv('DB_PASS'),'tms_dedicated');

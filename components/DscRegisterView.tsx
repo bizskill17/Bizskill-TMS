@@ -25,7 +25,7 @@ const activeUser=(user:any)=>['1','true','yes'].includes(String(user.isActive).t
 const blank=()=>({client_name:'',holder_name:'',organisation:'',designation:'',mobile:'',email:'',issue_date:'',expiry_date:'',responsible_user_id:'',token_location:'Client',token_details:'',document_movement_id:'',last_followup_date:'',next_followup_date:'',remarks:'',notes:'',reason:'',enabled:false,office_reminders:true,client_reminders:false,expired_reminder:true,intervals:'60,30,15,7,1'});
 const input='w-full border border-indigo-200 rounded-lg px-3 py-2 text-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-200';
 const label='block text-sm font-medium text-gray-700 mb-1';
-const actionTitles:Record<string,string>={create:'Add DSC',edit:'Edit DSC',renew:'Mark Renewed',followup:'Record Follow-up',deactivate:'Deactivate DSC',reactivate:'Reactivate DSC',trash:'Move to Trash',restore:'Restore DSC',close:'Close DSC',startRenewal:'Start Renewal',settings:'Reminder Settings',clientReminders:'Preview Client Reminders',history:'DSC Details & History'};
+const actionTitles:Record<string,string>={create:'Add DSC',edit:'Edit DSC',renew:'Mark Renewed',followup:'Record Follow-up',deactivate:'Deactivate DSC',reactivate:'Reactivate DSC',trash:'Move to Trash',restore:'Restore DSC',deletePermanently:'Delete Permanently',close:'Close DSC',startRenewal:'Start Renewal',settings:'Reminder Settings',clientReminders:'Preview Client Reminders',history:'DSC Details & History'};
 
 
 async function readDscResponse(response:Response) {
@@ -103,7 +103,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
    if(!response.ok||!result.success) throw new Error(result.error||'Unable to save DSC.');
    setMode('');setSelected(null);await load();
    if(mode==='clientReminders')setSelectedIds([]);
-   setNotice(mode==='clientReminders'?result.queued+' client reminder(s) queued.':mode==='renew'?'Renewal recorded. The previous certificate is retained in Renewed / Closed.':mode==='trash'?'Moved to Trash. You can restore this entry.':mode==='restore'?'Entry restored.':mode==='settings'?'Reminder settings saved.':'DSC Register updated.');
+   setNotice(mode==='clientReminders'?result.queued+' client reminder(s) queued.':mode==='renew'?'Renewal recorded. The previous certificate is retained in Renewed / Closed.':mode==='trash'?'Moved to Trash. You can restore this entry.':mode==='deletePermanently'?'DSC permanently deleted.':mode==='restore'?'Entry restored.':mode==='settings'?'Reminder settings saved.':'DSC Register updated.');
   } catch(e) {setError(e instanceof Error?e.message:'Unable to save DSC.');}
   finally {setSaving(false);}
  }
@@ -115,7 +115,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const userOptions=data.users.filter(activeUser).map(u=>({value:String(u.id),label:u.name}));
  const clientOptions=Array.from(new Set(data.clients.map(c=>String(c.name)))).map(name=>({value:name,label:name}));
  function actions(row:Certificate):string[] {
-  if(row.deleted_at)return ['restore'];
+  if(row.deleted_at)return ['restore',...(data.canConfigure?['deletePermanently']:[])];
   if(row.lifecycle==='inactive')return ['edit','reactivate','trash'];
   if(row.lifecycle!=='active')return ['trash'];
   return ['edit',...(!Number(row.pending_renewal)?['startRenewal']:[]),'renew','deactivate','close','trash'];
@@ -181,6 +181,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     {mode==='deactivate'&&<><p className="text-sm text-gray-600">This stops expiry reminders and renewal follow-up. It does not revoke the DSC certificate.</p><label><span className={label}>Reason *</span><textarea required className={input} maxLength={1000} rows={3} value={form.reason} onChange={e=>setField('reason',e.target.value)}/></label></>}
     {mode==='reactivate'&&<p className="text-sm text-gray-600">Reactivate this entry and resume tracking using its existing expiry date?</p>}
     {mode==='trash'&&<p className="text-sm text-gray-600">Move this entry to Trash? Reminders will stop. Its details and history will be retained and you can restore it later.</p>}
+    {mode==='deletePermanently'&&<div className="space-y-3"><p className="text-sm text-red-700">Permanently delete this DSC and its entry history? This cannot be undone. Other certificate versions will be retained.</p><label className="flex items-center gap-2 text-sm"><input type="checkbox" required checked={Boolean(form.confirmDelete)} onChange={e=>setField('confirmDelete',e.target.checked)}/>I confirm permanent deletion of this DSC.</label></div>}
     {mode==='restore'&&<p className="text-sm text-gray-600">Restore this entry to its previous status? Active entries will resume expiry tracking.</p>}
     {mode==='startRenewal'&&<p className="text-sm text-gray-600">Add this certificate to Pending Renewal?</p>}
     {mode==='close'&&<><p className="text-sm text-gray-600">Close this entry and stop reminders. Its details will remain under Renewed / Closed.</p><label><span className={label}>Closing Reason *</span><textarea required maxLength={10000} rows={3} className={input} value={form.notes} onChange={e=>setField('notes',e.target.value)}/></label></>}
@@ -199,7 +200,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      {!historyLoading&&!reminders.length&&<p className="text-sm text-gray-500">No reminders queued for this certificate.</p>}
      {reminders.map((r,i)=><div key={i} className="border border-indigo-100 rounded-lg p-3 text-sm"><p className="font-medium">{r.target_name} · {r.audience==='office'?'Responsible User':'Certificate Holder'} · {r.target}</p><p>{Number(r.stage)===-2?'Manual client reminder':Number(r.stage)<0?'After expiry':r.stage+'-day reminder'} · {r.status==='sent'?'Submitted to provider':r.status==='pending'?'Queued':r.status||'Unavailable'} · {dateText(r.created_at)}</p>{r.lastError&&<p className="text-red-600 break-words">{r.lastError}</p>}</div>)}
     </div>}
-    <div className="flex justify-end gap-3 pt-2"><button type="button" disabled={saving} className="px-4 py-2 text-gray-600" onClick={close}>{mode==='history'?'Close':'Cancel'}</button>{mode!=='history'&&<button disabled={saving||(mode==='clientReminders'&&!preview)} className="px-5 py-2 rounded-lg bg-indigo-600 text-white disabled:opacity-50">{saving?'Saving...':mode==='clientReminders'?'Send '+(preview?.recipients.length||0)+' Client Reminders':mode==='create'||mode==='edit'||mode==='settings'?'Save':'Confirm'}</button>}</div>
+    <div className="flex justify-end gap-3 pt-2"><button type="button" disabled={saving} className="px-4 py-2 text-gray-600" onClick={close}>{mode==='history'?'Close':'Cancel'}</button>{mode!=='history'&&<button disabled={saving||(mode==='clientReminders'&&!preview)} className={'px-5 py-2 rounded-lg text-white disabled:opacity-50 '+(mode==='deletePermanently'?'bg-red-600':'bg-indigo-600')}>{saving?'Saving...':mode==='deletePermanently'?'Delete Permanently':mode==='clientReminders'?'Send '+(preview?.recipients.length||0)+' Client Reminders':mode==='create'||mode==='edit'||mode==='settings'?'Save':'Confirm'}</button>}</div>
    </form>
   </div>}
  </div>;

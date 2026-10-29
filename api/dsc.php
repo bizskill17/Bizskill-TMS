@@ -55,6 +55,7 @@ try {
     $data=app_get_raw_input_data();
     if ($csrf==='' || !hash_equals($csrf,(string)($data['csrf'] ?? ''))) dsc_reply(['success'=>false,'error'=>'Session expired. Reload the DSC Register and try again.'],403);
     $action=(string)($data['action'] ?? '');
+    if ($action==='deletePermanently' && !$canConfigure) dsc_reply(['success'=>false,'error'=>'Only an Admin can permanently delete DSC entries.'],403);
 
     if (in_array($action,['previewClientReminders','sendClientReminders'],true)) {
         $ids=$data['ids'] ?? [];
@@ -112,6 +113,23 @@ try {
     $row=$found[0] ?? null;
     if (!$row) { $conn->rollback(); dsc_reply(['success'=>false,'error'=>'Certificate not found.'],404); }
     if ((int)($data['version'] ?? 0)!==(int)$row['version']) throw new RuntimeException('This record changed. Refresh and try again.');
+    if ($action==='deletePermanently') {
+        if (!$row['deleted_at']) throw new InvalidArgumentException('Move this entry to Trash before permanently deleting it.');
+        if (($data['confirmDelete'] ?? false)!==true) throw new InvalidArgumentException('Confirm permanent deletion.');
+        // Keep surviving renewal versions connected without reviving old certificates.
+        dsc_query($conn,'UPDATE dsc_certificates SET renewed_to_id=?,version=version+1 WHERE tenant_id=? AND renewed_to_id=?',[$row['renewed_to_id'],$tenant,$id]);
+        dsc_query($conn,'UPDATE dsc_certificates SET previous_certificate_id=?,version=version+1 WHERE tenant_id=? AND previous_certificate_id=?',[$row['previous_certificate_id'],$tenant,$id]);
+        if (db_table_exists($conn,'notification_queue')) {
+            $scope=app_table_is_scoped($conn,'notification_queue')?' AND q.tenant_id=e.tenant_id':'';
+            dsc_query($conn,"UPDATE notification_queue q INNER JOIN dsc_reminder_events e ON e.queue_id=q.id {$scope} SET q.status='cancelled',q.updatedAt=NOW() WHERE e.tenant_id=? AND e.certificate_id=? AND q.status='pending'",[$tenant,$id]);
+        }
+        dsc_query($conn,'DELETE FROM dsc_reminder_events WHERE tenant_id=? AND certificate_id=?',[$tenant,$id]);
+        dsc_query($conn,'DELETE FROM dsc_events WHERE tenant_id=? AND certificate_id=?',[$tenant,$id]);
+        dsc_query($conn,'DELETE FROM dsc_certificates WHERE tenant_id=? AND id=?',[$tenant,$id]);
+        dsc_event($conn,$tenant,0,'Permanently Deleted',$actor,$actorName,'Deleted DSC from Trash',['deleted_certificate_id'=>$id]);
+        $conn->commit();
+        dsc_reply(['success'=>true,'id'=>$id]);
+    }
     $notes=dsc_text($data,'notes',10000);
     $values=[]; $event=''; $newId=null;
     if ($action==='restore') {
