@@ -274,35 +274,3 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await page.getByRole('button',{name:'Table View',exact:true}).click();
  await expect(recurring).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
 });
-)})).toHaveCount(0);
- await expect(card.locator('dd').filter({hasText:'Collect documents'})).toHaveText('Collect documents\nCheck ITC');
- for(const width of [320,360,393,430]){
-  await page.setViewportSize({width,height:800});
-  const rows=await card.locator('dl > div').evaluateAll(nodes=>nodes.map(node=>{
-   const label=node.querySelector('dt')!.getBoundingClientRect(),value=node.querySelector('dd')!.getBoundingClientRect();
-   return {sameTop:Math.abs(label.top-value.top)<1,right:value.left>=label.right,overflow:node.scrollWidth-node.clientWidth};
-  }));
-  expect(rows.every(row=>row.sameTop&&row.right&&row.overflow<=1)).toBeTruthy();
-  expect(await card.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
- }
- await expect(card.getByRole('button',{name:'Update',exact:true})).toBeVisible();
- await expect(card.getByRole('button',{name:'Edit task',exact:true})).toBeVisible();
- await expect(card.getByRole('button',{name:'View history',exact:true})).toBeVisible();
- await card.getByRole('button',{name:'Hide details',exact:true}).click();
- await expect(card.getByText('Collect documents',{exact:false})).toHaveCount(0);
- await page.getByRole('button',{name:'Table View',exact:true}).click();
- await expect(card).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
- await page.getByRole('button',{name:'Open menu',exact:true}).click();
- await page.getByRole('button',{name:'Recurring Tasks',exact:true}).click();
- const recurring=page.getByRole('article',{name:'Monthly challan',exact:true});
- await expect(recurring).toBeVisible();
- await expect(recurring.locator('dt')).toHaveText(['Task','Client','Assignee','Next Due','Status','Owner','Category','Period','Notes']);
- await expect(recurring.locator('dd').nth(1)).toHaveText(longClient);
- await expect(recurring.locator('dd').nth(8)).toHaveText('Review payment\nConfirm challan');
- for(const width of [320,393]){
-  await page.setViewportSize({width,height:800});
-  expect(await recurring.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
- }
- await page.getByRole('button',{name:'Table View',exact:true}).click();
- await expect(recurring).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
-});
