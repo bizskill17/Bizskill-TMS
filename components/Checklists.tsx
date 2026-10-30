@@ -5,6 +5,7 @@ import {RichNoteEditor} from './RichNoteEditor';
 import {sanitizeNote,noteText} from './noteRichText.mjs';
 
 type Template={category:string;id:number;name:string;note_html:string;active:number;version:number};
+const checklistColors=['#eff6ff','#f0fdf4','#fff7ed','#faf5ff','#fff1f2','#ecfeff','#fefce8','#fdf2f8'];
 const blank=():Template=>({category:'',id:0,name:'',note_html:'',active:1,version:0});
 const input='w-full min-w-0 border border-indigo-200 rounded-lg px-3 py-2 bg-white text-base outline-none focus:ring-2 focus:ring-indigo-200';
 const iconButton='shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50';
@@ -54,8 +55,8 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
   {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
   {loading&&<p className="text-sm text-gray-500">Loading...</p>}
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
-   {filtered.map(note=><article key={note.id} aria-label={note.name} className="min-w-0 overflow-hidden border border-indigo-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-start justify-between gap-2 p-3 md:p-4 bg-gradient-to-r from-indigo-50 to-white border-b border-indigo-100"><h2 className="min-w-0 break-words text-base font-semibold text-indigo-800">{note.name}{note.category&&<span className="mt-2 block w-fit max-w-full rounded-full bg-white border border-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">{note.category}</span>}{!Number(note.active)&&<span className="block text-xs text-gray-500">Inactive</span>}</h2>
+   {filtered.map(note=><article key={note.id} aria-label={note.name} className="min-w-0 overflow-hidden border border-indigo-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow" style={{backgroundColor:checklistColors[templates.findIndex(item=>item.id===note.id)%checklistColors.length]}}>
+    <div className="flex items-start justify-between gap-2 p-3 md:p-4 bg-white/30 border-b border-indigo-100"><h2 className="min-w-0 break-words text-base font-semibold text-indigo-800">{note.name}{note.category&&<span className="mt-2 block w-fit max-w-full rounded-full bg-white border border-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-600">{note.category}</span>}{!Number(note.active)&&<span className="block text-xs text-gray-500">Inactive</span>}</h2>
      <div className="flex shrink-0 gap-1">{Number(note.active)>0&&<button type="button" aria-label={'Copy '+note.name} title="Copy note" className={iconButton} disabled={copying!==null} onClick={()=>void copy(note)}><Copy size={17}/></button>}{admin&&<button type="button" aria-label={'Edit '+note.name} title="Edit note" className={iconButton} onClick={()=>open(note)}><Edit2 size={17}/></button>}{admin&&<button type="button" aria-label={'Delete '+note.name} title="Delete checklist" className={iconButton+' !border-red-100 !text-red-600 hover:!bg-red-50'} disabled={busy} onClick={()=>{setDeleteError('');setRemove(note);}}><Trash2 size={17}/></button>}</div>
     </div>
     <div className="checklist-note p-4 md:p-5 text-sm text-gray-800" style={{height:'auto',maxHeight:'none',overflow:'visible'}} dangerouslySetInnerHTML={{__html:sanitizeNote(note.note_html)}}/>
