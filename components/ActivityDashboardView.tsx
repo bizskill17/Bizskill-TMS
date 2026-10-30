@@ -7,16 +7,17 @@ interface ActivityDashboardViewProps {
   logs: ActionLogEntry[];
   users: User[];
   currentUser: User | null;
+  embedded?: boolean;
 }
 
-export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ logs, users, currentUser }) => {
+export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ logs, users, currentUser, embedded = false }) => {
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleDateString('en-CA');
   const todayISO = now.toLocaleDateString('en-CA');
   
   const [fromDate, setFromDate] = useState(firstDayOfMonth);
   const [toDate, setToDate] = useState(todayISO);
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [viewMode, setViewMode] = useState<'card' | 'table'>(embedded ? 'table' : 'card');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -142,7 +143,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className={embedded ? "space-y-3" : "space-y-6 pb-12"}>
       <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-200 flex items-center gap-3 overflow-x-auto">
         <div className="relative flex-1 min-w-[180px]"><Search size={18} className="absolute left-3 top-2.5 text-indigo-600"/><input aria-label="Search activity by user or date" placeholder="Search users or dates..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-100"/></div>
         <div className="flex items-center gap-2 shrink-0 ml-auto">
@@ -168,7 +169,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
           <Filter size={16} />
         </button>
         </div>
-        <div className="shrink-0 flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
+        <div className={`${embedded ? 'hidden' : 'flex md:hidden'} shrink-0 bg-blue-50 p-1 rounded-lg border border-blue-200`}>
           <button
             onClick={() => setViewMode('card')}
             className={`p-1.5 rounded-md transition-all border ${viewMode === 'card' ? 'bg-white shadow text-blue-600 border-blue-600' : 'text-blue-400 border-transparent'}`}
@@ -189,18 +190,18 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-6">
         <div className="flex flex-row items-center justify-center gap-6 flex-wrap">
           <div className="flex flex-row items-center">
-            <label className={labelClass}>From</label>
+            <label htmlFor="activity-date-from" className={labelClass}>From</label>
             <input 
-              type="date" 
+              id="activity-date-from" type="date" 
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
               className="w-[170px] px-4 py-2 border-2 border-l-0 border-gray-200 rounded-r-lg focus:ring-4 focus:ring-blue-50 focus:border-[#4a77d4] outline-none transition-all font-bold text-gray-700 shadow-sm text-center h-[44px]"
             />
           </div>
           <div className="flex flex-row items-center">
-            <label className={labelClass}>To</label>
+            <label htmlFor="activity-date-to" className={labelClass}>To</label>
             <input 
-              type="date" 
+              id="activity-date-to" type="date" 
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               className="w-[170px] px-4 py-2 border-2 border-l-0 border-gray-200 rounded-r-lg focus:ring-4 focus:ring-blue-50 focus:border-[#4a77d4] outline-none transition-all font-bold text-gray-700 shadow-sm text-center h-[44px]"
@@ -279,7 +280,7 @@ export const ActivityDashboardView: React.FC<ActivityDashboardViewProps> = ({ lo
               ))}
               {pivotedData.dates.length === 0 && (
                 <tr>
-                  <td colSpan={pivotedData.employees.length + 1} className="px-6 py-24 text-center text-gray-400 italic font-black uppercase tracking-widest text-xs">
+                  <td colSpan={pivotedData.employees.length + 1} className={`${embedded ? 'px-3 py-3' : 'px-6 py-24'} text-center text-gray-400 italic font-black uppercase tracking-widest text-xs`}>
                     No activity logs found for the selected range.
                   </td>
                 </tr>

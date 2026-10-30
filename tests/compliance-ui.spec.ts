@@ -274,3 +274,44 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await page.getByRole('button',{name:'Table View',exact:true}).click();
  await expect(recurring).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
 });
+
+test('Task navigation starts with Pending and activity is inside the main Dashboard',async({page})=>{
+ await page.setViewportSize({width:1280,height:900});
+ await page.clock.install({time:new Date('2026-10-30T06:00:00Z')});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.actionLogs=[{id:95001,taskId:95002,task:'Activity example',assignees:'Activity User',owner:'Activity User',updateDate:'30/10/2026',status:'In Progress',hours:120}];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ const activity=page.getByRole('region',{name:'Activity Dashboard',exact:true});
+ await expect(activity.getByRole('table')).toBeVisible();
+ await expect(activity.getByRole('columnheader',{name:'Activity User',exact:true})).toBeVisible();
+ await expect(activity.getByRole('cell',{name:'02:00',exact:true}).first()).toBeVisible();
+ await activity.getByRole('button',{name:'Toggle Filters',exact:true}).click();
+ await activity.getByLabel('From',{exact:true}).fill('2026-10-31');
+ await expect(activity.getByText('No activity logs found for the selected range.',{exact:true})).toBeVisible();
+ await activity.getByLabel('From',{exact:true}).fill('2026-10-01');
+ await activity.getByRole('textbox',{name:'Search activity by user or date',exact:true}).fill('Activity User');
+ await expect(activity.getByRole('cell',{name:'02:00',exact:true}).first()).toBeVisible();
+ await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
+ const tabs=page.getByRole('navigation',{name:'Section views',exact:true});
+ for(const [index,label] of ['Pending Tasks','Action Log','Completed Tasks','All Tasks'].entries()){
+  await expect(tabs.getByRole('button').nth(index)).toHaveText(new RegExp('^'+label));
+ }
+ await expect(tabs.getByRole('button',{name:/^Pending Tasks/})).toHaveAttribute('aria-current','page');
+ await expect(tabs.getByRole('button',{name:'Activity Dashboard',exact:true})).toHaveCount(0);
+ await tabs.getByRole('button',{name:/^Action Log/}).click();
+ await expect(tabs.getByRole('button',{name:/^Action Log/})).toHaveAttribute('aria-current','page');
+ await tabs.getByRole('button',{name:/^Completed Tasks/}).click();
+ await expect(tabs.getByRole('button',{name:/^Completed Tasks/})).toHaveAttribute('aria-current','page');
+ await tabs.getByRole('button',{name:/^All Tasks/}).click();
+ await expect(tabs.getByRole('button',{name:/^All Tasks/})).toHaveAttribute('aria-current','page');
+ await page.setViewportSize({width:360,height:800});
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();
+ await expect(activity.getByRole('table')).toBeVisible();
+});
