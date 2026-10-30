@@ -39,7 +39,7 @@ try{
         $sourceRow=$found[0];$prior=dsc_all($conn,'SELECT id FROM task_billing_defaults WHERE tenant_id=? AND source_type=? AND source_id=?',[$tenant,$source,$sourceId]);
         if($prior)throw new InvalidArgumentException('Use Billing Type / Fee to update existing defaults.');
         if(!$admin&&($prior||!in_array($actorName,array_map('trim',explode(',',($sourceRow['owner']??'').','.($sourceRow['assignees']??$sourceRow['assignee']??''))),true)))throw new InvalidArgumentException('Only an Admin can change existing Billing Type.');
-        $type=cp_billing($data['billing_type']??'');$fee=cp_money($data['fee']??null);
+        $type=cp_billing($data['billing_type']??'');$fee=$type==='Billable'?cp_money($data['fee']??null):null;
         dsc_query($conn,'INSERT INTO task_billing_defaults (tenant_id,source_type,source_id,billing_type,fee) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE billing_type=VALUES(billing_type),fee=VALUES(fee)',[$tenant,$source,$sourceId,$type,$fee]);
         $entry=dsc_all($conn,'SELECT * FROM compliance_entries WHERE tenant_id=? AND source_type=? AND source_key=? FOR UPDATE',[$tenant,$source,(string)$sourceId]);
         if($entry){if($entry[0]['billing_status']==='Billed')throw new InvalidArgumentException('Reverse billing before changing fee.');cp_patch($conn,'compliance_entries',$entry[0],['billing_type'=>$type,'fee'=>$fee]);}
@@ -68,7 +68,7 @@ try{
         $day=($data['due_day']??'')===''?null:(int)$data['due_day'];if($day!==null&&($day<1||$day>31))throw new InvalidArgumentException('Due day must be 1–31.');
         foreach(array_unique(array_map('intval',$ids)) as $clientId){$scope=app_table_is_scoped($conn,'firms')?' AND tenant_id=?':'';$f=dsc_all($conn,'SELECT id,name FROM firms WHERE id=?'.$scope,$scope?[$clientId,$tenant]:[$clientId]);if(!$f)throw new InvalidArgumentException('Client unavailable.');
             $existing=dsc_all($conn,'SELECT * FROM client_compliances WHERE tenant_id=? AND template_id=? AND client_id=? FOR UPDATE',[$tenant,$t['id'],$clientId]);
-            $v=['assigned_user_id'=>$u['id'],'assigned_user_name'=>$u['name'],'start_date'=>$start,'end_date'=>$end,'billing_type'=>cp_billing($data['billing_type']??''),'fee'=>cp_money($data['fee']??null),'due_day'=>$day,'active'=>!empty($data['active'])?1:0];
+            $v=['assigned_user_id'=>$u['id'],'assigned_user_name'=>$u['name'],'start_date'=>$start,'end_date'=>$end,'billing_type'=>cp_billing($data['billing_type']??''),'fee'=>($data['billing_type']??'')==='Billable'?cp_money($data['fee']??null):null,'due_day'=>$day,'active'=>!empty($data['active'])?1:0];
             if($existing)cp_patch($conn,'client_compliances',$existing[0],$v);else dsc_insert($conn,'client_compliances',['tenant_id'=>$tenant,'template_id'=>$t['id'],'client_id'=>$clientId,'client_name'=>$f[0]['name']]+$v);
             cp_history($conn,0,'Client assignment',['template_id'=>$t['id'],'client_id'=>$clientId,'before'=>$existing[0]??null,'after'=>$v],$actor,$actorName);
         }
@@ -81,8 +81,8 @@ try{
             if(isset($data['version'])&&(int)$data['version']!==(int)$r['version'])throw new InvalidArgumentException('Record changed. Refresh and try again.');
             if($action==='classify'){
                 if($r['billing_status']==='Billed')throw new InvalidArgumentException('Reverse billing before changing billing details.');
-                $type=cp_billing($data['billing_type']??'');if($r['work_status']==='Completed'&&$r['billing_type']==='Billable'&&$type==='Non Billable'&&trim($data['reason']??'')==='')throw new InvalidArgumentException('Enter a reason for changing completed billable work.');
-                $v=['billing_type'=>$type,'fee'=>cp_money($data['fee']??null)];
+                $type=cp_billing($data['billing_type']??'');
+                $v=['billing_type'=>$type,'fee'=>$type==='Billable'?cp_money($data['fee']??null):null];
                 if(in_array($r['source_type'],['Simple','Recurring Master'],true))dsc_query($conn,'INSERT INTO task_billing_defaults (tenant_id,source_type,source_id,billing_type,fee) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE billing_type=VALUES(billing_type),fee=VALUES(fee)',[$tenant,$r['source_type'],$r['source_id'],$type,$v['fee']]);
             }elseif($action==='extend'){
                 if($r['source_type']!=='Compliance'||$r['work_status']==='Cancelled')throw new InvalidArgumentException('Only active compliance entries can be extended.');$due=(string)($data['due_date']??'');if(!cp_date($due)||$due<$r['due_date'])throw new InvalidArgumentException('Choose an extended due date.');$v=['due_date'=>$due];dsc_text($data,'reason',1000,true);
@@ -102,7 +102,7 @@ try{
         }
     }elseif($action==='bill'){
         $ids=array_values(array_unique(array_map('intval',$data['ids']??[])));sort($ids);if(!$ids||count($ids)>300)throw new InvalidArgumentException('Select 1–300 billable entries.');$invoice=dsc_text($data,'invoice_number',190,true);$date=(string)($data['invoice_date']??'');if(!cp_date($date))throw new InvalidArgumentException('Enter invoice date.');$rows=[];$client=null;
-        foreach($ids as $id){$r=cp_find($conn,'compliance_entries',$id,true);if($r['source_type']==='Recurring Master'||$r['work_status']==='Cancelled'||$r['billing_type']!=='Billable'||$r['billing_status']==='Billed')throw new InvalidArgumentException('Selection includes non-billable, cancelled or already billed work.');if($r['fee']===null)throw new InvalidArgumentException('Enter professional fees before billing.');if($r['client_name']===''||($client!==null&&$client!==$r['client_name']))throw new InvalidArgumentException('Select entries for the same client.');$client=$r['client_name'];$rows[]=$r;}
+        foreach($ids as $id){$r=cp_find($conn,'compliance_entries',$id,true);if($r['source_type']==='Recurring Master'||$r['work_status']==='Cancelled'||$r['billing_type']!=='Billable'||$r['billing_status']==='Billed')throw new InvalidArgumentException('Selection includes non-billable, cancelled or already billed work.');if($r['fee']===null)throw new InvalidArgumentException('Enter a fee before billing.');if($r['client_name']===''||($client!==null&&$client!==$r['client_name']))throw new InvalidArgumentException('Select entries for the same client.');$client=$r['client_name'];$rows[]=$r;}
         $bill=dsc_insert($conn,'billing_records',['tenant_id'=>$tenant,'client_name'=>$client,'invoice_number'=>$invoice,'invoice_date'=>$date,'remarks'=>dsc_text($data,'remarks',10000),'actor_id'=>$actor,'actor_name'=>$actorName]);
         foreach($rows as $r){dsc_insert($conn,'billing_record_items',['tenant_id'=>$tenant,'billing_id'=>$bill,'entry_id'=>$r['id'],'fee'=>$r['fee']]);cp_patch($conn,'compliance_entries',$r,['billing_status'=>'Billed']);cp_history($conn,(int)$r['id'],'Billed',['billing_id'=>$bill,'invoice'=>$invoice,'date'=>$date,'fee'=>$r['fee']],$actor,$actorName);}
     }elseif($action==='reverseBill'){
