@@ -46,4 +46,16 @@ $categoryId=(int)$categoryNote['id'];
 [$status]=note_call(['csrf'=>$csrf,'action'=>'delete','id'=>$categoryId,'version'=>999]);note_expect($status===400,'Stale deletion denied');
 [$status]=note_call(['csrf'=>$csrf,'action'=>'delete','id'=>$categoryId,'version'=>1]);note_expect($status===200,'Admin can delete checklist');
 [$status,$loaded]=note_call();note_expect(!in_array($categoryId,array_map('intval',array_column($loaded['templates'],'id')),true),'Deleted checklist no longer listed');
+
+[$status,$ordered]=note_call();$expected=array_map('intval',array_column($ordered['templates'],'id'));$ids=array_reverse($expected);
+$colors=array_column($ordered['templates'],'color_index','id');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'reorder','ids'=>$ids,'expected'=>$expected]);note_expect($status===200,'Admin can reorder');
+[$status,$reloaded]=note_call();note_expect(array_map('intval',array_column($reloaded['templates'],'id'))===$ids,'Order persists across reload');
+note_expect(array_column($reloaded['templates'],'color_index','id')==$colors,'Colours stay with checklist IDs');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'reorder','ids'=>$expected,'expected'=>$expected]);note_expect($status===400,'Stale reorder rejected');
+[$status]=note_call(['csrf'=>$ordinary['csrf'],'action'=>'reorder','ids'=>$expected,'expected'=>$ids],'test-a','ordinary');note_expect($status===403,'User cannot reorder shared notes');
+[$status]=note_call(['csrf'=>$other['csrf'],'action'=>'reorder','ids'=>$ids,'expected'=>[]],'test-b','b');note_expect($status===400,'Cross tenant reorder denied');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'reorder','ids'=>array_fill(0,count($ids),$ids[0]),'expected'=>$ids]);note_expect($status===400,'Duplicate IDs rejected');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'reorder','ids'=>array_slice($ids,1),'expected'=>$ids]);note_expect($status===400,'Incomplete order rejected');
+[$status,$unchanged]=note_call();note_expect(array_map('intval',array_column($unchanged['templates'],'id'))===$ids,'Rejected changes leave order intact');
 echo "Checklist API passed: legacy migration, rich notes, CSRF, permissions, concurrency and tenant isolation.\n";

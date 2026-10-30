@@ -59,4 +59,22 @@ function cl_schema(mysqli $db):void {
         try {dsc_query($db,'ALTER TABLE checklist_templates ADD COLUMN note_html MEDIUMTEXT NULL');}
         catch(mysqli_sql_exception $e){if($e->getCode()!==1060)throw $e;}
     }
+    foreach(['sort_order','color_index'] as $column){
+        if(!dsc_all($db,"SHOW COLUMNS FROM checklist_templates LIKE '".$column."'")){
+            try {dsc_query($db,'ALTER TABLE checklist_templates ADD COLUMN '.$column.' INT NULL');}
+            catch(mysqli_sql_exception $e){if($e->getCode()!==1060)throw $e;}
+        }
+    }
+    $rows=dsc_all($db,'SELECT id,tenant_id FROM checklist_templates WHERE sort_order IS NULL OR color_index IS NULL ORDER BY tenant_id,name,id');
+    $positions=[];
+    foreach($rows as $row){
+        $tenant=(int)$row['tenant_id'];
+        if(!isset($positions[$tenant])){
+            $max=dsc_all($db,'SELECT COALESCE(MAX(sort_order),-1) AS last_position FROM checklist_templates WHERE tenant_id=?',[$tenant]);
+            $positions[$tenant]=(int)$max[0]['last_position']+1;
+        }
+        $position=$positions[$tenant]++;
+        dsc_query($db,'UPDATE checklist_templates SET sort_order=COALESCE(sort_order,?),color_index=COALESCE(color_index,?) WHERE id=?',[$position,$position%8,(int)$row['id']]);
+    }
+
 }
