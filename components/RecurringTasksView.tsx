@@ -1,3 +1,4 @@
+import { TaskCardFields, TaskCardField } from './TaskCardFields';
 import React, { useState, useMemo, useEffect } from 'react';
 import { RotateCcw, Plus, Search, Filter, X, Info, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Edit2, LayoutGrid, LayoutList, AlertCircle, Calendar, Loader2 } from 'lucide-react';
 import { RecurringTask, RecurringTaskAction } from '../types';
@@ -512,8 +513,8 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
 	            <button aria-label="New Recurring Task" title="New Recurring Task" onClick={onAdd} className="flex items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium transition-colors shadow-sm"><Plus size={16} /><span className="sr-only md:not-sr-only whitespace-nowrap">New Recurring Task</span></button>
             )}
             <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
-                <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
-                <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
+                <button aria-label="Card View" title="Card View" onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
+                <button aria-label="Table View" title="Table View" onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
             </div>
         </div>
       </div>
@@ -672,57 +673,32 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
              return (
                 <div 
                   key={task.id} 
+                  role="article" aria-label={task.title || 'Recurring task'}
                   onDoubleClick={() => onUpdate(task)}
-                  className={`bg-white rounded-lg shadow-sm border p-4 relative cursor-pointer ${selectedIds.includes(task.id) ? 'border-indigo-500 bg-indigo-50/30' : 'border-gray-200'}`}
+                  className={`min-w-0 bg-white rounded-lg shadow-sm border p-4 relative cursor-pointer ${selectedIds.includes(task.id) ? 'border-indigo-500 bg-indigo-50/30' : 'border-gray-200'}`}
                 >
-                    <div className="mb-3">
-                    <div className="flex justify-between items-start mb-1">
-                        <div className="flex items-center gap-2">
-                            {isAdmin && (
-                                <input 
-                                    type="checkbox" 
-                                    className="rounded border-gray-300 text-blue-600 h-5 w-5" 
-                                    checked={selectedIds.includes(task.id)} 
-                                    onChange={() => handleSelectOne(task.id)}
-                                    onDoubleClick={(e) => e.stopPropagation()}
-                                />
-                            )}
-                            <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-[10px] font-bold">#{startEntry + idx}</span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${getStatusColor(effectiveStatus)} whitespace-normal break-words`}>{effectiveStatus}</span>
+                    <div className="flex items-center justify-between gap-2 mb-3" onDoubleClick={e=>e.stopPropagation()}>
+                      <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded text-xs font-semibold">#{startEntry + idx}</span>
+                      {isAdmin && <input aria-label={'Select '+task.title} type="checkbox" className="rounded border-gray-300 text-blue-600 h-5 w-5" checked={selectedIds.includes(task.id)} onChange={() => handleSelectOne(task.id)}/>}
                     </div>
-                    <h3 className="font-bold text-gray-900 leading-tight mt-2 whitespace-normal break-words">{task.title}</h3>
-                    </div>
-		                    <div className="grid grid-cols-2 gap-y-2 text-xs text-gray-600 mb-4 bg-gray-50 p-2 rounded">
-                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Client</span><span className="whitespace-normal break-words">{task.firm || '-'}</span></div>
-                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Owner</span><span className="whitespace-normal break-words">{task.owner || '-'}</span></div>
-		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">{getFieldLabel('recurringTask.category', 'Category')}</span><span className="whitespace-normal break-words">{task.category}</span></div>
-	                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Assignee</span><span className="whitespace-normal break-words">{task.assignee}</span></div>
-		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Period</span><span className="whitespace-pre-line break-words">{getFrequencyText(task)}</span></div>
-		                    <div><span className="text-gray-400 font-bold uppercase text-[9px] block">Time</span><span className="whitespace-normal break-words">{task.time || '-'}</span></div>
-                        
-                        
-                        
-		                    <div>
-		                        <span className="text-indigo-500 font-bold uppercase text-[9px] block">Next Due</span>
-	                        <span className={`font-bold ${isOverdue ? 'text-red-600' : 'text-indigo-600'} whitespace-normal break-words`}>{nextDueStr}</span>
-	                    </div>
-                      <div className="col-span-2 mt-1 pt-1 border-t border-gray-100">
-                        <span className="text-gray-400 font-bold uppercase text-[9px] block">Notes</span>
-                        <div className="text-[10px] text-gray-600 whitespace-normal break-words">
-                          {task.notes || '-'}
-                        </div>
-                      </div>
-                      <div className="col-span-2 mt-1 pt-1 border-t border-gray-100">
-                        <span className="text-gray-400 font-bold uppercase text-[9px] block">Last Activity</span>
-	                        <div className="text-[10px] text-gray-600">{getActivityDisplay(task)}</div>
-                      </div>
-	                    </div>
-                    <div className="flex gap-2 pt-3 border-t border-gray-100 flex-wrap">
+                    <TaskCardFields>
+                      <TaskCardField label="Task"><span className="font-semibold text-indigo-800">{task.title || '-'}</span></TaskCardField>
+                      <TaskCardField label="Client">{task.firm || '-'}</TaskCardField>
+                      <TaskCardField label="Assignee">{task.assignee || '-'}</TaskCardField>
+                      <TaskCardField label="Next Due"><span className={isOverdue ? 'font-semibold text-red-600' : 'font-semibold text-indigo-600'}>{nextDueStr || '-'}</span></TaskCardField>
+                      <TaskCardField label="Status"><span className={`inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium ${getStatusColor(effectiveStatus)}`}>{effectiveStatus}</span></TaskCardField>
+                      <TaskCardField label="Owner">{task.owner || '-'}</TaskCardField>
+                      <TaskCardField label={getFieldLabel('recurringTask.category', 'Category')}>{task.category || '-'}</TaskCardField>
+                      <TaskCardField label="Period">{getFrequencyText(task) || '-'}</TaskCardField>
+                      <TaskCardField label="Time">{task.time || '-'}</TaskCardField>
+                      <TaskCardField label="Notes">{task.notes || '-'}</TaskCardField>
+                      <TaskCardField label="Last Activity">{getActivityDisplay(task)}</TaskCardField>
+                    </TaskCardFields>
+                    <div className="flex flex-wrap items-center justify-end gap-2 pt-3" onDoubleClick={e=>e.stopPropagation()}>
                         <button onClick={() => onUpdate(task)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-normal break-words"><RotateCcw size={14} />Update</button>
-                        <div className="flex gap-1 w-full sm:w-auto justify-end" onDoubleClick={(e) => e.stopPropagation()}>
-                            <button onClick={() => onViewHistory(task)} className="p-2 text-indigo-500 hover:bg-gray-100 rounded-full border border-gray-100"><Info size={18} /></button>
-                            <button onClick={() => onEdit(task)} className="p-2 text-indigo-600 hover:bg-gray-100 rounded-full border border-gray-100"><Edit2 size={18} /></button>
+                        <div className="flex gap-1 justify-end" onDoubleClick={(e) => e.stopPropagation()}>
+                            <button aria-label="View history" onClick={() => onViewHistory(task)} className="p-2 text-indigo-500 hover:bg-gray-100 rounded-full border border-gray-100"><Info size={18} /></button>
+                            <button aria-label="Edit recurring task" onClick={() => onEdit(task)} className="p-2 text-indigo-600 hover:bg-gray-100 rounded-full border border-gray-100"><Edit2 size={18} /></button>
                             {isAdmin && (
                               <button 
                                 onClick={() => handleDelete(task.id)} 
