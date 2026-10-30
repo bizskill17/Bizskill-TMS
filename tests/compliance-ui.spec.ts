@@ -8,7 +8,7 @@ test('Billing navigation and simple task fields',async({page})=>{
  await page.getByRole('button',{name:'Billing',exact:true}).click();
  await expect(page.getByRole('tab',{name:/Billing Type Review/})).toBeVisible();
  await page.getByRole('tab',{name:/Recurring Defaults/}).click();
- await expect(page.getByText('Bookkeeping',{exact:true})).toBeVisible();
+ await expect(page.getByRole('cell',{name:'Bookkeeping',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Show menu',exact:true}).click();
  await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
  await page.getByRole('button',{name:'Add Task',exact:true}).click();
@@ -226,9 +226,9 @@ test('Mobile task cards align labels and values and keep table mode available',a
  const longClient='A very long client name '+ 'ExampleCompany'.repeat(8);
  await page.route('**/api/init.php?**',async route=>{
   const response=await route.fetch();const payload=await response.json();
-  payload.data.mainTasks=[{id:94001,title:'File GST return',firm:longClient,assignees:'Manash Deka, Pankaj Jain',owner:'Pankaj Jain',category:'GST',status:'In Progress',priority:'High',date:'30/10/2026',dueDate:'20/11/2026',remarks:'Collect documents\nCheck ITC',lastUpdateRemarks:'Waiting for client',hours:25,time:'10:30',photos:'[]'}, {id:94003,title:'Minimal task',firm:'',assignees:'',owner:' ',category:'—',status:'Not Yet Started',priority:'Medium',date:'',dueDate:'',remarks:'  ',hours:'0.00',time:'-',photos:'[]'}];
+  payload.data.mainTasks=[{id:94001,title:'File GST return',firm:longClient,assignees:'Manash Deka, Pankaj Jain',owner:'Pankaj Jain',category:'GST',status:'In Progress',priority:'High',date:'30/10/2026',dueDate:'20/11/2026',remarks:'Collect documents\nCheck ITC',lastUpdateDate:'30/10/2026',lastUpdateRemarks:'Waiting for client',hours:25,time:'10:30',photos:'[]'}, {id:94003,title:'Minimal task',firm:'',assignees:'',owner:' ',category:'—',status:'Not Yet Started',priority:'Medium',date:'',dueDate:'',remarks:'  ',hours:'0.00',time:'-',photos:'[]'}];
   payload.data.vendorTasks=[];
-  payload.data.recurringTasks=[{id:94002,title:'Monthly challan',firm:longClient,assignee:'Manash Deka',owner:'Pankaj Jain',category:'GST',status:'Not Yet Started',periodicity:'Monthly',recurrenceDay:20,frequencyDays:30,startDate:'01/10/2026',notes:'Review payment\nConfirm challan'}];
+  payload.data.recurringTasks=[{id:94002,title:'Monthly challan',firm:longClient,assignee:'Manash Deka',owner:'Pankaj Jain',category:'GST',status:'Not Yet Started',periodicity:'Monthly',recurrenceDay:20,frequencyDays:30,startDate:'01/10/2026',lastUpdatedOn:'30/10/2026',lastUpdateRemarks:'Waiting for payment',notes:'Review payment\nConfirm challan'}];
   payload.data.recurringActions=[];
   await route.fulfill({response,json:payload});
  });
@@ -239,14 +239,14 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await expect(card).toBeVisible();
  const minimal=page.getByRole('article',{name:'Minimal task',exact:true});
  await minimal.getByRole('button',{name:'Show details',exact:true}).click();
- await expect(minimal.locator('dt')).toHaveText(['Task','Priority','Status']);
+ await expect(minimal.locator('dt')).toHaveText(['Task','Status','Priority']);
  await expect(minimal.locator('dl')).toHaveCount(1);
- await expect(card.locator('dt')).toHaveText(['Task','Client','Assignee','Due Date','Priority','Status','Total Minutes']);
+ await expect(card.locator('dt')).toHaveText(['Task','Client','Assignee','Status','Update Date','Remarks','Due Date','Priority','Total Minutes']);
  await expect(card.locator('dd').nth(1)).toHaveText(longClient);
- await expect(card.locator('dd').nth(3)).toHaveText('20/11/2026');
+ await expect(card.locator('dd').nth(6)).toHaveText('20/11/2026');
  await card.getByRole('button',{name:'Show details',exact:true}).click();
- await expect(card.locator('dt')).toContainText(['Owner','Category','Task Date','Time','Notes','Remark']);
- for (const label of ['Update Date','Photo','PDF']) await expect(card.locator('dt').filter({hasText:new RegExp('^'+label+'$')})).toHaveCount(0);
+ await expect(card.locator('dt')).toContainText(['Owner','Category','Task Date','Time','Notes']);
+ for (const label of ['Photo','PDF']) await expect(card.locator('dt').filter({hasText:new RegExp('^'+label+'$')})).toHaveCount(0);
  await expect(card.locator('dd').filter({hasText:'Collect documents'})).toHaveText('Collect documents\nCheck ITC');
  for(const width of [320,360,393,430]){
   await page.setViewportSize({width,height:800});
@@ -268,9 +268,9 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await page.getByRole('button',{name:'Recurring Tasks',exact:true}).click();
  const recurring=page.getByRole('article',{name:'Monthly challan',exact:true});
  await expect(recurring).toBeVisible();
- await expect(recurring.locator('dt')).toHaveText(['Task','Client','Assignee','Next Due','Status','Owner','Category','Period','Notes']);
+ await expect(recurring.locator('dt')).toHaveText(['Task','Client','Assignee','Status','Update Date','Remarks','Next Due','Owner','Category','Period','Notes']);
  await expect(recurring.locator('dd').nth(1)).toHaveText(longClient);
- await expect(recurring.locator('dd').nth(8)).toHaveText('Review payment\nConfirm challan');
+ await expect(recurring.locator('dd').nth(10)).toHaveText('Review payment\nConfirm challan');
  for(const width of [320,393]){
   await page.setViewportSize({width,height:800});
   expect(await recurring.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
@@ -484,4 +484,80 @@ test('Recurring task form ends with Billing Type and Fee',async({page})=>{
   return fields[fields.length-1]===input && fields[fields.length-2]?.closest('label')?.textContent?.includes('Billing Type');
  })).toBeTruthy();
  await expect(page.getByText('Professional Fee (optional)',{exact:true})).toHaveCount(0);
+});
+
+test('Office Tasks groups tasks without clients and the simple task form accepts a blank Client',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  const task={date:'30/10/2026',dueDate:'20/11/2026',owner:'Office User',assignees:'Office User',category:'Office Category',priority:'Medium',status:'Not Yet Started',firm:'',clientName:'',project:''};
+  payload.data.mainTasks=[{...task,id:99501,title:'Internal review'},{...task,id:99502,title:'Internal completed',status:'Completed'},{...task,id:99503,title:'Client work',firm:'Client A'},{...task,id:99504,title:'Project work',project:'Project A (Client A)'}];
+  payload.data.vendorTasks=[];
+  payload.data.users=[{id:99510,name:'Office User',email:'office@example.com',mobile:'9864023964',role:'Employee',isActive:true}];
+  payload.data.categories=[{id:99511,name:'Office Category',type:'Task'}];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
+ const office=page.getByRole('navigation',{name:'Section views',exact:true}).getByRole('button',{name:/^Office Tasks/});
+ await expect(office).toHaveText(/^Office Tasks\s*2$/);
+ await office.click();
+ await expect(page.getByRole('heading',{name:'Internal review',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Internal completed',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Client work',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('heading',{name:'Project work',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Add Task',exact:true}).click();
+ const form=page.locator('form').filter({has:page.getByPlaceholder('Enter task title',{exact:true})});
+ await form.getByPlaceholder('Enter task title',{exact:true}).fill('New office task');
+ await form.locator('input[name="dueDate"]').fill('2026-11-20');
+ for(const [placeholder,value] of [['Select Owner...','Office User'],['Select Assignees...','Office User'],['Select Category...','Office Category']]){
+  await form.getByText(placeholder,{exact:true}).click();
+  await page.getByText(value,{exact:true}).last().click();
+  await page.getByRole('heading',{name:'Add Task',exact:true}).click();
+ }
+ await form.getByLabel('Billing Type').selectOption('Non Billable');
+ await expect(form.getByText('Select Client...',{exact:true})).toBeVisible();
+ await expect(form.getByRole('button',{name:'Save Task',exact:true})).toBeVisible();
+ expect(await form.evaluate(node=>(node as HTMLFormElement).checkValidity())).toBeTruthy();
+});
+
+test('Billing mobile cards hide filters until the filter icon is tapped',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/compliance.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.entries=[{id:99601,title:'Billing card example',client_name:'Client A',source_type:'Simple',assigned_user_name:'Office User',work_status:'Completed',billing_type:'Billable',billing_status:'Pending',fee:500,current_stage:'',due_date:'2026-11-20',completed_on:'2026-10-30',remarks:''}];
+  payload.bills=[];payload.billItems=[];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Billing',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Billing filters',exact:true})).toHaveAttribute('aria-expanded','false');
+ await expect(page.getByLabel('From date',{exact:true})).toBeHidden();
+ const card=page.getByRole('article',{name:'Billing card example',exact:true});
+ await expect(card.locator('dt')).toHaveText(['Task','Client','Assignee','Status','Due Date','Task Type','Billing Type','Fee','Billing Status']);
+ await card.getByRole('checkbox',{name:'Select Billing card example',exact:true}).check();
+ await expect(page.getByText('1 selected',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Clear Selection',exact:true}).click();
+ await page.getByRole('button',{name:'Billing filters',exact:true}).click();
+ await expect(page.getByLabel('From date',{exact:true})).toBeVisible();
+ await page.getByLabel('From date',{exact:true}).fill('2026-11-01');
+ await expect(card).toHaveCount(0);
+ await page.getByRole('button',{name:'Clear Filters',exact:true}).click();
+ await expect(card).toBeVisible();
+ await page.getByRole('button',{name:'Billing filters',exact:true}).click();
+ await expect(page.getByLabel('From date',{exact:true})).toBeHidden();
+ for(const width of [320,393]){
+  await page.setViewportSize({width,height:850});
+  expect(await card.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
+ }
+ await page.setViewportSize({width:1280,height:900});
+ await expect(card).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
 });

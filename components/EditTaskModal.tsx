@@ -188,10 +188,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
 
   const isFormValid = () => {
 	    const basicValid = formData.title.trim() !== '' && 
-	                       formData.owner !== '' && 
-                         formData.firm !== '';
+	                       formData.owner !== '' ;
 
-    if (isVendorMode) return basicValid && formData.vendor !== '';
+    if (isVendorMode) return basicValid && formData.firm !== '' && formData.vendor !== '';
     
     return basicValid && 
            formData.assignees.length > 0 && 
@@ -214,6 +213,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       priority: formData.priority as any,
       project: formData.project, // Project is always saved as the combined string
       firm: formData.firm,
+      clientName: formData.project.match(/\(([^)]*)\)\s*$/)?.[1]?.trim() || formData.firm,
       time: formData.time,
       photos: JSON.stringify(formData.photos || []),
       pdf: formData.pdf || ''
@@ -301,7 +301,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                           value={formData.firm}
                           onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
                           placeholder="Select Client..."
-                          required
+                          required={isVendorMode}
                         />
 		              </div>
 

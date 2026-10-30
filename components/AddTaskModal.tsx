@@ -149,11 +149,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 	    const basicValid = formData.title.trim() !== '' &&
 	        formData.priority !== '' &&
 	        formData.owner !== '' &&
-	        formData.dueDate !== '' &&
-          formData.firm !== '';
+	        formData.dueDate !== '' ;
     
     if (isVendorView) {
-        return basicValid && formData.vendor !== '' && formData.vendorCategory.length > 0;
+        return basicValid && formData.firm !== '' && formData.vendor !== '' && formData.vendorCategory.length > 0;
     }
 
     return basicValid &&
@@ -286,7 +285,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                       value={formData.firm}
                       onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
                       placeholder="Select Client..."
-                      required
+                      required={isVendorView}
                     />
 			            </div>
 

@@ -73,6 +73,12 @@ import {
 
 const AUTO_SYNC_INTERVAL = 120000;
 const VENDOR_MODULE_ENABLED = false;
+const hasTaskClient = (task: Task, projects: Project[]) => {
+  const rawProject = String(task.project || '').trim();
+  const project = projects.find(item=>item.name===rawProject || item.name+' ('+item.client+')'===rawProject);
+  const projectClient = rawProject.match(/\(([^)]*)\)\s*$/)?.[1];
+  return [task.clientName,task.firm,projectClient,project?.client].some(value=>String(value || '').trim()!=='');
+};
 
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
@@ -83,6 +89,7 @@ const navItems: NavItem[] = [
   { id: 'action-log', label: 'Action Log', icon: <History size={20} />, section: 'Tasks' },
   { id: 'completed', label: 'Completed Tasks', icon: <CheckCircle size={20} />, section: 'Tasks' },
   { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={20} />, section: 'Tasks' },
+  { id: 'office-tasks', label: 'Office Tasks', icon: <Building2 size={20} />, section: 'Tasks' },
   
 	  // Recurring Tasks Section
   { id: 'recurring-tasks', label: 'Recurring Master', icon: <RotateCcw size={20} />, section: 'Recurring Tasks' },
@@ -470,6 +477,7 @@ export default function App() {
 
 	    const counts: Record<string, number> = {
 	      'all-tasks': employeeTasks.length,
+        'office-tasks': employeeTasks.filter(task=>!hasTaskClient(task,projects)).length,
 	      'pending-group': employeeTasks.filter(t => t.status !== 'Completed').length,
 	      'pending': employeeTasks.filter(t => t.status !== 'Completed').length,
 	      'completed': employeeTasks.filter(t => t.status === 'Completed').length,
@@ -492,7 +500,7 @@ export default function App() {
 	        : item;
 	      return { ...withCount, label: getViewLabel(item.id, withCount.label) };
 	    });
-		  }, [filteredNavItems, visibleTasks, visibleActionLogs, visibleRecurringTasks, visibleRecurringActions, pendingStatusNavItems, settings]);
+		  }, [filteredNavItems, visibleTasks, visibleActionLogs, visibleRecurringTasks, visibleRecurringActions, pendingStatusNavItems, settings, projects]);
 
   const activeSection = navItemsWithCounts.find(item => item.id === activeTab)?.section || 'main';
   const sectionTabs = navItemsWithCounts.filter(item =>
@@ -500,7 +508,7 @@ export default function App() {
     !['pending-group', 'add-multiple', 'update-multiple'].includes(item.id)
   ).sort((left, right) => {
     if (activeSection !== 'Tasks') return 0;
-    const order = ['pending', 'action-log', 'completed', 'all-tasks'];
+    const order = ['pending', 'action-log', 'completed', 'all-tasks', 'office-tasks'];
     const rank = (id: string) => { const index = order.indexOf(id); return index < 0 ? order.length : index; };
     return rank(left.id) - rank(right.id);
   });
@@ -1389,6 +1397,7 @@ export default function App() {
 	          onOpenAddUser={() => setIsUserModalOpen(true)} onOpenAddCategory={() => setIsCategoryModalOpen(true)} onOpenAddProject={() => setIsProjectModalOpen(true)} onOpenAddClient={() => setIsClientModalOpen(true)} 
 	        />;
       case 'all-tasks': return <TasksView title={getViewLabel('all-tasks', 'All Tasks')} tasks={visibleTasks.filter(t => !t.vendor || t.vendor === '')} {...commonTaskProps} filterType="all" />;
+      case 'office-tasks': return <TasksView title={getViewLabel('office-tasks', 'Office Tasks')} tasks={visibleTasks.filter(task=>(!task.vendor || task.vendor==='') && !hasTaskClient(task,projects))} {...commonTaskProps} filterType="all" />;
       case 'add-multiple': return (
         <AddMultipleTasksView
           projects={projects}

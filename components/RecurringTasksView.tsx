@@ -685,14 +685,15 @@ export const RecurringTasksView: React.FC<RecurringTasksViewProps> = ({
                       <TaskCardField label="Task"><span className="font-semibold text-indigo-800">{task.title || '-'}</span></TaskCardField>
                       <TaskCardField label="Client">{task.firm || '-'}</TaskCardField>
                       <TaskCardField label="Assignee">{task.assignee || '-'}</TaskCardField>
-                      <TaskCardField label="Next Due"><span className={isOverdue ? 'font-semibold text-red-600' : 'font-semibold text-indigo-600'}>{nextDueStr || '-'}</span></TaskCardField>
                       <TaskCardField label="Status"><span className={`inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium ${getStatusColor(effectiveStatus)}`}>{effectiveStatus}</span></TaskCardField>
+                      <TaskCardField label="Update Date">{getActivityDisplay(task)}</TaskCardField>
+                      <TaskCardField label="Remarks">{task.lastUpdateRemarks}</TaskCardField>
+                      <TaskCardField label="Next Due"><span className={isOverdue ? 'font-semibold text-red-600' : 'font-semibold text-indigo-600'}>{nextDueStr || '-'}</span></TaskCardField>
                       <TaskCardField label="Owner">{task.owner || '-'}</TaskCardField>
                       <TaskCardField label={getFieldLabel('recurringTask.category', 'Category')}>{task.category || '-'}</TaskCardField>
                       <TaskCardField label="Period">{getFrequencyText(task) || '-'}</TaskCardField>
                       <TaskCardField label="Time">{task.time || '-'}</TaskCardField>
                       <TaskCardField label="Notes">{task.notes || '-'}</TaskCardField>
-                      <TaskCardField label="Last Activity">{getActivityDisplay(task)}</TaskCardField>
                     </TaskCardFields>
                     <div className="flex flex-wrap items-center justify-end gap-2 pt-3" onDoubleClick={e=>e.stopPropagation()}>
                         <button onClick={() => onUpdate(task)} className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm whitespace-normal break-words"><RotateCcw size={14} />Update</button>

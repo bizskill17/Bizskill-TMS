@@ -124,7 +124,7 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
 
 	  const isFormValid = () => {
 	    // Basic required fields validation
-		    if (!formData.title.trim() || !formData.firm || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
+		    if (!formData.title.trim() || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
 		      return false;
 		    }
     
@@ -205,7 +205,6 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
               options={clientOptions}
               value={formData.firm}
               onChange={(val) => setFormData(p => ({ ...p, firm: val }))}
-              required
               placeholder="Select client"
               disabled={isSaving}
             />
