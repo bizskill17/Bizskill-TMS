@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, RefreshCw, Search, Settings, X, History } from 'lucide-react';
+import { Plus, RefreshCw, Search, Filter, Settings, X, History } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { todayISO, daysLeft, dscStatus, matchesDscTab, dscRenewalChain } from './dscRules.mjs';
 
@@ -48,6 +48,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
  const [notice,setNotice]=useState('');
  const [tab,setTab]=useState('all');
  const [search,setSearch]=useState('');
+ const [showFilters,setShowFilters]=useState(false);
  const [clientFilter,setClientFilter]=useState('');
  const [dateFrom,setDateFrom]=useState('');
  const [dateTo,setDateTo]=useState('');
@@ -129,12 +130,13 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
    <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
    <div className="relative flex-1 min-w-[180px]"><Search size={18} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search DSC Register" placeholder="Search clients, certificate holders or contact details..." className={input+' pl-10'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
    <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 whitespace-nowrap">
+    <button type="button" aria-label="DSC filters" title="Filters" aria-expanded={showFilters} aria-controls="dsc-filters" onClick={()=>setShowFilters(value=>!value)} className={'p-2 border rounded-lg text-indigo-700 '+(showFilters?'bg-indigo-50 border-indigo-500':'border-indigo-200 hover:bg-indigo-50')}><Filter size={18}/></button>
     {data.canConfigure&&<button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void open('settings')} aria-label="Reminder settings"><Settings size={18}/></button>}
     <button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void load()} aria-label="Refresh DSC Register"><RefreshCw size={18}/></button>
     <button aria-label="Add DSC" title="Add DSC" disabled={loading||saving||!data.csrf} onClick={()=>void open('create')} className="flex gap-0 md:gap-2 items-center px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add DSC</span></button>
    </div>
    </div>
-   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+   <div id="dsc-filters" className={(showFilters?'grid':'hidden')+' grid-cols-2 lg:grid-cols-4 gap-3'}>
     <div><span className={label}>Client</span><SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name))).map(name=>({value:name,label:name}))]} value={clientFilter} onChange={setClientFilter}/></div>
     <label><span className={label}>Expiry From</span><input aria-label="Expiry from" type="date" className={input} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/></label>
     <label><span className={label}>Expiry To</span><input aria-label="Expiry to" type="date" min={dateFrom} className={input} value={dateTo} onChange={e=>setDateTo(e.target.value)}/></label>

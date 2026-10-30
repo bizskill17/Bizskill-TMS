@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import React, { useEffect, useState } from 'react';
-import { Plus, X, Search, CheckCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Plus, X, Search, Filter, CheckCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { User, Firm } from '../types';
 import { localDate, matchesTab, documentStatus } from './documentRules.mjs';
@@ -20,6 +20,7 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
  const [rows,setRows]=useState<DocumentRow[]>([]);
  const [tab,setTab]=useState('all');
  const [search,setSearch]=useState('');
+ const [showFilters,setShowFilters]=useState(false);
  const [direction,setDirection]=useState('');
  const [clientFilter,setClientFilter]=useState('');
  const [userFilter,setUserFilter]=useState('');
@@ -74,9 +75,10 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
   <div className="bg-white rounded-xl border border-indigo-100 p-3 space-y-3">
    <div className="flex items-center gap-3">
    <div className="relative flex-1 min-w-0"><Search className="absolute left-3 top-2.5 text-indigo-400" size={18}/><input aria-label="Search documents" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, clients or people..." className={input+' pl-10'}/></div>
+    <button type="button" aria-label="Document filters" title="Filters" aria-expanded={showFilters} aria-controls="document-filters" onClick={()=>setShowFilters(value=>!value)} className={'shrink-0 p-2 border rounded-lg text-indigo-700 '+(showFilters?'bg-indigo-50 border-indigo-500':'border-indigo-200 hover:bg-indigo-50')}><Filter size={18}/></button>
     <button aria-label="Add Document" title="Add Document" type="button" disabled={busy||!csrf} onClick={()=>{setError('');setForm(blankForm());setOpen(true);}} className="shrink-0 whitespace-nowrap inline-flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add Document</span></button>
    </div>
-   <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+   <div id="document-filters" className={(showFilters?'grid':'hidden')+' grid-cols-2 lg:grid-cols-6 gap-3'}>
     <label className="text-xs text-gray-600">In / Out<select aria-label="Filter movement" className={input} value={direction} onChange={e=>setDirection(e.target.value)}><option value="">All</option><option>In</option><option>Out</option></select></label>
     <div className="text-xs text-gray-600">Client<SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name).filter(Boolean))).sort().map(n=>({value:n,label:n}))]} value={clientFilter} onChange={setClientFilter}/></div>
     <div className="text-xs text-gray-600">Office User<SearchableSelect compact options={[{value:'',label:'All Users'},...Array.from(new Map(rows.map(r=>[String(r.office_user_id),r.office_user_name])).entries()).map(([id,name])=>({value:id,label:name}))]} value={userFilter} onChange={setUserFilter}/></div>

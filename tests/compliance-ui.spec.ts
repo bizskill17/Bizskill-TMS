@@ -680,3 +680,29 @@ test('Simple and recurring task Edit forms load billing settings and require Bil
  await expect(page.getByRole('button',{name:/Client Reminder/})).toHaveCount(0);
  await expect(page.getByRole('checkbox',{name:'Select visible active DSCs',exact:true})).toHaveCount(0);
 });
+
+test('Documents, DSC and Billing filters toggle from icons on desktop and mobile',async({page})=>{
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ for(const width of [1280,393]){
+  await page.setViewportSize({width,height:900});
+  for(const [section,toggle,date] of [['Documents','Document filters','From date'],['DSC Register','DSC filters','Expiry from'],['Billing','Billing filters','From date']]){
+   await page.goto('/');
+   if(width<768)await page.getByRole('button',{name:'Open menu',exact:true}).click();
+   const nav=page.getByRole('button',{name:section,exact:true});
+   if(width>=768&&!await nav.isVisible())await page.getByRole('button',{name:'Show menu',exact:true}).click();
+   await nav.click();
+   const icon=page.getByRole('button',{name:toggle,exact:true}),field=page.getByLabel(date,{exact:true});
+   await expect(icon).toBeVisible();await expect(icon).toHaveAttribute('aria-expanded','false');
+   await expect(field).toBeHidden();
+   await icon.click();await expect(field).toBeVisible();
+   await field.fill('2030-01-01');
+   await icon.click();await expect(field).toBeHidden();
+   await icon.click();await expect(field).toHaveValue('2030-01-01');
+   await page.getByRole('button',{name:'Clear Filters',exact:true}).click();
+   await expect(field).toHaveValue('');
+   await icon.click();await expect(field).toBeHidden();
+  }
+ }
+});
