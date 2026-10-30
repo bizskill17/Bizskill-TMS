@@ -8,7 +8,7 @@ test('Billing navigation and simple task fields',async({page})=>{
  await page.getByRole('button',{name:'Billing',exact:true}).click();
  await expect(page.getByRole('tab',{name:/Billing Type Review/})).toBeVisible();
  await page.getByRole('tab',{name:/Recurring Defaults/}).click();
- await expect(page.getByRole('cell',{name:'Bookkeeping',exact:true})).toBeVisible();
+ await expect(page.getByRole('table').getByText('Bookkeeping',{exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Show menu',exact:true}).click();
  await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
  await page.getByRole('button',{name:'Add Task',exact:true}).click();
@@ -514,13 +514,14 @@ test('Office Tasks groups tasks without clients and the simple task form accepts
  const form=page.locator('form').filter({has:page.getByPlaceholder('Enter task title',{exact:true})});
  await form.getByPlaceholder('Enter task title',{exact:true}).fill('New office task');
  await form.locator('input[name="dueDate"]').fill('2026-11-20');
- for(const [placeholder,value] of [['Select Owner...','Office User'],['Select Assignees...','Office User'],['Select Category...','Office Category']]){
-  await form.getByText(placeholder,{exact:true}).click();
-  await page.getByText(value,{exact:true}).last().click();
+ for(const [label,value] of [['Task Owner','Office User'],['Assignees','Office User'],['Category','Office Category']]){
+  const wrapper=form.locator('label').filter({hasText:new RegExp('^'+label)}).locator('..');
+  await wrapper.getByText('Select',{exact:true}).click();
+  await wrapper.getByText(value,{exact:true}).last().click();
   await page.getByRole('heading',{name:'Add Task',exact:true}).click();
  }
  await form.getByLabel('Billing Type').selectOption('Non Billable');
- await expect(form.getByText('Select Client...',{exact:true})).toBeVisible();
+ await expect(form.locator('label').filter({hasText:/^Client$/}).locator('..').getByText('Select',{exact:true})).toBeVisible();
  await expect(form.getByRole('button',{name:'Save Task',exact:true})).toBeVisible();
  expect(await form.evaluate(node=>(node as HTMLFormElement).checkValidity())).toBeTruthy();
 });
