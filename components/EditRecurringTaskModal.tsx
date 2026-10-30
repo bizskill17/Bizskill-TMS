@@ -1,3 +1,5 @@
+import {BillingFields} from './BillingFields';
+import {useTaskBilling} from './useTaskBilling';
 
 import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
@@ -60,6 +62,8 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 			  });
 
   const [isSaving, setIsSaving] = useState(false);
+  const billing=useTaskBilling(isOpen,task?.id,'Recurring Master');
+  const [billingError,setBillingError]=useState('');
 
   useEffect(() => {
     if (task && isOpen) {
@@ -107,10 +111,11 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.frequencyDays === '') return;
+    if (!billing.valid || (formData.periodicity==='Fixed Days' && formData.frequencyDays === '')) return;
 
     setIsSaving(true);
     try {
+      setBillingError('');await billing.save();
       await onSave({
         ...task,
         ...formData,
@@ -118,7 +123,7 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
       });
       onClose();
     } catch (error) {
-      console.error('Failed to save recurring task:', error);
+      setBillingError((error as Error).message);
     } finally {
       setIsSaving(false);
     }
@@ -324,12 +329,15 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
 		                />
 	              </div>
 	            </div>
-	          </div>
+	          {billing.editable&&<BillingFields type={billing.type} fee={billing.fee} onType={billing.setType} onFee={billing.setFee}/>}
+            {(billing.error||billingError)&&<p role="alert" className="text-sm text-red-600">{billing.error||billingError}</p>}
+            {billing.loading&&<p className="text-sm text-gray-500">Loading Billing Type...</p>}
+          </div>
 	          <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
 	            <button type="button" disabled={isSaving} onClick={onClose} className="px-6 py-2.5 text-sm font-medium text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50">Cancel</button>
 	            <button 
                 type="submit" 
-                disabled={isSaving}
+                disabled={isSaving||!billing.valid}
                 className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm flex items-center justify-center min-w-[140px] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSaving ? (

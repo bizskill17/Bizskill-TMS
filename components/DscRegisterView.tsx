@@ -131,8 +131,6 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
    <div className="flex flex-wrap md:flex-nowrap items-center gap-2 shrink-0 whitespace-nowrap">
     {data.canConfigure&&<button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void open('settings')} aria-label="Reminder settings"><Settings size={18}/></button>}
     <button disabled={loading||saving} className="p-2 border border-indigo-200 rounded-lg text-indigo-700" onClick={()=>void load()} aria-label="Refresh DSC Register"><RefreshCw size={18}/></button>
-    <button disabled={!selectedIds.length||loading||saving||!data.csrf} onClick={()=>void open('clientReminders')} className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg disabled:opacity-50">Client Reminder ({selectedIds.length})</button>
-    {selectedIds.length>0&&<button onClick={()=>setSelectedIds([])} className="text-sm text-indigo-700">Clear Selection</button>}
     <button aria-label="Add DSC" title="Add DSC" disabled={loading||saving||!data.csrf} onClick={()=>void open('create')} className="flex gap-0 md:gap-2 items-center px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add DSC</span></button>
    </div>
    </div>
@@ -145,9 +143,9 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
   </div>
   <div className="bg-white border border-indigo-200 rounded-xl overflow-x-auto">
    <table className="w-full min-w-[1200px] text-sm text-left border-collapse">
-    <thead className="bg-indigo-600 text-white"><tr><th className="p-3"><input aria-label="Select visible active DSCs" type="checkbox" checked={eligible.length>0&&eligible.every(r=>selectedIds.includes(r.id))} onChange={e=>setSelectedIds(p=>e.target.checked?Array.from(new Set([...p,...eligible.map(r=>r.id)])):p.filter(id=>!eligible.some(r=>r.id===id)))}/></th>{['Client','Certificate Holder','Mobile','Email','Issued On','Expiry Date','Days Left','Token Location','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
+    <thead className="bg-indigo-600 text-white"><tr>{['Client','Certificate Holder','Mobile','Email','Issued On','Expiry Date','Days Left','Token Location','Status','Remarks','Actions'].map(h=><th key={h} className="p-3 border-r border-indigo-400 font-semibold whitespace-normal">{h}</th>)}</tr></thead>
     <tbody>{filtered.map(r=>{const status=dscStatus(r,today),left=daysLeft(r.expiry_date,today);return <tr key={r.id} className="border-b border-indigo-100 hover:bg-indigo-50">
-     <td className="p-3">{r.lifecycle==='active'&&!r.deleted_at&&<input type="checkbox" aria-label={'Select DSC for '+r.holder_name} checked={selectedIds.includes(r.id)} onChange={e=>setSelectedIds(p=>e.target.checked?[...p,r.id]:p.filter(id=>id!==r.id))}/>}</td>
+     
      <td className="p-3 font-medium">{r.client_name}</td>
      <td className="p-3 font-semibold">{r.holder_name}</td>
      <td className="p-3 whitespace-nowrap">{r.mobile||'—'}</td>
@@ -159,7 +157,7 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
      <td className="p-3"><span className={'inline-block rounded-full px-2 py-1 text-xs font-semibold '+(status==='Expired'?'bg-red-100 text-red-700':status==='Inactive'||status==='Trash'?'bg-gray-100 text-gray-600':status==='Renewed'||status==='Closed'?'bg-green-100 text-green-700':'bg-indigo-50 text-indigo-700')}>{status}</span></td>
      <td className="p-3 max-w-xs break-words">{r.remarks||'—'}</td>
      <td className="p-3 min-w-[145px]"><button className="flex gap-1 items-center text-indigo-700 font-medium mb-2" onClick={()=>void open('history',r)}><History size={15}/>Details & History</button><select aria-label={'Actions for '+r.holder_name} className={input} value="" onChange={e=>{if(e.target.value)void open(e.target.value,r);}}><option value="">Actions</option>{actions(r).map(a=><option key={a} value={a}>{actionTitles[a]}</option>)}</select></td>
-    </tr>})}{!filtered.length&&<tr><td colSpan={12} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
+    </tr>})}{!filtered.length&&<tr><td colSpan={11} className="text-center text-gray-500 p-8">{loading?'Loading DSC Register...':error?'Unable to load DSC entries. Please try Refresh.':'No DSC entries found.'}</td></tr>}</tbody>
    </table>
   </div>
   {mode&&<div className="fixed inset-0 z-[200] bg-black/40 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="dsc-dialog-title">

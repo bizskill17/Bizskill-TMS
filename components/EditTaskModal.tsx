@@ -1,3 +1,5 @@
+import {BillingFields} from './BillingFields';
+import {useTaskBilling} from './useTaskBilling';
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Info, AlertTriangle, Clock3 } from 'lucide-react';
@@ -49,6 +51,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onClearLastAdded
 }) => {
   const { getFieldLabel } = useLabels();
+  const billing=useTaskBilling(isOpen,task?.id,'Simple',!isVendorView&&!task?.vendor);
+  const [billingError,setBillingError]=useState('');
+  const [billingSaving,setBillingSaving]=useState(false);
   const [formData, setFormData] = useState<{
     title: string;
     assignees: string[]; 
@@ -187,7 +192,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   };
 
   const isFormValid = () => {
-	    const basicValid = formData.title.trim() !== '' && 
+	    const basicValid = billing.valid && formData.title.trim() !== '' && 
 	                       formData.owner !== '' ;
 
     if (isVendorMode) return basicValid && formData.firm !== '' && formData.vendor !== '';
@@ -203,7 +208,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
     setIsConfirming(true);
   };
 
-  const handleFinalSave = () => {
+  const handleFinalSave = async () => {
+    if(billingSaving)return;setBillingSaving(true);
+    try{setBillingError('');await billing.save();}catch(e){setBillingError((e as Error).message);setBillingSaving(false);return;}
     const updatedTask: Task = {
       ...task,
       title: formData.title,
@@ -233,7 +240,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         updatedTask.vendorCategory = '';
     }
 
-    onSave(updatedTask);
+    onSave(updatedTask);setBillingSaving(false);
     onClose();
   };
 
@@ -248,6 +255,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
           </button>
         </div>
 
+        {billingError&&<p role="alert" className="px-6 text-sm text-red-600">{billingError}</p>}
         {isConfirming ? (
           <div className="p-8 space-y-6">
             <div className="flex flex-col items-center text-center space-y-4">
@@ -258,7 +266,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
             </div>
             <div className="flex gap-4 pt-6">
               <button onClick={() => setIsConfirming(false)} className="flex-1 px-8 py-4 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors uppercase tracking-widest border border-indigo-200">Go Back</button>
-              <button onClick={handleFinalSave} className="flex-1 px-8 py-4 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl shadow-xl transition-all uppercase tracking-widest">Save Changes</button>
+              <button disabled={billingSaving} onClick={handleFinalSave} className="flex-1 px-8 py-4 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-2xl shadow-xl transition-all uppercase tracking-widest">Save Changes</button>
             </div>
           </div>
         ) : (
@@ -437,6 +445,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   </div>
                 </div>
               </div>
+            {billing.editable&&<BillingFields type={billing.type} fee={billing.fee} onType={billing.setType} onFee={billing.setFee}/>}
+              {billing.loading&&<p className="text-sm text-gray-500">Loading Billing Type...</p>}
+              {billing.error&&<p role="alert" className="text-sm text-red-600">{billing.error}</p>}
             </div>
 
             <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end space-x-3">

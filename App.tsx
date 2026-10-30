@@ -681,7 +681,7 @@ export default function App() {
               const session=await fetch(cpUrl+'&session=1').then(r=>r.json());
               const saved=await fetch(cpUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'taskDefaults',csrf:session.csrf,source_type:target==='MainTasks'?'Simple':'Recurring Master',source_id:Number(result.data?.id||data.id),billing_type:data.billingType,fee:data.professionalFee})}).then(r=>r.json());
               if(!saved.success)throw Error(saved.error);
-            } catch (e) {setApiError('Task saved, but Billing Type needs review. Open Billing → Billing Type Review. '+(e instanceof Error?e.message:''));}
+            } catch (e) {setApiError('Task saved, but Billing Type needs review. Reopen Edit Task to complete its Billing Type. '+(e instanceof Error?e.message:''));}
           }
 
 	      if (result.success && !options?.skipRefresh) setTimeout(() => fetchData(false), 1500);

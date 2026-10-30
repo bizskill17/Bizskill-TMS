@@ -1,4 +1,4 @@
-import { BillingFields } from './BillingFields';
+import { BillingFields, billingFeeValid } from './BillingFields';
 import React, { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { User, Category, RecurringTask, Firm, Client } from '../types';
@@ -124,7 +124,7 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
 
 	  const isFormValid = () => {
 	    // Basic required fields validation
-		    if (!formData.title.trim() || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
+		    if (!billingType || !billingFeeValid(billingType,professionalFee) || !formData.title.trim() || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
 		      return false;
 		    }
     

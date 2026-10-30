@@ -20,6 +20,8 @@ test('Billing navigation and simple task fields',async({page})=>{
  await expect(page.getByLabel('Fee',{exact:true})).toHaveCount(0);
  await page.getByLabel('Billing Type').selectOption('Billable');
  await expect(page.getByLabel('Fee',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Fee',{exact:true})).toHaveAttribute('required','');
+ expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>(input as HTMLInputElement).checkValidity())).toBeFalsy();
  expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>{
   const form=input.closest('form')!;const fields=Array.from(form.querySelectorAll('input,select,textarea'));
   return fields[fields.length-1]===input && fields[fields.length-2]?.closest('label')?.textContent?.includes('Billing Type');
@@ -156,7 +158,7 @@ test('Mobile checklist is a separate section with a growing rich note editor',as
  const dialog=page.getByRole('dialog',{name:'Add Checklist',exact:true});
  await expect(dialog).toBeVisible();
  await expect(dialog.getByLabel('Name',{exact:true})).toBeVisible();
- for(const label of ['Introduction','Closing Note','Category','Checklist Items'])await expect(dialog.getByText(label,{exact:true})).toHaveCount(0);
+ for(const label of ['Introduction','Closing Note','Checklist Items'])await expect(dialog.getByText(label,{exact:true})).toHaveCount(0);
  await dialog.getByLabel('Name',{exact:true}).fill('Mobile Rich Note');
  const editor=dialog.getByRole('textbox',{name:'Note',exact:true});
  await editor.fill('PAN requirements');
@@ -592,4 +594,89 @@ test('Billing Type changes need no Reason and Fee appears only for Billable work
  expect(submitted.billing_type).toBe('Non Billable');
  expect(submitted.reason).toBeUndefined();
  await expect(card).toHaveCount(0);
+});
+
+test('Checklist category comes from the master and deletion asks for confirmation',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ const notes=await (await page.request.get('/api/checklists.php?tenantCode=test-a')).json();
+ expect(notes.categories.length).toBeGreaterThan(0);
+ const category=notes.categories[0].name;
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Checklists',exact:true}).click();
+ await page.getByRole('button',{name:'Add Checklist',exact:true}).click();
+ let dialog=page.getByRole('dialog');
+ await dialog.getByLabel('Name',{exact:true}).fill('Categorised Checklist');
+ await dialog.getByLabel('Checklist Category',{exact:true}).selectOption(category);
+ await dialog.getByRole('textbox',{name:'Note',exact:true}).fill('Documents required for filing.');
+ await dialog.getByRole('button',{name:'Save',exact:true}).click();
+ const card=page.getByRole('article',{name:'Categorised Checklist',exact:true});
+ await expect(card.getByText(category,{exact:true})).toBeVisible();
+ await page.getByLabel('Filter checklist category',{exact:true}).selectOption(category);
+ await expect(card).toBeVisible();
+ await card.getByRole('button',{name:'Delete Categorised Checklist',exact:true}).click();
+ await page.getByRole('dialog',{name:'Delete Checklist',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
+ await expect(card).toBeVisible();
+ await card.getByRole('button',{name:'Delete Categorised Checklist',exact:true}).click();
+ await page.getByRole('dialog',{name:'Delete Checklist',exact:true}).getByRole('button',{name:'Delete',exact:true}).click();
+ await expect(card).toHaveCount(0);
+ await expect(page.getByRole('status')).toHaveText('Checklist deleted.');
+});
+
+test('Simple and recurring task Edit forms load billing settings and require Billable Fees',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ const billingSaves:any[]=[];
+ await page.route('**/api/compliance.php?**',async route=>{
+  if(route.request().method()==='POST'){billingSaves.push(route.request().postDataJSON());await route.fulfill({json:{success:true}});return;}
+  const recurring=new URL(route.request().url()).searchParams.get('source_type')==='Recurring Master';
+  await route.fulfill({json:{success:true,editable:true,billing_type:recurring?'Non Billable':'Billable',fee:recurring?null:1250,csrf:'test-billing'}});
+ });
+ await page.route('**/api/init.php**',async route=>{
+  if(route.request().method()==='POST'){await route.fulfill({json:{success:true,data:{id:99903}}});return;}
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.mainTasks=[{id:99903,title:'Edit Fee task',firm:'Client A',owner:auth.user.name,assignees:auth.user.name,category:'GST',status:'In Progress',priority:'Medium',dueDate:'20/11/2026',date:'30/10/2026',hours:0}];
+  payload.data.recurringTasks=[{id:99904,title:'Edit recurring Fee',firm:'Client A',owner:auth.user.name,assignee:auth.user.name,category:'GST',status:'Not Yet Started',frequencyDays:30,periodicity:'Fixed Days',startDate:'30/10/2026'}];
+  payload.data.recurringActions=[];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
+ await page.getByRole('article',{name:'Edit Fee task',exact:true}).getByRole('button',{name:'Edit task',exact:true}).click();
+ let fee=page.getByLabel('Fee',{exact:true});
+ await expect(fee).toHaveValue('1250');
+ await expect(fee).toHaveAttribute('required','');
+ await fee.fill('');
+ expect(await fee.evaluate(node=>(node as HTMLInputElement).checkValidity())).toBeFalsy();
+ await expect(page.getByRole('button',{name:'Save Changes',exact:true})).toHaveCount(0);
+ await fee.fill('2500');
+ await page.getByRole('button',{name:'Save Changes',exact:true}).click();
+ await page.getByRole('heading',{name:'Confirm Changes',exact:true}).waitFor();
+ await page.getByRole('button',{name:'Save Changes',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Confirm Changes',exact:true})).toHaveCount(0);
+ expect(billingSaves[0].fee).toBe('2500');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Recurring Tasks',exact:true}).click();
+ await page.getByRole('article',{name:'Edit recurring Fee',exact:true}).getByRole('button',{name:'Edit recurring task',exact:true}).click();
+ await expect(page.getByLabel('Billing Type')).toHaveValue('Non Billable');
+ await expect(page.getByLabel('Fee',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Billing Type').selectOption('Billable');
+ fee=page.getByLabel('Fee',{exact:true});
+ await expect(fee).toHaveAttribute('required','');
+ await expect(page.getByRole('button',{name:'Save Changes',exact:true})).toBeDisabled();
+ await fee.fill('50');
+ await page.getByRole('button',{name:'Save Changes',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Edit Recurring Task',exact:true})).toHaveCount(0);
+ expect(billingSaves[1].source_type).toBe('Recurring Master');
+ expect(billingSaves[1].fee).toBe('50');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'DSC Register',exact:true}).click();
+ await expect(page.getByRole('button',{name:/Client Reminder/})).toHaveCount(0);
+ await expect(page.getByRole('checkbox',{name:'Select visible active DSCs',exact:true})).toHaveCount(0);
 });

@@ -14,12 +14,30 @@ try {
  cl_schema($conn);
  if($_SERVER['REQUEST_METHOD']==='GET'){
   $rows=dsc_all($conn,'SELECT * FROM checklist_templates WHERE tenant_id=?'.($admin?'':' AND active=1').' ORDER BY name,id',[$tenant]);
-  foreach($rows as &$row){$row['note_html']=cl_sanitize_note($row['note_html']??cl_legacy_note($row));unset($row['category'],$row['introduction'],$row['items'],$row['closing_note']);}unset($row);
-  cl_reply(['success'=>true,'templates'=>$rows,'admin'=>$admin,'csrf'=>$csrf]);
+  foreach($rows as &$row){$row['note_html']=cl_sanitize_note($row['note_html']??cl_legacy_note($row));unset($row['introduction'],$row['items'],$row['closing_note']);}unset($row);
+  $scope=app_table_is_scoped($conn,'categories')?' WHERE tenant_id=?':'';
+  $categories=dsc_all($conn,'SELECT id,name FROM categories'.$scope.' ORDER BY name',$scope?[$tenant]:[]);
+  cl_reply(['success'=>true,'templates'=>$rows,'categories'=>$categories,'admin'=>$admin,'csrf'=>$csrf]);
  }
  if($_SERVER['REQUEST_METHOD']!=='POST')cl_reply(['success'=>false,'error'=>'Method not allowed.'],405);
  $data=app_get_raw_input_data();if($csrf===''||!hash_equals($csrf,(string)($data['csrf']??'')))cl_reply(['success'=>false,'error'=>'Session expired. Reload and try again.'],403);
  if(!$admin)cl_reply(['success'=>false,'error'=>'Only an Admin can manage checklists.'],403);
+ if(($data['action']??'')==='delete'){
+  $id=(int)($data['id']??0);$version=(int)($data['version']??0);
+  $stmt=dsc_query($conn,'DELETE FROM checklist_templates WHERE id=? AND tenant_id=? AND version=?',[$id,$tenant,$version]);
+  if($stmt->affected_rows!==1)throw new InvalidArgumentException('Note changed or unavailable. Reopen it and try again.');
+  cl_reply(['success'=>true,'deleted'=>true]);
+ }
+ $category=trim((string)($data['category']??''));
+ if(strlen($category)>190)throw new InvalidArgumentException('Choose a valid Category.');
+ if($category!==''){
+  $scope=app_table_is_scoped($conn,'categories')?' AND tenant_id=?':'';
+  $found=dsc_all($conn,'SELECT id FROM categories WHERE name=?'.$scope,$scope?[$category,$tenant]:[$category]);
+  if(!$found){
+   $existing=dsc_all($conn,'SELECT category FROM checklist_templates WHERE id=? AND tenant_id=?',[(int)($data['id']??0),$tenant]);
+   if(!$existing||$existing[0]['category']!==$category)throw new InvalidArgumentException('Choose a Category from Category Master.');
+  }
+ }
  $name=trim((string)($data['name']??''));
  if($name===''||strlen($name)>190)throw new InvalidArgumentException('Enter a name of up to 190 characters.');
  $note=cl_sanitize_note(array_key_exists('note_html',$data)?(string)$data['note_html']:cl_legacy_note($data));
@@ -27,10 +45,10 @@ try {
  $id=(int)($data['id']??0);
  if($id){
   $version=(int)($data['version']??0);
-  $stmt=dsc_query($conn,'UPDATE checklist_templates SET name=?,note_html=?,version=version+1 WHERE id=? AND tenant_id=? AND version=?',[$name,$note,$id,$tenant,$version]);
+  $stmt=dsc_query($conn,'UPDATE checklist_templates SET name=?,category=?,note_html=?,version=version+1 WHERE id=? AND tenant_id=? AND version=?',[$name,$category,$note,$id,$tenant,$version]);
   if($stmt->affected_rows!==1)throw new InvalidArgumentException('Note changed or unavailable. Reopen it and try again.');
  }else{
-  $id=dsc_insert($conn,'checklist_templates',['tenant_id'=>$tenant,'name'=>$name,'category'=>'','introduction'=>'','items'=>'[]','closing_note'=>'','note_html'=>$note,'active'=>1]);
+  $id=dsc_insert($conn,'checklist_templates',['tenant_id'=>$tenant,'name'=>$name,'category'=>$category,'introduction'=>'','items'=>'[]','closing_note'=>'','note_html'=>$note,'active'=>1]);
  }
  cl_reply(['success'=>true,'id'=>$id]);
 }catch(InvalidArgumentException $e){cl_reply(['success'=>false,'error'=>$e->getMessage()],400);}catch(Throwable $e){error_log('Checklists: '.$e->getMessage());cl_reply(['success'=>false,'error'=>'Unable to load or save checklists. Please try again.'],500);}

@@ -1,4 +1,4 @@
-import { BillingFields } from './BillingFields';
+import { BillingFields, billingFeeValid } from './BillingFields';
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Clock3 } from 'lucide-react';
@@ -146,7 +146,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   };
 
   const isFormValid = () => {
-	    const basicValid = formData.title.trim() !== '' &&
+	    const basicValid = (isVendorView || (Boolean(billingType)&&billingFeeValid(billingType,professionalFee))) && formData.title.trim() !== '' &&
 	        formData.priority !== '' &&
           formData.firm.trim() !== '' &&
 	        formData.owner !== '' &&
