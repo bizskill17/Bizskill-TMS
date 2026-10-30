@@ -4,7 +4,7 @@ export function safeNoteLink(value) {
  return /^(https?:\/\/|mailto:)/i.test(value)&&!(/[\u0000-\u0020\u007f]/.test(value));
 }
 export function sanitizeNote(html) {
- const root=document.createElement('div');root.innerHTML=String(html||'');
+ const root=new DOMParser().parseFromString(String(html||''),'text/html').body;
  const clean=parent=>{
   for(const node of Array.from(parent.childNodes)){
    if(node.nodeType===Node.ELEMENT_NODE){
