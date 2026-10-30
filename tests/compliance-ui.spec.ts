@@ -706,3 +706,49 @@ test('Documents, DSC and Billing filters toggle from icons on desktop and mobile
   }
  }
 });
+
+test('Checklist order persists after desktop drag, mobile touch and keyboard movement',async({page})=>{
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ const session=await (await page.request.get('/api/checklists.php?tenantCode=test-a')).json();
+ for(const name of ['Reorder first','Reorder second']){
+  const created=await page.request.post('/api/checklists.php?tenantCode=test-a',{data:{csrf:session.csrf,name,note_html:'<p>Short note</p>'}});
+  expect(created.ok()).toBeTruthy();
+ }
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ for(const width of [1280,393]){
+  await page.setViewportSize({width,height:900});await page.goto('/');
+  if(width<768)await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  const nav=page.getByRole('button',{name:'Checklists',exact:true});
+  if(width>=768&&!await nav.isVisible())await page.getByRole('button',{name:'Show menu',exact:true}).click();
+  await nav.click();await page.getByRole('textbox',{name:'Search checklists'}).fill('Reorder ');
+  const first=page.getByRole('article',{name:'Reorder first',exact:true}),second=page.getByRole('article',{name:'Reorder second',exact:true});
+  const color=await first.evaluate(node=>getComputedStyle(node).backgroundColor);
+  const handle=first.getByRole('button',{name:'Move Reorder first',exact:true});
+  await handle.scrollIntoViewIfNeeded();
+  const start=(await handle.boundingBox())!,end=(await second.getByRole('heading').boundingBox())!;
+  if(width>=768){
+   await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();
+   await page.mouse.move(end.x+end.width/2,end.y+end.height/2,{steps:10});await page.mouse.up();
+  }else{
+   const client=await page.context().newCDPSession(page);
+   await client.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:start.x+start.width/2,y:start.y+start.height/2}]});
+   await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x+end.width/2,y:end.y+end.height/2}]});
+   await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await client.detach();
+  }
+  await expect(page.getByRole('status')).toHaveText('Order saved automatically.');
+  await expect(page.locator('article').first()).toHaveAttribute('aria-label',width>=768?'Reorder second':'Reorder first');
+  expect(await first.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe(color);
+  await page.reload();
+  if(width<768)await page.getByRole('button',{name:'Open menu',exact:true}).click();
+  const again=page.getByRole('button',{name:'Checklists',exact:true});
+  if(width>=768&&!await again.isVisible())await page.getByRole('button',{name:'Show menu',exact:true}).click();
+  await again.click();await page.getByRole('textbox',{name:'Search checklists'}).fill('Reorder ');
+  await expect(page.locator('article').first()).toHaveAttribute('aria-label',width>=768?'Reorder second':'Reorder first');
+  if(width<768){
+   await page.getByRole('button',{name:'Move Reorder first',exact:true}).press('ArrowDown');
+   await expect(page.getByRole('status')).toHaveText('Order saved automatically.');
+   await expect(page.locator('article').first()).toHaveAttribute('aria-label','Reorder second');
+  }
+ }
+});
