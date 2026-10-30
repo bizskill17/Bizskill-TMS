@@ -106,8 +106,8 @@ test('Mobile dashboard prioritises delayed work and has compact activity and qui
  await page.getByRole('button',{name:'Cancel',exact:true}).last().click();
  await expect(bar).toBeVisible();
  await delayedRows.filter({hasText:'User A'}).click();
- await expect(page.getByText('Late A',{exact:true}).first()).toBeVisible();
- await expect(page.getByText('Shared late',{exact:true}).first()).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Late A',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Shared late',exact:true})).toBeVisible();
  await expect(page.getByText('Today A',{exact:true})).toHaveCount(0);
  await expect(page.getByText('Late B',{exact:true})).toHaveCount(0);
 });
