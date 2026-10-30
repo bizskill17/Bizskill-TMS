@@ -82,7 +82,7 @@ try{
             if($action==='classify'){
                 if($r['billing_status']==='Billed')throw new InvalidArgumentException('Reverse billing before changing billing details.');
                 $type=cp_billing($data['billing_type']??'');
-                $v=['billing_type'=>$type,'fee'=>cp_money($data['fee']??null)];
+                $v=['billing_type'=>$type,'fee'=>$type==='Billable'?cp_money($data['fee']??null):null];
                 if(in_array($r['source_type'],['Simple','Recurring Master'],true))dsc_query($conn,'INSERT INTO task_billing_defaults (tenant_id,source_type,source_id,billing_type,fee) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE billing_type=VALUES(billing_type),fee=VALUES(fee)',[$tenant,$r['source_type'],$r['source_id'],$type,$v['fee']]);
             }elseif($action==='extend'){
                 if($r['source_type']!=='Compliance'||$r['work_status']==='Cancelled')throw new InvalidArgumentException('Only active compliance entries can be extended.');$due=(string)($data['due_date']??'');if(!cp_date($due)||$due<$r['due_date'])throw new InvalidArgumentException('Choose an extended due date.');$v=['due_date'=>$due];dsc_text($data,'reason',1000,true);
