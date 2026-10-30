@@ -26,12 +26,12 @@ test('Checklists copy saved text directly without a composer',async({page})=>{
  expect(saved.ok()).toBeTruthy();
  await page.addInitScript((user)=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
  await page.goto('/');
- await page.getByRole('button',{name:'Master',exact:true}).click();
+ await page.getByRole('button',{name:'Checklists',exact:true}).click();
  await expect(page.getByRole('heading',{name:'Checklists',exact:true})).toBeVisible();
  await page.evaluate(()=>{Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async(text:string)=>{(window as any).__copiedChecklist=text;}}});});
  await page.getByRole('button',{name:'Copy Direct Copy Test',exact:true}).click();
- await expect(page.getByRole('status')).toHaveText('Checklist copied.');
- expect(await page.evaluate(()=>(window as any).__copiedChecklist)).toBe('Direct Copy Test\n\nPlease share:\n\n1. Sales register\n2. Bank statement\n\nThank you.');
+ await expect(page.getByRole('status')).toHaveText('Note copied.');
+ expect(await page.evaluate(()=>(window as any).__copiedChecklist)).toBe('Please share:\n\n1. Sales register\n2. Bank statement');
  await expect(page.getByRole('dialog')).toHaveCount(0);
  await expect(page.getByText('Message Preview',{exact:true})).toHaveCount(0);
 });
@@ -128,4 +128,88 @@ test('Empty mobile activity remains small and ordinary Users have only task quic
  await page.setViewportSize({width:1280,height:900});
  await expect(page.getByRole('heading',{name:'Live Statistics',exact:true})).toBeVisible();
  await expect(bar).toBeHidden();
+});
+
+
+test('Mobile checklist is a separate section with a growing rich note editor',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Checklists',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Checklists',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Refresh',exact:true})).toHaveCount(0);
+ const add=page.getByRole('button',{name:'Add Checklist',exact:true});
+ await expect(add).toHaveText('');
+ await add.click();
+ const dialog=page.getByRole('dialog',{name:'Add Checklist',exact:true});
+ await expect(dialog).toBeVisible();
+ await expect(dialog.getByLabel('Name',{exact:true})).toBeVisible();
+ for(const label of ['Introduction','Closing Note','Category','Checklist Items'])await expect(dialog.getByText(label,{exact:true})).toHaveCount(0);
+ await dialog.getByLabel('Name',{exact:true}).fill('Mobile Rich Note');
+ const editor=dialog.getByRole('textbox',{name:'Note',exact:true});
+ await editor.fill('PAN requirements');
+ await editor.evaluate(el=>{const range=document.createRange();range.selectNodeContents(el);const selection=window.getSelection()!;selection.removeAllRanges();selection.addRange(range);el.dispatchEvent(new MouseEvent('mouseup',{bubbles:true}));});
+ await dialog.getByRole('button',{name:'Bold',exact:true}).click();
+ await expect(editor.locator('b,strong')).toHaveText('PAN requirements');
+ await dialog.getByRole('button',{name:'Add link',exact:true}).click();
+ await dialog.getByLabel('Link URL').fill('https://example.com/requirements');
+ await dialog.getByRole('button',{name:'Apply',exact:true}).click();
+ await expect(editor.locator('a')).toHaveAttribute('href','https://example.com/requirements');
+ await editor.evaluate(el=>{el.innerHTML='<p><strong>DSC requirements</strong></p><ol><li>PAN</li><li>Aadhaar</li></ol>'+Array.from({length:60},(_,i)=>'<p>Requirement '+(i+1)+'</p>').join('');el.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText'}));});
+ await expect(editor).toHaveCSS('overflow-y','visible');
+ const dimensions=await editor.evaluate(el=>({height:el.getBoundingClientRect().height,overflow:el.scrollHeight-el.clientHeight}));
+ expect(dimensions.height).toBeGreaterThan(850);expect(dimensions.overflow).toBeLessThanOrEqual(1);
+ await dialog.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(dialog).toHaveCount(0);
+ const article=page.getByRole('article',{name:'Mobile Rich Note',exact:true});
+ await expect(article.locator('strong')).toHaveText('DSC requirements');
+ await expect(article.locator('ol li')).toHaveText(['PAN','Aadhaar']);
+ await expect(article.getByText('Requirement 60',{exact:true})).toBeVisible();
+ const note=article.locator('.checklist-note');
+ expect(await note.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeLessThanOrEqual(1);
+ expect(await page.locator('main').evaluate(el=>el.scrollWidth-el.clientWidth)).toBeLessThanOrEqual(1);
+ await page.reload();
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Checklists',exact:true}).click();
+ await expect(page.getByRole('article',{name:'Mobile Rich Note',exact:true})).toBeVisible();
+});
+
+test('Ordinary Users can open checklist notes but cannot add or edit them',async({page})=>{
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'user-a@example.com',password:'user-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Checklists',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Checklists',exact:true})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Add Checklist',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:/^Edit /})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Copy Mobile Rich Note',exact:true})).toBeVisible();
+});
+
+
+test('Categories and designations are tables on mobile and system statuses show a lock icon',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Master',exact:true}).click();
+ await expect(page.getByRole('navigation',{name:'Section views'}).getByRole('button',{name:'Checklists',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Categories',exact:true}).click();
+ await expect(page.getByRole('table')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Card view',exact:true})).toHaveCount(0);
+ await page.getByRole('textbox',{name:'Search categories',exact:true}).fill('GST');
+ await expect(page.getByRole('cell',{name:'GST',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Designation',exact:true}).click();
+ await expect(page.getByRole('table')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Card view',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('button',{name:'Table view',exact:true})).toHaveCount(0);
+ await page.getByRole('button',{name:'Status',exact:true}).click();
+ const locked=page.getByRole('row').filter({has:page.getByRole('cell',{name:'Completed',exact:true})});
+ await expect(locked.getByRole('img',{name:'Locked',exact:true})).toBeVisible();
+ await expect(locked.getByText('Locked',{exact:true})).toHaveCount(0);
 });

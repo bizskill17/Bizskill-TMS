@@ -1,22 +1,71 @@
-import React, {useEffect, useState} from 'react';
-import {Copy, Plus, X} from 'lucide-react';
+import React,{useEffect,useState} from 'react';
+import {createPortal} from 'react-dom';
+import {Copy,Plus,X,Edit2,Search} from 'lucide-react';
+import {RichNoteEditor} from './RichNoteEditor';
+import {sanitizeNote,noteText} from './noteRichText.mjs';
 
-type Template={id:number;name:string;category:string;introduction:string;items:string[];closing_note:string;active:number;version:number};
-const blank=()=>({name:'',category:'',introduction:'Please share the following documents.',items:[''],closing_note:'Thank you.',active:1} as Template);
-const input='w-full border border-indigo-200 rounded-md p-2 text-sm bg-white';
-const button='inline-flex items-center gap-2 border border-indigo-200 rounded-md px-3 py-2 text-sm text-indigo-700 bg-white hover:bg-indigo-50 disabled:opacity-50';
-const primary=button+' !bg-indigo-600 !text-white';
+type Template={id:number;name:string;note_html:string;active:number;version:number};
+const blank=():Template=>({id:0,name:'',note_html:'',active:1,version:0});
+const input='w-full min-w-0 border border-indigo-200 rounded-lg px-3 py-2 bg-white text-base outline-none focus:ring-2 focus:ring-indigo-200';
+const iconButton='shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50 disabled:opacity-50';
 
-export function ChecklistsView({tenantCode,categories}:{tenantCode:string;categories:any[]}){
+export function ChecklistsView({tenantCode}:{tenantCode:string}){
  const [templates,setTemplates]=useState<Template[]>([]),[admin,setAdmin]=useState(false),[csrf,setCsrf]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
  const [search,setSearch]=useState(''),[edit,setEdit]=useState<Template|null>(null),[busy,setBusy]=useState(false),[saveError,setSaveError]=useState(''),[notice,setNotice]=useState(''),[copying,setCopying]=useState<number|null>(null);
  const endpoint='/api/checklists.php?tenantCode='+encodeURIComponent(tenantCode);
- async function load(){setLoading(true);setError('');try{const r=await fetch(endpoint);const p=await r.json();if(!r.ok||!p.success)throw Error(p.error||'Unable to load checklists.');setTemplates(p.templates);setAdmin(p.admin);setCsrf(p.csrf);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
+ async function read(response:Response){let payload;try{payload=await response.json();}catch{throw Error('Unable to load notes. Please try again shortly.');}if(!response.ok||!payload.success)throw Error(payload.error||'Unable to complete this operation.');return payload;}
+ async function load(){setLoading(true);setError('');try{const p=await read(await fetch(endpoint,{cache:'no-store'}));setTemplates(p.templates);setAdmin(p.admin);setCsrf(p.csrf);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
  useEffect(()=>{setTemplates([]);setAdmin(false);setCsrf('');setEdit(null);setNotice('');void load();},[tenantCode]);
- async function save(value:Template){const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...value,csrf})});const p=await r.json();if(!r.ok||!p.success)throw Error(p.error||'Unable to save checklist.');await load();}
- async function submit(e:React.FormEvent){e.preventDefault();if(!edit)return;setBusy(true);setSaveError('');try{await save({...edit,items:edit.items.map(s=>s.trim()).filter(Boolean)});setEdit(null);}catch(e){setSaveError((e as Error).message);}finally{setBusy(false);}}
- async function copy(t:Template){setNotice('');setError('');setCopying(t.id);try{const text=[t.name,t.introduction,t.items.map((item,i)=>(i+1)+'. '+item).join('\n'),t.closing_note].filter(part=>part.trim()).join('\n\n');await navigator.clipboard.writeText(text);setNotice('Checklist copied.');}catch{setError('Unable to copy the checklist. Please allow clipboard access and try again.');}finally{setCopying(null);}}
- const change=(key:string,value:any)=>setEdit(p=>p?{...p,[key]:value}:p);
- return <div className="py-4 space-y-4"><div className="flex flex-wrap gap-3 items-center"><h1 className="text-xl font-bold text-indigo-700">Checklists</h1><input aria-label="Search checklists" placeholder="Search checklists or categories..." className={input+' flex-1 min-w-[180px]'} value={search} onChange={e=>setSearch(e.target.value)}/><button className={button} onClick={()=>void load()}>Refresh</button>{admin&&<button className={primary} onClick={()=>{setSaveError('');setEdit(blank());}}><Plus size={16}/>Add Checklist</button>}</div>{error&&<p role="alert" className="text-red-600">{error}</p>}{notice&&<p role="status" className="text-green-700">{notice}</p>}{loading&&<p>Loading checklists...</p>}<div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{templates.filter((t:Template)=>(t.name+' '+t.category).toLowerCase().includes(search.toLowerCase())).map((t:Template)=><article key={t.id} className="bg-white border border-indigo-200 rounded-lg p-4 space-y-3"><h2 className="font-semibold text-indigo-800">{t.name}</h2><p className="text-sm text-gray-500">{t.category||'All categories'} · {t.items.length} items · {Number(t.active)?'Active':'Inactive'}</p><p className="text-sm whitespace-pre-wrap">{t.introduction}</p><div className="flex flex-wrap gap-2">{Number(t.active)>0&&<button type="button" className={button+' p-2'} title="Copy Checklist" aria-label={'Copy '+t.name} disabled={copying!==null} onClick={()=>void copy(t)}><Copy size={16}/></button>}{admin&&<><button className={button} onClick={()=>{setSaveError('');setEdit({...t,items:[...t.items]});}}>Edit</button><button className={button} onClick={()=>{setSaveError('');setEdit({...t,id:0,name:t.name+' (Copy)',active:1,items:[...t.items]});}}>Duplicate</button></>}</div></article>)}</div>{!loading&&!error&&!templates.length&&<p>No checklists yet.</p>}
- {edit&&<div className="fixed inset-0 z-[240] bg-black/40 flex items-center justify-center p-3"><form onSubmit={submit} className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-3"><div className="flex justify-between"><h2 className="font-bold text-lg text-indigo-700">{edit.id?'Edit':'Add'} Checklist</h2><button type="button" disabled={busy} onClick={()=>setEdit(null)} aria-label="Close"><X/></button></div>{saveError&&<p role="alert" className="text-red-600">{saveError}</p>}<label className="block">Checklist Name<input required maxLength={190} className={input} value={edit.name} onChange={e=>change('name',e.target.value)}/></label><label className="block">Category<select className={input} value={edit.category} onChange={e=>change('category',e.target.value)}><option value="">All categories</option>{edit.category&&!categories.some((c:any)=>c.name===edit.category)&&<option>{edit.category}</option>}{categories.map((c:any)=><option key={c.id}>{c.name}</option>)}</select></label><label className="block">Introduction<textarea className={input} value={edit.introduction} onChange={e=>change('introduction',e.target.value)}/></label><div className="space-y-2"><span>Checklist Items</span>{edit.items.map((item,i)=><div key={i} className="flex gap-2"><input aria-label={'Checklist item '+(i+1)} required maxLength={2000} className={input} value={item} onChange={e=>change('items',edit.items.map((s,j)=>i===j?e.target.value:s))}/><button type="button" aria-label={'Remove item '+(i+1)} disabled={edit.items.length===1} className={button} onClick={()=>change('items',edit.items.filter((_,j)=>j!==i))}><X size={16}/></button></div>)}<button type="button" className={button} disabled={edit.items.length>=100} onClick={()=>change('items',[...edit.items,''])}>Add Item</button></div><label className="block">Closing Note<textarea className={input} value={edit.closing_note} onChange={e=>change('closing_note',e.target.value)}/></label><label className="flex gap-2"><input type="checkbox" checked={!!Number(edit.active)} onChange={e=>change('active',e.target.checked?1:0)}/>Active</label><div className="flex justify-end gap-2"><button type="button" disabled={busy} className={button} onClick={()=>setEdit(null)}>Cancel</button><button disabled={busy} className={primary}>{busy?'Saving...':'Save Checklist'}</button></div></form></div>}</div>;
+ async function submit(e:React.FormEvent){
+  e.preventDefault();if(!edit||busy)return;
+  const html=sanitizeNote(edit.note_html);
+  if(!noteText(html)){setSaveError('Enter a note.');return;}
+  setBusy(true);setSaveError('');
+  try{await read(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:edit.id,version:edit.version,name:edit.name,note_html:html,csrf})}));setEdit(null);await load();setNotice('Saved.');}
+  catch(e){setSaveError((e as Error).message);}finally{setBusy(false);}
+ }
+ async function copy(note:Template){
+  setNotice('');setError('');setCopying(note.id);
+  const html=sanitizeNote(note.note_html),text=noteText(html);
+  try{
+   if(typeof ClipboardItem!=='undefined'&&navigator.clipboard?.write){
+    try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);}
+    catch{await navigator.clipboard.writeText(text);}
+   }else{await navigator.clipboard.writeText(text);}
+   setNotice('Note copied.');
+  }catch{setError('Unable to copy. Please allow clipboard access and try again.');}finally{setCopying(null);}
+ }
+ const filtered=templates.filter(note=>(note.name+' '+noteText(note.note_html)).toLowerCase().includes(search.toLowerCase()));
+ function open(note:Template){setSaveError('');setEdit({...note,note_html:sanitizeNote(note.note_html)});}
+ return <div className="py-3 space-y-3 min-w-0">
+  <style>{'.checklist-note{overflow-wrap:anywhere;line-height:1.6;white-space:normal}.checklist-note p,.checklist-note div,.checklist-note blockquote{margin:0 0 .5em}.checklist-note ol{list-style-type:decimal;padding-inline-start:1.6em;margin:.5em 0}.checklist-note ul{list-style-type:disc;padding-inline-start:1.6em;margin:.5em 0}.checklist-note li{margin:.15em 0}.checklist-note a{color:#4338ca;text-decoration:underline}.checklist-note blockquote{border-inline-start:3px solid #c7d2fe;padding-inline-start:.75em}'}</style>
+  <h1 className="text-xl font-bold text-indigo-700">Checklists</h1>
+  <div className="flex items-center gap-2">
+   <div className="relative flex-1 min-w-0"><Search size={17} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search checklists" placeholder="Search notes..." className={input+' pl-9'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
+   {admin&&<button type="button" aria-label="Add Checklist" title="Add Checklist" disabled={loading||!csrf} className={iconButton+' !bg-indigo-600 !text-white'} onClick={()=>open(blank())}><Plus size={22}/></button>}
+  </div>
+  {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
+  {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
+  {loading&&<p className="text-sm text-gray-500">Loading...</p>}
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+   {filtered.map(note=><article key={note.id} aria-label={note.name} className="min-w-0 border border-indigo-200 rounded-xl bg-white p-3 md:p-4">
+    <div className="flex items-start justify-between gap-2 mb-3"><h2 className="min-w-0 break-words text-base font-semibold text-indigo-800">{note.name}{!Number(note.active)&&<span className="block text-xs text-gray-500">Inactive</span>}</h2>
+     <div className="flex shrink-0 gap-1">{Number(note.active)>0&&<button type="button" aria-label={'Copy '+note.name} title="Copy note" className={iconButton} disabled={copying!==null} onClick={()=>void copy(note)}><Copy size={17}/></button>}{admin&&<button type="button" aria-label={'Edit '+note.name} title="Edit note" className={iconButton} onClick={()=>open(note)}><Edit2 size={17}/></button>}</div>
+    </div>
+    <div className="checklist-note text-sm text-gray-900" style={{height:'auto',maxHeight:'none',overflow:'visible'}} dangerouslySetInnerHTML={{__html:sanitizeNote(note.note_html)}}/>
+   </article>)}
+  </div>
+  {!loading&&!error&&!filtered.length&&<p className="text-sm text-gray-500">{templates.length?'No matching notes.':'No notes yet.'}</p>}
+  {edit&&createPortal(<div role="dialog" aria-modal="true" aria-labelledby="checklist-editor-title" className="fixed inset-0 z-[240] bg-white overflow-y-auto overscroll-contain">
+   <form onSubmit={submit} className="min-h-full w-full max-w-3xl mx-auto flex flex-col">
+    <header className="sticky top-0 z-10 bg-white border-b border-indigo-100 px-4 py-3 flex justify-between items-center gap-3"><h2 id="checklist-editor-title" className="text-lg font-bold text-indigo-700">{edit.id?'Edit Checklist':'Add Checklist'}</h2><button type="button" aria-label="Close" disabled={busy} className={iconButton} onClick={()=>setEdit(null)}><X size={21}/></button></header>
+    <div className="flex-1 px-3 md:px-5 py-4 space-y-4">
+     {saveError&&<p role="alert" className="text-sm text-red-600">{saveError}</p>}
+     <label className="block text-sm font-medium text-gray-700">Name<input required maxLength={190} className={input+' mt-1'} value={edit.name} disabled={busy} onChange={e=>setEdit(p=>p?{...p,name:e.target.value}:p)}/></label>
+     <div><span className="block text-sm font-medium text-gray-700 mb-1">Note</span><RichNoteEditor value={edit.note_html} disabled={busy} onChange={note_html=>setEdit(p=>p?{...p,note_html}:p)}/></div>
+    </div>
+    <footer className="sticky bottom-0 bg-white border-t border-indigo-100 px-4 py-3 flex justify-end gap-2" style={{paddingBottom:'max(12px, env(safe-area-inset-bottom, 0px))'}}><button type="button" disabled={busy} onClick={()=>setEdit(null)} className="px-4 py-2 border border-indigo-200 text-indigo-700 rounded-lg">Cancel</button><button disabled={busy} className="px-5 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50">{busy?'Saving...':'Save'}</button></footer>
+   </form>
+  </div>,document.body)}
+ </div>;
 }
