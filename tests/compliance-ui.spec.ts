@@ -521,7 +521,7 @@ test('Office Tasks groups tasks without clients and the simple task form accepts
   await page.getByRole('heading',{name:'Add Task',exact:true}).click();
  }
  await form.getByLabel('Billing Type').selectOption('Non Billable');
- await expect(form.locator('label').filter({hasText:/^Client$/}).locator('..').getByText('Select',{exact:true})).toBeVisible();
+ await expect(form.getByText('Client',{exact:true}).locator('..').getByText('Select',{exact:true})).toBeVisible();
  await expect(form.getByRole('button',{name:'Save Task',exact:true})).toBeVisible();
  expect(await form.evaluate(node=>(node as HTMLFormElement).checkValidity())).toBeTruthy();
 });
