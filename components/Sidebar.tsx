@@ -37,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   onExitWorkspace,
   workspaceId,
-  brandName = 'TaskPro'
+  brandName = 'TaskCA'
 }) => {
   const [openPendingGroup, setOpenPendingGroup] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -181,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <img 
                 src="https://i.ibb.co/YBSjM7Gg/Chat-GPT-Image-Dec-18-2025-10-23-18-AM.png" 
                 className="h-10 w-10 object-contain flex-shrink-0" 
-                alt="TaskPro Logo" 
+                alt="TaskCA Logo" 
               />
               <div className="flex flex-col min-w-0 flex-1">
                 <h1 className="text-lg font-bold text-indigo-600 leading-snug whitespace-normal break-words">{brandName}</h1>

@@ -26,7 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   isSyncing,
   onSync,
   hasError = false,
-  brandName = 'TaskPro'
+  brandName = 'TaskCA'
 }) => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [openPendingGroup, setOpenPendingGroup] = useState(false);
@@ -204,7 +204,7 @@ export const TopBar: React.FC<TopBarProps> = ({
              <img 
                src="https://i.ibb.co/YBSjM7Gg/Chat-GPT-Image-Dec-18-2025-10-23-18-AM.png" 
                className="h-8 w-8 object-contain" 
-               alt="TaskPro Logo" 
+               alt="TaskCA Logo" 
              />
              <div className="flex flex-col justify-center">
                  <h1 className="text-xl font-bold text-indigo-600 leading-tight">{brandName}</h1>

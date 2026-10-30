@@ -282,7 +282,7 @@ export default function App() {
     currentUser?.tenantName ||
     currentUser?.tenantCode ||
     tenantCode ||
-    'TaskPro'
+    'TaskCA'
   ).trim();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -1309,14 +1309,14 @@ export default function App() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a'); 
       link.href = URL.createObjectURL(blob); 
-      link.setAttribute('download', `TaskPro_Export_${new Date().toISOString().split('T')[0]}.csv`); 
+      link.setAttribute('download', `TaskCA_Export_${new Date().toISOString().split('T')[0]}.csv`); 
       link.click();
     };
 
       const taskStatusOptions = Array.from(new Set(
         ['Not Yet Started', ...statuses.map(s => String(s.name || '').trim()).filter(Boolean)]
       ));
-	    const commonTaskProps = {
+	    const commonTaskCAps = {
 		      users, projects, vendors, firms, clients, categories, syncingIds, vendorCategories, currentUser,
           taskStatuses: taskStatusOptions,
         showCollapsedMenuButton: false,
@@ -1375,7 +1375,7 @@ export default function App() {
 	      if (activeTab.startsWith('pending-status:')) {
 	        const targetStatus = decodeURIComponent(activeTab.replace('pending-status:', ''));
 	        const viewTitle = pendingStatusNavItems.find(x => x.id === activeTab)?.label || 'Pending';
-	        return <TasksView title={viewTitle} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && normalizeStatusName(t.status) === targetStatus)} {...commonTaskProps} filterType="all" />;
+	        return <TasksView title={viewTitle} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && normalizeStatusName(t.status) === targetStatus)} {...commonTaskCAps} filterType="all" />;
 	      }
 
 	    switch (activeTab) {
@@ -1396,8 +1396,8 @@ export default function App() {
 	            }} onFilterChange={handleDashboardFilterChange} onOpenNewTask={() => { setIsTaskModalVendorMode(false); setIsTaskModalOpen(true); }} onOpenNewRecurringTask={() => setIsRecurringTaskModalOpen(true)}
 	          onOpenAddUser={() => setIsUserModalOpen(true)} onOpenAddCategory={() => setIsCategoryModalOpen(true)} onOpenAddProject={() => setIsProjectModalOpen(true)} onOpenAddClient={() => setIsClientModalOpen(true)} 
 	        />;
-      case 'all-tasks': return <TasksView title={getViewLabel('all-tasks', 'All Tasks')} tasks={visibleTasks.filter(t => !t.vendor || t.vendor === '')} {...commonTaskProps} filterType="all" />;
-      case 'office-tasks': return <TasksView title={getViewLabel('office-tasks', 'Office Tasks')} tasks={visibleTasks.filter(task=>(!task.vendor || task.vendor==='') && !hasTaskClient(task,projects))} {...commonTaskProps} filterType="all" />;
+      case 'all-tasks': return <TasksView title={getViewLabel('all-tasks', 'All Tasks')} tasks={visibleTasks.filter(t => !t.vendor || t.vendor === '')} {...commonTaskCAps} filterType="all" />;
+      case 'office-tasks': return <TasksView title={getViewLabel('office-tasks', 'Office Tasks')} tasks={visibleTasks.filter(task=>(!task.vendor || task.vendor==='') && !hasTaskClient(task,projects))} {...commonTaskCAps} filterType="all" />;
       case 'add-multiple': return (
         <AddMultipleTasksView
           projects={projects}
@@ -1418,8 +1418,8 @@ export default function App() {
           }}
         />
       );
-      case 'pending': return <TasksView title={getViewLabel('pending', 'Pending Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status !== 'Completed')} {...commonTaskProps} filterType="pending" />;
-		      case 'completed': return <TasksView title={getViewLabel('completed', 'Completed Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status === 'Completed')} {...commonTaskProps} filterType="completed" />;
+      case 'pending': return <TasksView title={getViewLabel('pending', 'Pending Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status !== 'Completed')} {...commonTaskCAps} filterType="pending" />;
+		      case 'completed': return <TasksView title={getViewLabel('completed', 'Completed Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status === 'Completed')} {...commonTaskCAps} filterType="completed" />;
       case 'update-multiple': return <UpdateMultipleView projects={projects} tasks={visibleTasks.filter(t => t.status !== 'Completed')} onUpdateTasks={async (updates) => { for (const u of updates) await handleUpdateTaskOptimistic(u); setActiveTab('pending'); }} />;
       case 'action-log': return <ActionLogView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} isAdmin={isAdmin} projects={projects} onDeleteLog={(logId, taskId) => handleDeleteLog(logId, taskId, false)} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
       case 'due-recurring-tasks': return <RecurringTasksView title={getViewLabel('due-recurring-tasks', 'Due Recurring Tasks')} filterType="due" tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
@@ -1519,7 +1519,7 @@ export default function App() {
 	              <header className="md:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-40">
                 <div className="flex items-center space-x-2">
                    <img src="https://i.ibb.co/YBSjM7Gg/Chat-GPT-Image-Dec-18-2025-10-23-18-AM.png" className="h-8 w-8" alt="Logo" />
-                   <h1 className="text-xl font-bold text-indigo-600">TaskPro</h1>
+                   <h1 className="text-xl font-bold text-indigo-600">TaskCA</h1>
                 </div>
                   {!isAnyFormModalOpen && (
 	                  <button aria-label={isSidebarOpen?'Close menu':'Open menu'} onClick={() => setIsSidebarOpen(prev => !prev)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-md">

@@ -38,10 +38,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, isAuthenticating 
             <img 
               src="https://i.ibb.co/YBSjM7Gg/Chat-GPT-Image-Dec-18-2025-10-23-18-AM.png" 
               className="h-16 w-16 object-contain" 
-              alt="TaskPro Logo" 
+              alt="TaskCA Logo" 
             />
           </div>
-          <h1 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">TaskPro</h1> 
+          <h1 className="text-3xl font-extrabold text-[#1a1a1a] tracking-tight">TaskCA</h1> 
           <p className="text-gray-400 mt-1 text-xs uppercase tracking-[0.2em] font-bold">by BizSkill</p> 
         </div>
 
