@@ -8,9 +8,11 @@ interface PendingTableProps {
   onRowClick: (name: string) => void;
   className?: string;
   statusColumns?: string[];
+  totalLabel?: string;
+  emptyMessage?: string;
 }
 
-export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, data, onRowClick, className = '', statusColumns = [] }) => {
+export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, data, onRowClick, className = '', statusColumns = [], totalLabel='Total Pending', emptyMessage='No pending data found.' }) => {
   const columns = statusColumns.length > 0 ? statusColumns : ['Not Yet Started', 'In Progress', 'Pending for Client', 'Pending for Owner', 'Pending for Training', 'Pending for Billing', 'Pending for Payment'];
 
   const countWidth=60/(columns.length+1);
@@ -34,7 +36,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
           <thead>
             <tr className="bg-blue-600 text-white">
               <th className="px-2 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] border-r border-black last:border-r-0">{headerLabel}</th>
-              <th className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] text-center border-r border-black last:border-r-0">Total Pending</th>
+              <th className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] text-center border-r border-black last:border-r-0">{totalLabel}</th>
               {columns.map((column) => (
                 <th key={column} className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] text-center border-r border-black last:border-r-0">
                   {column}
@@ -62,7 +64,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
             ) : (
               <tr>
                 <td colSpan={2 + columns.length} className="px-2 py-6 text-center text-blue-900/40 text-sm font-bold uppercase">
-                  No pending data found.
+                  {emptyMessage}
                 </td>
               </tr>
             )}

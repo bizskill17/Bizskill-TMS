@@ -1,3 +1,4 @@
+import {dashboardToday, isDelayedTask, taskAssignees} from './dashboardRules.mjs';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, FileText, Search, CheckSquare, LayoutGrid, LayoutList, Filter, X, Clock, AlertTriangle, Users, Trash2, AlertCircle, Tags, Menu } from 'lucide-react';
@@ -207,10 +208,10 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	              if (values.length === 1) {
 	                  if (task.status === 'Completed' || !task.dueDate) return false;
 	                  const dueISO = parseToISO(task.dueDate);
-	                  const todayISO = new Date().toISOString().split('T')[0];
-	                  return dueISO && dueISO < todayISO;
+	                  const todayISO = dashboardToday();
+	                  return isDelayedTask(task,todayISO);
 	              }
-	              const isOverdue = task.status !== 'Completed' && task.dueDate && parseToISO(task.dueDate) < new Date().toISOString().split('T')[0];
+	              const isOverdue = isDelayedTask(task);
 	              return values.includes(task.status) || isOverdue;
 	          }
 	          return values.includes(task.status);
@@ -233,7 +234,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	        case 'category': return values.includes(task.category || '');
 	        case 'client': return values.includes(getClientFromTask(task));
 	        case 'owner': return values.some(v => String(task.owner || '').includes(v));
-	        case 'assignee': return values.some(v => String(task.assignees || '').includes(v));
+	        case 'assignee': return values.some(v => taskAssignees(task.assignees).includes(v));
         case 'vendor': return values.includes(task.vendor || '');
 	        default: return true;
 	    }
@@ -327,7 +328,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
     const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `${title.replace(/\s+/g, '_')}_${dashboardToday()}.csv`);
     link.click();
   };
 
@@ -407,7 +408,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
       columnStyles
     });
 
-    doc.save(`${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`${title.replace(/\s+/g, '_')}_${dashboardToday()}.pdf`);
   };
 
 	  const statusOptionsAll = [
@@ -497,11 +498,11 @@ export const TasksView: React.FC<TasksViewProps> = ({
 	  const statusOptions = useMemo(() => {
 	    if (tasksForStatusOptions.length === 0) return statusOptionsAll;
 	    const present = new Set(tasksForStatusOptions.map(t => t.status));
-	    const todayISO = new Date().toISOString().split('T')[0];
+	    const todayISO = dashboardToday();
 	    const hasOverdue = tasksForStatusOptions.some(t => {
 	      if (t.status === 'Completed' || !t.dueDate) return false;
 	      const dueISO = parseToISO(t.dueDate);
-	      return !!dueISO && dueISO < todayISO;
+	      return isDelayedTask(t,todayISO);
 	    });
 	    return statusOptionsAll.filter(o => (o.value === 'Overdue' ? hasOverdue : present.has(o.value as any)));
 	  }, [tasksForStatusOptions]);
