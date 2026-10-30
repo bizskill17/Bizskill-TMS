@@ -1540,7 +1540,7 @@ export default function App() {
 
 			              return (
 			                <>
-{(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing') && (
+{(layoutMode === 'side' || sectionTabs.length > 1 || activeTab === 'documents' || activeTab === 'dsc-register' || activeTab === 'billing' || activeTab === 'checklists') && (
                               <section className="relative z-40 shrink-0 bg-gray-50 px-3 md:px-6 pt-2 pb-3 border-b border-indigo-100 flex items-center gap-3 min-w-0">
                                 {layoutMode === 'side' && !isAnyFormModalOpen && <button type="button"
                                   onClick={() => { if (window.innerWidth < 768) setIsSidebarOpen(prev => !prev); else setIsSidebarCollapsed(prev => !prev); }}
@@ -1548,6 +1548,7 @@ export default function App() {
                                   title={isSidebarCollapsed ? 'Show menu' : 'Hide menu'}
                                   aria-expanded={!isSidebarCollapsed}
                                   className="hidden md:inline-flex shrink-0 w-9 h-9 items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"><Menu size={18}/></button>}
+                                {activeTab === 'checklists' && <h1 className="text-xl font-bold text-indigo-700 shrink-0">Checklists</h1>}
                                 <nav id="section-view-tabs" aria-label="Section views" className="flex flex-nowrap items-center gap-2 min-w-0 overflow-x-auto pb-1">
                                 {sectionTabs.length > 1 && <>
 

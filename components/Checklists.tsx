@@ -39,7 +39,6 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
  function open(note:Template){setSaveError('');setEdit({...note,note_html:sanitizeNote(note.note_html)});}
  return <div className="py-3 space-y-3 min-w-0">
   <style>{'.checklist-note{overflow-wrap:anywhere;line-height:1.6;white-space:normal}.checklist-note p,.checklist-note div,.checklist-note blockquote{margin:0 0 .5em}.checklist-note ol{list-style-type:decimal;padding-inline-start:1.6em;margin:.5em 0}.checklist-note ul{list-style-type:disc;padding-inline-start:1.6em;margin:.5em 0}.checklist-note li{margin:.15em 0}.checklist-note a{color:#4338ca;text-decoration:underline}.checklist-note blockquote{border-inline-start:3px solid #c7d2fe;padding-inline-start:.75em}'}</style>
-  <h1 className="text-xl font-bold text-indigo-700">Checklists</h1>
   <div className="flex items-center gap-2">
    <div className="relative flex-1 min-w-0"><Search size={17} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search checklists" placeholder="Search notes..." className={input+' pl-9'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
    {admin&&<button type="button" aria-label="Add Checklist" title="Add Checklist" disabled={loading||!csrf} className={iconButton+' !bg-indigo-600 !text-white'} onClick={()=>open(blank())}><Plus size={22}/></button>}
