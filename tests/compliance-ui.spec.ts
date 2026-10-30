@@ -727,6 +727,7 @@ test('Checklist order persists after desktop drag, mobile touch and keyboard mov
   const handle=first.getByRole('button',{name:'Move Reorder first',exact:true});
   await handle.scrollIntoViewIfNeeded();
   const start=(await handle.boundingBox())!,end=(await second.getByRole('heading').boundingBox())!;
+  const saved=page.waitForResponse(response=>response.url().includes('/api/checklists.php')&&response.request().method()==='POST');
   if(width>=768){
    await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();
    await page.mouse.move(end.x+end.width/2,end.y+end.height/2,{steps:10});await page.mouse.up();
@@ -736,7 +737,7 @@ test('Checklist order persists after desktop drag, mobile touch and keyboard mov
    await client.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[{x:end.x+end.width/2,y:end.y+end.height/2}]});
    await client.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});await client.detach();
   }
-  await expect(page.getByRole('status')).toHaveText('Order saved automatically.');
+  expect((await saved).ok()).toBeTruthy();
   await expect(page.locator('article').first()).toHaveAttribute('aria-label',width>=768?'Reorder second':'Reorder first');
   expect(await first.evaluate(node=>getComputedStyle(node).backgroundColor)).toBe(color);
   await page.reload();
@@ -746,8 +747,9 @@ test('Checklist order persists after desktop drag, mobile touch and keyboard mov
   await again.click();await page.getByRole('textbox',{name:'Search checklists'}).fill('Reorder ');
   await expect(page.locator('article').first()).toHaveAttribute('aria-label',width>=768?'Reorder second':'Reorder first');
   if(width<768){
+   const savedByKeyboard=page.waitForResponse(response=>response.url().includes('/api/checklists.php')&&response.request().method()==='POST');
    await page.getByRole('button',{name:'Move Reorder first',exact:true}).press('ArrowDown');
-   await expect(page.getByRole('status')).toHaveText('Order saved automatically.');
+   expect((await savedByKeyboard).ok()).toBeTruthy();
    await expect(page.locator('article').first()).toHaveAttribute('aria-label','Reorder second');
   }
  }

@@ -53,8 +53,8 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
   visible.splice(to,0,visible.splice(from,1)[0]);
   const visibleSet=new Set(visible),byId=new Map(templates.map(note=>[note.id,note]));
   let index=0;const before=templates,next=templates.map(note=>visibleSet.has(note.id)?byId.get(visible[index++])!:note);
-  reorderSaving.current=true;setBusy(true);setError('');setNotice('Saving order...');setTemplates(next);
-  try{await read(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reorder',ids:next.map(note=>note.id),expected:before.map(note=>note.id),csrf})}));setNotice('Order saved automatically.');}
+  reorderSaving.current=true;setBusy(true);setError('');setNotice('');setTemplates(next);
+  try{await read(await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reorder',ids:next.map(note=>note.id),expected:before.map(note=>note.id),csrf})}));setNotice('');}
   catch(e){setTemplates(before);setNotice('');setError((e as Error).message);}
   finally{reorderSaving.current=false;setBusy(false);}
  }
@@ -106,7 +106,6 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
    <select aria-label="Filter checklist category" value={category} onChange={e=>setCategory(e.target.value)} className={input+' !w-28 !text-sm'}><option value="">All categories</option>{categories.map(item=><option key={item.id} value={item.name}>{item.name}</option>)}</select>
    {admin&&<button type="button" aria-label="Add Checklist" title="Add Checklist" disabled={busy||loading||!csrf} className={iconButton+' !bg-indigo-600 !text-white'} onClick={()=>open(blank())}><Plus size={22}/></button>}
   </div>
-  {admin&&templates.length>1&&<p className="text-xs text-gray-500">Drag the six-dot handle to reorder.</p>}
   {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
   {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
   {loading&&<p className="text-sm text-gray-500">Loading...</p>}
