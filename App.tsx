@@ -283,6 +283,7 @@ export default function App() {
   });
 
   const handleTabChange = (tabId: string) => {
+    setLogDashboardFilter(null);
     setActiveTab(tabId === 'master' ? 'users' : tabId === 'activity-dashboard' ? 'dashboard' : tabId);
 
   };

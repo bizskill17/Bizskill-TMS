@@ -29,10 +29,9 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
     onClearDashboardFilter 
 }) => {
   const [photoViewer, setPhotoViewer] = useState<{ photos: string[]; index: number } | null>(null);
-  const todayISO = new Date().toLocaleDateString('en-CA');
   const [searchTerm, setSearchTerm] = useState('');
-  const [updateDateFrom, setUpdateDateFrom] = useState(todayISO);
-  const [updateDateTo, setUpdateDateTo] = useState(todayISO);
+  const [updateDateFrom, setUpdateDateFrom] = useState('');
+  const [updateDateTo, setUpdateDateTo] = useState('');
   const [taskDateFrom, setTaskDateFrom] = useState('');
   const [taskDateTo, setTaskDateTo] = useState('');
   
@@ -68,6 +67,12 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
       if (dashboardFilter.dateTo) setUpdateDateTo(dashboardFilter.dateTo);
       
       if (dashboardFilter.dateFrom || dashboardFilter.dateTo) setShowFilters(true);
+    } else {
+      setUpdateDateFrom('');
+      setUpdateDateTo('');
+      setFilterOwner([]);
+      setFilterAssignee([]);
+      setFilterVendor([]);
     }
   }, [dashboardFilter]);
 

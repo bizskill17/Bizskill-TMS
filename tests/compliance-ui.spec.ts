@@ -315,3 +315,35 @@ test('Task navigation starts with Pending and activity is inside the main Dashbo
  await page.getByRole('button',{name:'Dashboard',exact:true}).click();
  await expect(activity.getByRole('table')).toBeVisible();
 });
+
+test('Action Log defaults to all dates while Dashboard drill-down keeps its date filter',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ await page.clock.install({time:new Date('2026-10-30T06:00:00Z')});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.actionLogs=[30,29,28,27].map((day,index)=>({id:96001+index,taskId:97001+index,task:'Log day '+day,taskDate:'01/10/2026',updateDate:day+'/10/2026',status:'In Progress',owner:'Log User',assignees:'Log User',hours:10,remarks:'Updated',project:'',firm:'Client A'}));
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
+ const tabs=page.getByRole('navigation',{name:'Section views',exact:true});
+ await tabs.getByRole('button',{name:/^Action Log/}).click();
+ await expect(tabs.getByRole('button',{name:/^Action Log/})).toHaveText(/^Action Log\s*4$/);
+ await expect(page.getByText('No filters applied',{exact:true})).toBeVisible();
+ for(const day of [30,29,28,27]) await expect(page.getByRole('heading',{name:'Log day '+day,exact:true})).toBeVisible();
+ await expect(page.getByText('Showing 1 to 4 of 4 entries',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Dashboard',exact:true}).click();
+ await page.getByRole('region',{name:"Today's Activity",exact:true}).getByRole('button',{name:'Simple updates by Log User',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Log day 30',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Log day 29',exact:true})).toHaveCount(0);
+ await expect(page.getByText(/Update Date: 30\/10\/2026 to 30\/10\/2026/)).toBeVisible();
+ await tabs.getByRole('button',{name:/^Pending Tasks/}).click();
+ await tabs.getByRole('button',{name:/^Action Log/}).click();
+ await expect(page.getByText('No filters applied',{exact:true})).toBeVisible();
+ await expect(page.getByText('Showing 1 to 4 of 4 entries',{exact:true})).toBeVisible();
+});
