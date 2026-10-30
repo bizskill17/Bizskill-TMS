@@ -124,7 +124,7 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
 
 	  const isFormValid = () => {
 	    // Basic required fields validation
-		    if (!formData.title.trim() || !formData.firm || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
+		    if (!formData.title.trim() || !formData.owner || !formData.category || !formData.assignee || !formData.startDate) {
 		      return false;
 		    }
     
@@ -177,7 +177,6 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
         </div>
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-            <BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>
 	            <div className="space-y-1">
 	              <label className="text-sm font-medium text-black">{getFieldLabel('recurringTask.title', 'Task')} <span className="text-red-500">*</span></label>
 	              <input 
@@ -206,7 +205,6 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
               options={clientOptions}
               value={formData.firm}
               onChange={(val) => setFormData(p => ({ ...p, firm: val }))}
-              required
               placeholder="Select client"
               disabled={isSaving}
             />
@@ -393,7 +391,8 @@ export const AddRecurringTaskModal: React.FC<AddRecurringTaskModalProps> = ({ is
 		                />
 		              </div>
 	            </div>
-	          </div>
+	          <BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>
+          </div>
 	          <div className="p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end space-x-3">
 	            <button 
 	              type="button" 

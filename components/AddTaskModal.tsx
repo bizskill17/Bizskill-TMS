@@ -149,11 +149,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 	    const basicValid = formData.title.trim() !== '' &&
 	        formData.priority !== '' &&
 	        formData.owner !== '' &&
-	        formData.dueDate !== '' &&
-          formData.firm !== '';
+	        formData.dueDate !== '' ;
     
     if (isVendorView) {
-        return basicValid && formData.vendor !== '' && formData.vendorCategory.length > 0;
+        return basicValid && formData.firm !== '' && formData.vendor !== '' && formData.vendorCategory.length > 0;
     }
 
     return basicValid &&
@@ -232,7 +231,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <div className="p-4 md:p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-            {!isVendorView&&<BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>}
             
 		            <div className="space-y-1">
 		              <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('task.title', 'Task')} <span className="text-red-500">*</span></label>
@@ -287,7 +285,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                       value={formData.firm}
                       onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
                       placeholder="Select Client..."
-                      required
+                      required={isVendorView}
                     />
 			            </div>
 
@@ -454,6 +452,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 <p className="text-xs text-gray-500">{formData.pdf ? 'PDF selected' : 'No PDF selected'}</p>
               </div>
             </div>
+          {!isVendorView&&<BillingFields type={billingType} fee={professionalFee} onType={setBillingType} onFee={setProfessionalFee}/>}
           </div>
 
           <div className="p-4 md:p-6 border-t border-gray-100 bg-gray-50 rounded-b-xl flex justify-end space-x-3">

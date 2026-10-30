@@ -162,7 +162,6 @@ export const EditRecurringTaskModal: React.FC<EditRecurringTaskModalProps> = ({ 
               options={clientOptions}
               value={formData.firm}
               onChange={(val) => setFormData(p => ({ ...p, firm: val }))}
-              required
               placeholder="Select client"
               disabled={isSaving}
             />

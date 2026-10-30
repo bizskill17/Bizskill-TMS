@@ -322,9 +322,11 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                 <TaskCardField label="Task"><h3 className="font-semibold text-blue-800">{task.title || '-'}</h3></TaskCardField>
                 <TaskCardField label="Client">{getClientDisplay(task) || '-'}</TaskCardField>
                 <TaskCardField label={isVendorTask ? 'Vendor' : 'Assignee'}>{responsiblePartyText}</TaskCardField>
+                <TaskCardField label="Status"><span className={`inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium ${getStatusColor(task.status)}`}>{task.status || '-'}</span></TaskCardField>
+                <TaskCardField label="Update Date">{task.status === 'Not Yet Started' ? '-' : (formatDate(task.lastUpdateDate || '') || '-')}</TaskCardField>
+                <TaskCardField label="Remarks">{task.status === 'Not Yet Started' ? '-' : (task.lastUpdateRemarks || '-')}</TaskCardField>
                 <TaskCardField label="Due Date">{formatDate(task.dueDate) || '-'}</TaskCardField>
                 <TaskCardField label="Priority">{task.priority || '-'}</TaskCardField>
-                <TaskCardField label="Status"><span className={`inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium ${getStatusColor(task.status)}`}>{task.status || '-'}</span></TaskCardField>
                 <TaskCardField label="Total Minutes">{task.hours || 0}</TaskCardField>
               </TaskCardFields>
               {isExpanded && <div id={'task-card-details-'+task.id}>
@@ -334,8 +336,6 @@ export const TaskTable: React.FC<TaskTableProps> = ({
                   <TaskCardField label="Task Date">{formatDate(task.date) || '-'}</TaskCardField>
                   <TaskCardField label="Time">{task.time || '-'}</TaskCardField>
                   <TaskCardField label="Notes">{task.remarks || '-'}</TaskCardField>
-                  <TaskCardField label="Update Date">{task.status === 'Not Yet Started' ? '-' : (formatDate(task.lastUpdateDate || '') || '-')}</TaskCardField>
-                  <TaskCardField label="Remark">{task.status === 'Not Yet Started' ? '-' : (task.lastUpdateRemarks || '-')}</TaskCardField>
                   <TaskCardField label="Photo">{parsePhotos(task.photos).length > 0 ? <button type="button" onDoubleClick={e=>e.stopPropagation()} onClick={()=>openPhotos(task.photos)} className="text-indigo-600 underline">{parsePhotos(task.photos).length} photo(s)</button> : '-'}</TaskCardField>
                   <TaskCardField label="PDF">{normalizePdfHref(task.pdf) ? <button type="button" onDoubleClick={e=>e.stopPropagation()} onClick={()=>openPdf(task.pdf)} className="text-indigo-600 underline">Open PDF</button> : '-'}</TaskCardField>
                 </TaskCardFields>
