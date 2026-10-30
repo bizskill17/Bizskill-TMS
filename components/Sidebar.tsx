@@ -201,6 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {[
             { key: 'Dashboard', source: 'main' },
             { key: 'Master', source: 'Master' },
+            { key: 'Checklists', source: 'Checklists' },
             { key: 'Simple Tasks', source: 'Tasks' },
             { key: 'Recurring Tasks', source: 'Recurring Tasks' },
             { key: 'Billing', source: 'Billing' },

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Edit2, Trash2, LayoutGrid, LayoutList, ArrowUpDown, ArrowUp, ArrowDown, FileText, Download } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ArrowUpDown, ArrowUp, ArrowDown, FileText, Download } from 'lucide-react';
 import { Category } from '../types';
 import { AddCategoryModal } from './AddCategoryModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -21,7 +21,7 @@ type SortConfig = {
 
 export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAddCategory, onDeleteCategory, onEditCategory, sidebarCollapsed = false }) => {
   const { getViewLabel } = useLabels();
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
+  const [searchTerm,setSearchTerm]=useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -41,7 +41,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
   };
 
   const sortedCategories = useMemo(() => {
-    let sortableItems = [...categories];
+    let sortableItems = categories.filter(category=>String(category.name||'').toLowerCase().includes(searchTerm.toLowerCase()));
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         const aValue = a[sortConfig.key] ?? '';
@@ -52,7 +52,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
       });
     }
     return sortableItems;
-  }, [categories, sortConfig]);
+  }, [categories, sortConfig, searchTerm]);
 
   const handleEditClick = (category: Category) => {
     setSelectedCategory(category);
@@ -71,8 +71,8 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
     }
   };
 
-  const thClass = "px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none";
-  const tdClass = "px-6 py-4 text-sm text-gray-900 border-r border-black last:border-r-0";
+  const thClass = "px-2 md:px-4 py-3 text-xs font-semibold text-white uppercase tracking-normal border-r border-indigo-500 last:border-r-0 cursor-pointer bg-indigo-600 hover:bg-indigo-700 transition-colors select-none";
+  const tdClass = "px-2 md:px-4 py-3 text-sm text-gray-900 border-r border-black last:border-r-0";
   const handleExportExcel = () => {
     const csv = ['S.No.,Name', ...sortedCategories.map((c, i) => `${i + 1},"${String(c.name || '').replace(/"/g, '""')}"`)].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -94,49 +94,33 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex items-center justify-between gap-3 md:gap-4">
-        <div className={sidebarCollapsed ? 'pl-14 md:pl-16' : ''}><h2 className="sr-only">{getViewLabel('categories', 'Categories')}</h2></div>
-        <button aria-label="" title=""
-          onClick={onAddCategory}
-          className="md:hidden inline-flex items-center justify-center w-10 h-10 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"
-          title="Add Category"
-        >
-          <Plus size={18} />
-        </button>
+      <h2 className="sr-only">{getViewLabel('categories','Categories')}</h2>
+      <div className="bg-white p-3 rounded-lg shadow-sm border border-indigo-300 flex items-center gap-2">
+        <div className="relative flex-1 min-w-0"><Search className="absolute left-3 top-2.5 text-indigo-600" size={18}/><input aria-label="Search categories" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} placeholder="Search categories..." className="w-full pl-9 pr-2 py-2 border border-indigo-300 rounded-md text-sm"/></div>
+        <button onClick={handleExportPDF} title="Export PDF" aria-label="Export PDF" className="shrink-0 p-2 bg-indigo-500 text-white rounded-md"><Download size={16}/></button>
+        <button onClick={handleExportExcel} title="Export Excel" aria-label="Export Excel" className="shrink-0 p-2 bg-indigo-600 text-white rounded-md"><FileText size={16}/></button>
+        <button aria-label="Add Category" title="Add Category" onClick={onAddCategory} className="shrink-0 flex items-center gap-2 p-2 md:px-4 bg-indigo-600 text-white rounded-md text-sm"><Plus size={18}/><span className="sr-only md:not-sr-only">Add Category</span></button>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-300 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 w-full md:max-w-xl"><Search className="absolute left-3 top-2.5 text-indigo-600" size={18} /><input type="text" placeholder="Search categories..." className="w-full pl-10 pr-4 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 text-sm"/></div>
-        <div className="flex gap-3 w-full md:w-auto">
-            <div className="flex bg-gray-100 p-1 rounded-lg md:hidden">
-                <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutGrid size={18} /></button>
-                <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}><LayoutList size={18} /></button>
-            </div>
-            <button onClick={handleExportPDF} title="Export PDF" className="hidden md:flex items-center justify-center p-2.5 bg-indigo-500 text-white border border-indigo-600 rounded-md hover:bg-indigo-600"><Download size={16} /></button>
-            <button onClick={handleExportExcel} title="Export Excel" className="hidden md:flex items-center justify-center p-2.5 bg-indigo-600 text-white border border-indigo-700 rounded-md hover:bg-indigo-700"><FileText size={16} /></button>
-            <button aria-label="Add Category" title="Add Category" onClick={onAddCategory} className="hidden md:flex flex-none items-center justify-center space-x-0 md:space-x-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 text-sm font-medium shadow-sm transition-colors whitespace-nowrap"><Plus size={16} /><span className="sr-only md:not-sr-only ">Add Category</span></button>
-        </div>
-      </div>
-
-      <div className={`bg-white rounded-lg border border-black shadow-sm overflow-hidden ${viewMode === 'card' ? 'hidden md:block' : 'block'}`}>
+      <div className="bg-white min-w-0 rounded-lg border border-black shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full table-fixed text-left border-collapse"><colgroup><col style={{width:56}}/><col/><col style={{width:100}}/></colgroup>
             <thead>
               <tr className="bg-indigo-600 border-b border-indigo-700">
                 <th className={thClass} onClick={() => requestSort('id')}><div className="flex items-center">S.No. {getSortIcon('id')}</div></th>
                 <th className={thClass} onClick={() => requestSort('name')}><div className="flex items-center">Name {getSortIcon('name')}</div></th>
-                <th className="px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider border-r border-indigo-500 last:border-r-0 text-center">Actions</th>
+                <th className="px-2 md:px-4 py-3 text-xs font-semibold text-white uppercase tracking-normal border-r border-indigo-500 last:border-r-0 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black">
               {sortedCategories.map((item, index) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                   <td className={tdClass}>{index + 1}</td>
-                  <td className={`${tdClass} font-medium`}>{item.name}</td>
+                  <td className={`${tdClass} font-medium break-words`}>{item.name}</td>
                   <td className={`${tdClass} text-center`}>
                     <div className="flex items-center justify-center space-x-3">
-                      <button onClick={() => handleEditClick(item)} className="text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 p-1.5 rounded-md border border-indigo-100"><Edit2 size={16} /></button>
-                      <button type="button" onClick={() => handleDeleteClick(item)} className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-1.5 rounded-md border border-red-100"><Trash2 size={16} /></button>
+                      <button aria-label={'Edit '+item.name} onClick={() => handleEditClick(item)} className="text-indigo-600 hover:text-indigo-800 transition-colors bg-indigo-50 p-1.5 rounded-md border border-indigo-100"><Edit2 size={16} /></button>
+                      <button type="button" aria-label={'Delete '+item.name} onClick={() => handleDeleteClick(item)} className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-1.5 rounded-md border border-red-100"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>
@@ -145,13 +129,6 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ categories, onAd
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div className={`space-y-4 md:hidden ${viewMode === 'card' ? 'block' : 'hidden'}`}>
-        {sortedCategories.map((item) => (
-             <div key={item.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex items-center justify-between"><div className="font-medium text-gray-900">{item.name}</div><div className="flex items-center gap-2"><button onClick={() => handleEditClick(item)} className="text-indigo-600 hover:text-indigo-800 bg-indigo-50 p-2 rounded-md"><Edit2 size={16} /></button><button type="button" onClick={() => handleDeleteClick(item)} className="text-red-500 hover:text-red-700 bg-red-50 p-2 rounded-md"><Trash2 size={16} /></button></div></div>
-        ))}
-         {categories.length === 0 && <div className="text-center py-8 text-gray-500 bg-white rounded-lg border border-gray-200">No categories found.</div>}
       </div>
 
       <AddCategoryModal 

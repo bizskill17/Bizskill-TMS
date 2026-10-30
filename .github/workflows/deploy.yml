@@ -27,6 +27,7 @@ jobs:
         run: |
           node --test tests/documents.test.mjs tests/dsc.test.mjs tests/dashboard.test.mjs
           php tests/dsc-rules.php
+          php tests/checklist-notes.php
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps

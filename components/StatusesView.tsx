@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, FileText, Download, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, FileText, Download, Search, Lock } from 'lucide-react';
 import { StatusMaster } from '../types';
 import { AddStatusModal } from './AddStatusModal';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -80,7 +80,7 @@ export const StatusesView: React.FC<StatusesViewProps> = ({ statuses, onAddStatu
                         <button onClick={() => { setSelected(status); setIsDeleteOpen(true); }} className="text-red-500 hover:text-red-700 transition-colors bg-red-50 p-1.5 rounded-md border border-red-100"><Trash2 size={16} /></button>
                       </div>
                     ) : (
-                      <span className="text-xs font-semibold text-gray-500">Locked</span>
+                      <span role="img" aria-label="Locked" title="System status: editing and deletion are unavailable" className="inline-flex text-gray-500"><Lock size={16} aria-hidden="true"/></span>
                     )}
                   </td>
                 </tr>

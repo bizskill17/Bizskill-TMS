@@ -98,7 +98,7 @@ const navItems: NavItem[] = [
   { id: 'billing', label: 'Billing', icon: <FileText size={20}/>, section: 'Billing' },
 
   // Master Section
-  { id: 'checklists', label: 'Checklists', icon: <CheckSquare size={20} />, section: 'Master' },
+  { id: 'checklists', label: 'Checklists', icon: <CheckSquare size={20} />, section: 'Checklists' },
   { id: 'users', label: 'Users', icon: <Users size={20} />, section: 'Master' },
   { id: 'firms', label: 'Clients', icon: <Building2 size={20} />, section: 'Master' },
   { id: 'categories', label: 'Categories', icon: <Tags size={20} />, section: 'Master' },
@@ -381,7 +381,7 @@ export default function App() {
   }, []);
 
   // Master item IDs for filtering
-	  const masterIds = ['checklists', 'users', 'firms', 'categories', 'statuses', 'designations', ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
+	  const masterIds = ['users', 'firms', 'categories', 'statuses', 'designations', ...(isPlatformAdmin ? ['organizations'] : []), 'settings', 'telegram-setup'];
   const pendingStatusNavItems = useMemo<NavItem[]>(() => {
     return statuses
       .map(s => String(s.name || '').trim())
@@ -416,7 +416,7 @@ export default function App() {
   const filteredNavItems = useMemo(() => {
     if (isAdmin) return resolvedNavItems;
     // Completely hide 'Master' section items for Employees
-    return resolvedNavItems.filter(item => (item.section !== 'Master' || item.id === 'checklists') && item.section !== 'Billing');
+    return resolvedNavItems.filter(item => item.section !== 'Master' && item.section !== 'Billing');
   }, [isAdmin, resolvedNavItems]);
 
   // Data subsets based on user role
@@ -1367,7 +1367,7 @@ export default function App() {
 	      }
 
 	    switch (activeTab) {
-      case 'checklists': return <ChecklistsView key={tenantCode || currentUser?.tenantCode || ''} tenantCode={tenantCode || currentUser?.tenantCode || ''} categories={categories}/>;
+      case 'checklists': return <ChecklistsView key={tenantCode || currentUser?.tenantCode || ''} tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'billing': if (!isAdmin) return null; return <ComplianceView key={'billing:'+tenantCode} billing tenantCode={tenantCode || currentUser?.tenantCode || ''}/>;
       case 'dsc-register': return <DscRegisterView key={tenantCode || currentUser?.tenantCode} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
@@ -1510,7 +1510,7 @@ export default function App() {
                    <h1 className="text-xl font-bold text-indigo-600">TaskPro</h1>
                 </div>
                   {!isAnyFormModalOpen && (
-	                  <button onClick={() => setIsSidebarOpen(prev => !prev)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-md">
+	                  <button aria-label={isSidebarOpen?'Close menu':'Open menu'} onClick={() => setIsSidebarOpen(prev => !prev)} className="p-2 text-gray-500 hover:bg-gray-100 rounded-md">
 	                    <Menu size={24} />
 	                  </button>
                   )}
