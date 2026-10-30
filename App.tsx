@@ -1377,7 +1377,7 @@ export default function App() {
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
 		        return <Dashboard 
-		          onOpenActivityLogs={(name,from,to)=>{setActiveTab('action-log');setLogDashboardFilter({type:'assignee',value:name,dateFrom:from,dateTo:to});}} isAdmin={isAdmin} quickControlsHidden={isAnyFormModalOpen || isSidebarOpen || isSyncing} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
+		          onOpenActivityLogs={(name,from,to)=>{isDashboardNavigation.current=true;setActiveTab('action-log');setLogDashboardFilter({type:'assignee',value:name,dateFrom:from,dateTo:to});}} isAdmin={isAdmin} quickControlsHidden={isAnyFormModalOpen || isSidebarOpen || isSyncing} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
 	          onNavigate={(tab) => {
               if (tab === 'pending-client') setActiveTab(makePendingStatusId('Pending for Client'));
               else if (tab === 'pending-owner') setActiveTab(makePendingStatusId('Pending for Owner'));

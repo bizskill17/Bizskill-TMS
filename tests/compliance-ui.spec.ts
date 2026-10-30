@@ -14,7 +14,11 @@ test('Billing navigation and simple task fields',async({page})=>{
  await page.getByRole('button',{name:'Add Task',exact:true}).click();
  await expect(page.getByLabel('Billing Type')).toBeVisible();
  await page.getByLabel('Billing Type').selectOption('Non Billable');
- await expect(page.getByLabel('Professional fee',{exact:true})).toBeVisible();
+ await expect(page.getByLabel('Fee',{exact:true})).toBeVisible();
+ expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>{
+  const form=input.closest('form')!;const fields=Array.from(form.querySelectorAll('input,select,textarea'));
+  return fields[fields.length-1]===input && fields[fields.length-2]?.closest('label')?.textContent?.includes('Billing Type');
+ })).toBeTruthy();
  expect(errors).toEqual([]);
 });
 
@@ -465,4 +469,19 @@ test('Action Log cards hide zero minutes and blank details',async({page})=>{
  await expect(card.locator('dt')).toHaveText(['Task','Update Date','Status']);
  await page.getByRole('button',{name:'Table View',exact:true}).click();
  await expect(card).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
+});
+
+test('Recurring task form ends with Billing Type and Fee',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ await page.getByRole('navigation',{name:'Quick Control',exact:true}).getByRole('button',{name:'Add Recurring Task',exact:true}).click();
+ await expect(page.getByLabel('Fee',{exact:true})).toBeVisible();
+ expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>{
+  const fields=Array.from(input.closest('form')!.querySelectorAll('input,select,textarea'));
+  return fields[fields.length-1]===input && fields[fields.length-2]?.closest('label')?.textContent?.includes('Billing Type');
+ })).toBeTruthy();
+ await expect(page.getByText('Professional Fee (optional)',{exact:true})).toHaveCount(0);
 });
