@@ -242,7 +242,8 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await expect(card.locator('dd').nth(3)).toHaveText('20/11/2026');
  await card.getByRole('button',{name:'Show details',exact:true}).click();
  await expect(card.locator('dt')).toContainText(['Owner','Category','Task Date','Time','Notes','Remark']);
- for (const label of ['Update Date','Photo','PDF']) await expect(card.locator('dt').filter({hasText:new RegExp('^'+label+'.toHaveText('Collect documents\nCheck ITC');
+ for (const label of ['Update Date','Photo','PDF']) await expect(card.locator('dt').filter({hasText:new RegExp('^'+label+'$')})).toHaveCount(0);
+ await expect(card.locator('dd').filter({hasText:'Collect documents'})).toHaveText('Collect documents\nCheck ITC');
  for(const width of [320,360,393,430]){
   await page.setViewportSize({width,height:800});
   const rows=await card.locator('dl > div').evaluateAll(nodes=>nodes.map(node=>{
