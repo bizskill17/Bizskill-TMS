@@ -272,6 +272,7 @@ export const UpdateTaskModal: React.FC<UpdateTaskModalProps> = ({ isOpen, onClos
 	                  <SearchableSelect 
 	                      label={isVendorTask ? "Reassign Vendor" : "Reassign User"}
 	                      labelKey={isVendorTask ? "task.reassignVendor" : "task.reassignUser"}
+                          dropdownPlacement="top"
 	                      options={isVendorTask ? vendorOptions : userOptions}
 	                      value={reassignSelection}
 	                      onChange={setReassignSelection}

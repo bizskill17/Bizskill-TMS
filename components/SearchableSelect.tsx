@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, X, Check, Square, CheckSquare, ListChecks, Eraser, Plus } from 'lucide-react';
@@ -23,6 +24,7 @@ interface SearchableSelectProps {
   onCreateOption?: (value: string) => void | boolean;
   createLabel?: (value: string) => string;
   compact?: boolean;
+  dropdownPlacement?: 'bottom' | 'top';
 }
 
 export const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -39,11 +41,27 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   allowCreate = false,
   onCreateOption,
   createLabel,
-  compact = false
+  compact = false,
+  dropdownPlacement = 'bottom'
 }) => {
   const { getFieldLabel } = useLabels();
   const normalizedPlaceholder = placeholderText ? 'Select' : 'Select';
   const [isOpen, setIsOpen] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [overlayStyle, setOverlayStyle] = useState<React.CSSProperties | null>(null);
+  useEffect(() => {
+    if (!isOpen || dropdownPlacement !== 'top') return;
+    const position = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const zoom = (parseFloat(getComputedStyle(document.documentElement).zoom) || 1) * (parseFloat(getComputedStyle(document.body).zoom) || 1);
+      setOverlayStyle({ position: 'fixed', left: rect.left / zoom, top: (rect.top - 4) / zoom, width: rect.width / zoom, transform: 'translateY(-100%)', maxHeight: Math.min(320, Math.max(0, (rect.top - 12) / zoom)), zIndex: 300 });
+    };
+    position();
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+    return () => { window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); };
+  }, [isOpen, dropdownPlacement]);
   const [searchTerm, setSearchTerm] = useState('');
 	  const wrapperRef = useRef<HTMLDivElement>(null);
 	  const inputRef = useRef<HTMLInputElement>(null);
@@ -183,7 +201,8 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const dropdownContent = (
     <div 
       ref={dropdownRef}
-      className="absolute top-full left-0 mt-1 w-full z-[120] bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-hidden flex flex-col animate-in fade-in duration-200"
+      style={dropdownPlacement === 'top' ? overlayStyle || {visibility: 'hidden'} : undefined}
+      className={`${dropdownPlacement === 'top' ? '' : 'absolute top-full left-0 mt-1 w-full z-[120]'} bg-white border border-gray-200 rounded-xl shadow-2xl max-h-80 overflow-hidden flex flex-col animate-in fade-in duration-200`}
     >
       <div className="p-2 border-b border-gray-100 bg-gray-50 sticky top-0 z-10 space-y-2">
         <div className="relative">
@@ -287,6 +306,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
 	        </label>
 	      )}
       <div
+        ref={triggerRef}
         className={`w-full ${compact ? 'px-3 py-1.5 min-h-[36px]' : 'px-4 py-2.5 min-h-[44px]'} bg-white border border-gray-300 rounded-lg focus-within:ring-2 focus-within:ring-indigo-100 focus-within:border-indigo-500 flex justify-between items-center transition-all ${isOpen ? 'ring-2 ring-indigo-100 border-indigo-500' : ''} ${disabled ? 'bg-white cursor-not-allowed' : 'cursor-pointer'}`}
         onClick={() => !disabled && setIsOpen(!isOpen)}
       >
@@ -296,7 +316,7 @@ export const SearchableSelect: React.FC<SearchableSelectProps> = ({
         <ChevronDown size={16} className={`text-indigo-400 flex-shrink-0 ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
       </div>
 
-      {isOpen && !disabled && dropdownContent}
+      {isOpen && !disabled && (dropdownPlacement === 'top' ? createPortal(dropdownContent, document.body) : dropdownContent)}
     </div>
   );
 };
