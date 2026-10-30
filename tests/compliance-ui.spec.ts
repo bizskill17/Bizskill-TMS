@@ -198,7 +198,7 @@ test('Categories and designations are tables on mobile and system statuses show 
  await page.goto('/');
  await page.getByRole('button',{name:'Open menu',exact:true}).click();
  await page.getByRole('button',{name:'Master',exact:true}).click();
- await expect(page.getByRole('button',{name:'Checklists',exact:true})).toHaveCount(0);
+ await expect(page.getByRole('navigation',{name:'Section views'}).getByRole('button',{name:'Checklists',exact:true})).toHaveCount(0);
  await page.getByRole('button',{name:'Categories',exact:true}).click();
  await expect(page.getByRole('table')).toBeVisible();
  await expect(page.getByRole('button',{name:'Card view',exact:true})).toHaveCount(0);
