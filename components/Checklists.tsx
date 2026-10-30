@@ -15,7 +15,7 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
  const [templates,setTemplates]=useState<Template[]>([]),[admin,setAdmin]=useState(false),[csrf,setCsrf]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(false);
  const [search,setSearch]=useState(''),[edit,setEdit]=useState<Template|null>(null),[busy,setBusy]=useState(false),[saveError,setSaveError]=useState(''),[notice,setNotice]=useState(''),[copying,setCopying]=useState<number|null>(null);
  const [dragId,setDragId]=useState<number|null>(null),[dropId,setDropId]=useState<number|null>(null);
- const drag=useRef<{id:number;target:number;startX:number;startY:number;moved:boolean}|null>(null);
+ const drag=useRef<{id:number;target:number;startX:number;startY:number;x:number;y:number;moved:boolean}|null>(null);
  const reorderSaving=useRef(false);
  const endpoint='/api/checklists.php?tenantCode='+encodeURIComponent(tenantCode);
  async function read(response:Response){let payload;try{payload=await response.json();}catch{throw Error('Unable to load notes. Please try again shortly.');}if(!response.ok||!payload.success)throw Error(payload.error||'Unable to complete this operation.');return payload;}
@@ -61,16 +61,36 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
  function startMove(e:React.PointerEvent<HTMLButtonElement>,id:number){
   if(busy||loading||!admin||e.button!==0)return;
   e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);
-  drag.current={id,target:id,startX:e.clientX,startY:e.clientY,moved:false};
+  drag.current={id,target:id,startX:e.clientX,startY:e.clientY,x:e.clientX,y:e.clientY,moved:false};
  }
  function trackMove(e:React.PointerEvent<HTMLButtonElement>){
   const moving=drag.current;if(!moving)return;
   if(!moving.moved&&Math.hypot(e.clientX-moving.startX,e.clientY-moving.startY)<6)return;
-  moving.moved=true;setDragId(moving.id);
+  moving.moved=true;moving.x=e.clientX;moving.y=e.clientY;setDragId(moving.id);
   const target=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-checklist-id]');
   if(target){moving.target=Number(target.dataset.checklistId);setDropId(moving.target);}
-  if(e.clientY<90)window.scrollBy(0,-18);else if(e.clientY>window.innerHeight-90)window.scrollBy(0,18);
  }
+
+ useEffect(()=>{
+  if(dragId===null)return;
+  let frame:number;
+  const tick=()=>{
+   const moving=drag.current;if(!moving)return;
+   const scroller=document.querySelector('main')||document.scrollingElement;
+   if(scroller){
+    const bounds=scroller.getBoundingClientRect();
+    const top=Math.max(0,bounds.top),bottom=Math.min(window.innerHeight,bounds.bottom);
+    const amount=moving.y<top+70?-12:moving.y>bottom-70?12:0;
+    if(amount){
+     scroller.scrollBy(0,amount);
+     const target=document.elementFromPoint(moving.x,moving.y)?.closest<HTMLElement>('[data-checklist-id]');
+     if(target){moving.target=Number(target.dataset.checklistId);setDropId(moving.target);}
+    }
+   }
+   frame=requestAnimationFrame(tick);
+  };
+  frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
+ },[dragId]);
  function finishMove(e:React.PointerEvent<HTMLButtonElement>){
   const moving=drag.current;drag.current=null;setDragId(null);setDropId(null);
   if(e.currentTarget.hasPointerCapture(e.pointerId))e.currentTarget.releasePointerCapture(e.pointerId);
