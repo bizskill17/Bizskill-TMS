@@ -14,6 +14,8 @@ test('Billing navigation and simple task fields',async({page})=>{
  await page.getByRole('button',{name:'Add Task',exact:true}).click();
  await expect(page.getByLabel('Billing Type')).toBeVisible();
  await page.getByLabel('Billing Type').selectOption('Non Billable');
+ await expect(page.getByLabel('Fee',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Billing Type').selectOption('Billable');
  await expect(page.getByLabel('Fee',{exact:true})).toBeVisible();
  expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>{
   const form=input.closest('form')!;const fields=Array.from(form.querySelectorAll('input,select,textarea'));
@@ -478,6 +480,8 @@ test('Recurring task form ends with Billing Type and Fee',async({page})=>{
  await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
  await page.goto('/');
  await page.getByRole('navigation',{name:'Quick Control',exact:true}).getByRole('button',{name:'Add Recurring Task',exact:true}).click();
+ await expect(page.getByLabel('Fee',{exact:true})).toHaveCount(0);
+ await page.getByLabel('Billing Type').selectOption('Billable');
  await expect(page.getByLabel('Fee',{exact:true})).toBeVisible();
  expect(await page.getByLabel('Fee',{exact:true}).evaluate(input=>{
   const fields=Array.from(input.closest('form')!.querySelectorAll('input,select,textarea'));
@@ -561,4 +565,42 @@ test('Billing mobile cards hide filters until the filter icon is tapped',async({
  }
  await page.setViewportSize({width:1280,height:900});
  await expect(card).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
+});
+
+test('Billing Type changes need no Reason and Fee appears only for Billable work',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ let billingType='Billable';let submitted:any=null;
+ await page.route('**/api/compliance.php?**',async route=>{
+  if(route.request().method()==='POST'){
+   submitted=route.request().postDataJSON();billingType=submitted.billing_type;
+   await route.fulfill({json:{success:true}});return;
+  }
+  const response=await route.fetch();const payload=await response.json();
+  payload.entries=[{id:99701,title:'Fee visibility test',client_name:'Client A',source_type:'Simple',work_status:'Completed',billing_type:billingType,billing_status:'Not Billed',fee:billingType==='Billable'?500:null,version:1}];
+  payload.bills=[];payload.billItems=[];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Billing',exact:true}).click();
+ await page.getByRole('tab',{name:/^All Work/}).click();
+ const card=page.getByRole('article',{name:'Fee visibility test',exact:true});
+ await expect(card.locator('dt').filter({hasText:/^Fee$/})).toHaveCount(1);
+ await card.getByRole('button',{name:'Billing Type / Fee',exact:true}).click();
+ const dialog=page.getByRole('dialog');
+ await expect(dialog.getByLabel('Fee',{exact:true})).toBeVisible();
+ await expect(dialog.getByText(/Reason/)).toHaveCount(0);
+ await dialog.getByLabel('Billing Type',{exact:true}).selectOption('Non Billable');
+ await expect(dialog.getByLabel('Fee',{exact:true})).toHaveCount(0);
+ await dialog.getByLabel('Billing Type',{exact:true}).selectOption('Billable');
+ await expect(dialog.getByLabel('Fee',{exact:true})).toBeVisible();
+ await dialog.getByLabel('Billing Type',{exact:true}).selectOption('Non Billable');
+ await dialog.getByRole('button',{name:'Save',exact:true}).click();
+ await expect(dialog).toHaveCount(0);
+ expect(submitted.billing_type).toBe('Non Billable');
+ expect(submitted.reason).toBeUndefined();
+ await expect(card.locator('dt').filter({hasText:/^Fee$/})).toHaveCount(0);
 });
