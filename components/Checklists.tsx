@@ -47,7 +47,7 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
   {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
   {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
   {loading&&<p className="text-sm text-gray-500">Loading...</p>}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
    {filtered.map(note=><article key={note.id} aria-label={note.name} className="min-w-0 border border-indigo-200 rounded-xl bg-white p-3 md:p-4">
     <div className="flex items-start justify-between gap-2 mb-3"><h2 className="min-w-0 break-words text-base font-semibold text-indigo-800">{note.name}{!Number(note.active)&&<span className="block text-xs text-gray-500">Inactive</span>}</h2>
      <div className="flex shrink-0 gap-1">{Number(note.active)>0&&<button type="button" aria-label={'Copy '+note.name} title="Copy note" className={iconButton} disabled={copying!==null} onClick={()=>void copy(note)}><Copy size={17}/></button>}{admin&&<button type="button" aria-label={'Edit '+note.name} title="Edit note" className={iconButton} onClick={()=>open(note)}><Edit2 size={17}/></button>}</div>
