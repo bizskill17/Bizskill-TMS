@@ -36,6 +36,7 @@ on:
       - '.github/workflows/validate-compliance.yml'
       - 'api/dsc*'
       - 'components/DscRegisterView.tsx'
+      - 'components/DocumentsView.tsx'
       - 'components/dscRules.mjs'
       - 'tests/dsc*'
       - '.github/workflows/validate-dsc.yml'

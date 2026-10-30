@@ -57,14 +57,14 @@ export function ComplianceView({tenantCode,billing=false}:{tenantCode:string;bil
   <div className="bg-white p-3 rounded-lg border border-indigo-200 flex items-center gap-2 overflow-x-auto">
    <input aria-label="Search" className={input+' min-w-[150px] flex-1'} value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search clients, work, periods or stages..."/>
    <div className="ml-auto shrink-0 flex items-center gap-2">
-    {billing&&<button className={button+' md:hidden'} aria-label="Billing filters" aria-expanded={showFilters} aria-controls="billing-filters" onClick={()=>setShowFilters(value=>!value)}><Filter size={16}/></button>}
+    {billing&&<button className={button+(showFilters?' bg-indigo-50 border-indigo-500':'')} title="Filters" aria-label="Billing filters" aria-expanded={showFilters} aria-controls="billing-filters" onClick={()=>setShowFilters(value=>!value)}><Filter size={16}/></button>}
     <button className={button} disabled={busy||loading} aria-label="Refresh" onClick={()=>{setError('');void load();}}><RefreshCw size={16}/></button>
     <button className={button} aria-label="Download CSV" onClick={()=>{const headings=['Client','Work','Type','Period','FY','Stage','User','Due Date','Work Status',...(data.admin?['Billing Type','Fee','Billing Status','Invoice']:[])];const content=[headings,...filtered.map((r:any)=>[r.client_name,r.title,r.source_type,r.period_label||dateText(r.period_start),r.financial_year,r.current_stage,r.assigned_user_name,r.due_date,r.work_status,...(data.admin?[r.billing_type||'Review',r.fee??'',r.billing_status,activeBill(r)?.invoice_number||'']:[])])].map(r=>r.map((v:any)=>'"'+String(v??'').replace(/^[=+@-]/,"'$&").replace(/"/g,'""')+'"').join(',')).join('\n');const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=billing?'Billing.csv':'Compliance.csv';link.click();URL.revokeObjectURL(url);}}><Download size={16}/></button>
     {!billing&&data.admin&&<><button disabled={busy} className={button} onClick={()=>void open('generate')}>Generate</button><button className={primary} onClick={()=>void open(tab==='assignments'?'assign':'template')} aria-label={tab==='assignments'?'Assign compliance':'Add compliance'}><Plus size={16}/><span className="hidden md:inline">{tab==='assignments'?'Assign Clients':'Add Compliance'}</span></button></>}
    </div>
   </div>
   {!['setup','assignments'].includes(tab)&&<>
-   <div id="billing-filters" className={(billing?(showFilters?'grid':'hidden md:grid'):'grid')+' grid-cols-2 lg:grid-cols-5 gap-2'}>
+   <div id="billing-filters" className={(billing?(showFilters?'grid':'hidden'):'grid')+' grid-cols-2 lg:grid-cols-5 gap-2'}>
     {filter(client,setClient,Array.from(new Set(baseRows.map((r:any)=>r.client_name))),'All Clients')}
     {!billing?<SearchableSelect compact value={template} options={[{value:'',label:'All Compliances'},...templates]} onChange={setTemplate}/>:filter(type,setType,['Simple','Recurring','Compliance'],'All Task Types')}
     {filter(user,setUser,Array.from(new Set(baseRows.map((r:any)=>r.assigned_user_name))),'All Users')}
