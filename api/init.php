@@ -253,19 +253,31 @@ function notify_task_created(mysqli $conn, array $taskRow, bool $isVendorTask): 
     }
 }
 
-function notify_task_updated(mysqli $conn, array $taskRow, array $logRow, bool $isVendorTask): void {
+function notify_task_updated(mysqli $conn, array $taskRow, array $logRow, bool $isVendorTask, ?array $previousTask = null): void {
     if (!notifications_enabled()) return;
     $settings = notifications_get_settings($conn);
     $waProvider = notifications_pick_whatsapp_provider($settings);
-    $message = notifications_compose_task_updated($taskRow, $logRow);
+    $previousAssignees = (string)($previousTask['assignees'] ?? '');
+    $reassigned = !$isVendorTask && $previousTask !== null
+        && task_assignment_changed($previousAssignees, (string)($taskRow['assignees'] ?? ''));
+    $event = $reassigned ? 'task_reassigned' : 'task_updated';
+    $message = $reassigned
+        ? task_reassignment_message($taskRow, $logRow, $previousAssignees)
+        : notifications_compose_task_updated($taskRow, $logRow);
 
     if ($waProvider !== '') {
-        // Update message goes to Owner only.
         $owner = (string)($taskRow['owner'] ?? '');
-        $mobile = notifications_get_user_mobile($conn, $owner);
-        if ($mobile !== '') {
-            notifications_enqueue($conn, 'whatsapp', $waProvider, 'personal', $mobile, $message, ['event' => 'task_updated']);
-            notifications_log($conn, 'task_updated', 'whatsapp', $waProvider, $mobile, 'enqueued', '');
+        $recipients = $reassigned
+            ? task_reassignment_recipients((string)($taskRow['assignees'] ?? ''), $owner)
+            : [$owner];
+        $sentMobiles = [];
+        foreach ($recipients as $recipient) {
+            $mobile = notifications_get_user_mobile($conn, $recipient);
+            $mobileKey = preg_replace('/[^0-9]/', '', $mobile);
+            if ($mobileKey === '' || isset($sentMobiles[$mobileKey])) continue;
+            notifications_enqueue($conn, 'whatsapp', $waProvider, 'personal', $mobile, $message, ['event' => $event]);
+            notifications_log($conn, $event, 'whatsapp', $waProvider, $mobile, 'enqueued', '');
+            $sentMobiles[$mobileKey] = true;
         }
     }
 
@@ -275,8 +287,8 @@ function notify_task_updated(mysqli $conn, array $taskRow, array $logRow, bool $
         $groups = notifications_get_project_groups($conn, $project);
         $chatId = trim((string)($groups['telegramGroupId'] ?? '')) ?: $officeChatId;
         if ($chatId !== '') {
-            notifications_enqueue($conn, 'telegram', 'telegram', 'group', $chatId, $message, ['event' => 'task_updated']);
-            notifications_log($conn, 'task_updated', 'telegram', 'telegram', $chatId, 'enqueued', '');
+            notifications_enqueue($conn, 'telegram', 'telegram', 'group', $chatId, $message, ['event' => $event]);
+            notifications_log($conn, $event, 'telegram', 'telegram', $chatId, 'enqueued', '');
         }
     }
 }
@@ -1188,7 +1200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 	        // Preserve the original (master) attachments on the task record.
 	        // Updates to photos/pdf should be stored only in action_logs.
-	        $existingStmt = $conn->prepare("SELECT photos, pdf FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
+	        $existingStmt = $conn->prepare("SELECT photos, pdf, assignees FROM `{$table}` WHERE id=?" . (app_table_is_scoped($conn, $table) ? " AND tenant_id = " . app_tenant_id() : '') . " LIMIT 1");
 	        if (!$existingStmt) sendJson(['success' => false, 'error' => 'Failed to prepare task lookup.'], 500);
 	        $existingStmt->bind_param('i', $id);
 	        $existingStmt->execute();
@@ -1282,7 +1294,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                   'remarks' => $lastUpdateRemarks,
                   'minutes' => $hours,
               ];
-              notify_task_updated($conn, $taskRow, $logRow, $table === 'vendor_tasks' || trim($vendor) !== '');
+              notify_task_updated($conn, $taskRow, $logRow, $table === 'vendor_tasks' || trim($vendor) !== '', $existingRow);
           } catch (Throwable $e) {
           }
 

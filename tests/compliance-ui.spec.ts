@@ -493,7 +493,7 @@ test('Recurring task form ends with Billing Type and Fee',async({page})=>{
  await expect(page.getByText('Professional Fee (optional)',{exact:true})).toHaveCount(0);
 });
 
-test('Office Tasks groups tasks without clients and the simple task form accepts a blank Client',async({page})=>{
+test('Office Tasks groups existing tasks without clients',async({page})=>{
  await page.setViewportSize({width:393,height:850});
  const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
  const auth=await response.json();expect(auth.success).toBeTruthy();
@@ -517,20 +517,7 @@ test('Office Tasks groups tasks without clients and the simple task form accepts
  await expect(page.getByRole('heading',{name:'Internal completed',exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Client work',exact:true})).toHaveCount(0);
  await expect(page.getByRole('heading',{name:'Project work',exact:true})).toHaveCount(0);
- await page.getByRole('button',{name:'Add Task',exact:true}).click();
- const form=page.locator('form').filter({has:page.getByPlaceholder('Enter task title',{exact:true})});
- await form.getByPlaceholder('Enter task title',{exact:true}).fill('New office task');
- await form.locator('input[name="dueDate"]').fill('2026-11-20');
- for(const [label,value] of [['Task Owner','Office User'],['Assignees','Office User'],['Category','Office Category']]){
-  const wrapper=form.locator('label').filter({hasText:new RegExp('^'+label)}).locator('..');
-  await wrapper.getByText('Select',{exact:true}).click();
-  await wrapper.getByText(value,{exact:true}).last().click();
-  await page.getByRole('heading',{name:'Add Task',exact:true}).click();
- }
- await form.getByLabel('Billing Type').selectOption('Non Billable');
- await expect(form.getByText('Client',{exact:true}).locator('..').getByText('Select',{exact:true})).toBeVisible();
- await expect(form.getByRole('button',{name:'Save Task',exact:true})).toBeVisible();
- expect(await form.evaluate(node=>(node as HTMLFormElement).checkValidity())).toBeTruthy();
+
 });
 
 test('Billing mobile cards hide filters until the filter icon is tapped',async({page})=>{

@@ -11,6 +11,7 @@ declare(strict_types=1);
  */
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/task_reassignment.php';
 
 function notifications_enabled(): bool {
     return (bool)($GLOBALS['NOTIFICATIONS_ENABLED'] ?? false);

@@ -453,11 +453,20 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
 
   return (
     <div className="space-y-6 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="sr-only">{isVendorView ? 'Vendor Action Log' : 'Action Log'}</h2>
+      <h2 className="sr-only">{isVendorView ? 'Vendor Action Log' : 'Action Log'}</h2>
+      <div className="bg-white p-4 rounded-xl shadow-sm border-2 border-blue-400 space-y-4">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-2.5 text-blue-600" size={18} />
+          <input 
+            type="text" 
+            placeholder="Search log history..." 
+            className={`w-full pl-10 pr-4 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm transition-colors font-black ${searchTerm ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-blue-200 text-blue-900'}`} 
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
-        <div className="flex gap-3 w-full md:auto items-center">
+        <div className="flex gap-3 shrink-0 items-center">
             <div className="flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
                 <button aria-label="Card View" title="Card View" onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-blue-600' : 'text-blue-500'}`}><LayoutGrid size={18} /></button>
                 <button aria-label="Table View" title="Table View" onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-blue-500'}`}><LayoutList size={18} /></button>
@@ -472,18 +481,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
               <Filter size={16} />
             </button>
         </div>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl shadow-sm border-2 border-blue-400 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-2.5 text-blue-600" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search log history..." 
-            className={`w-full pl-10 pr-4 py-2 border-2 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-100 text-sm transition-colors font-black ${searchTerm ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-blue-200 text-blue-900'}`} 
-            value={searchTerm} 
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </div>
         <div className="w-full px-3 py-2 rounded-md border border-blue-200 bg-blue-50">
           <p className="text-[10px] sm:text-[11px] font-black text-blue-700 tracking-wider whitespace-nowrap overflow-x-auto custom-scrollbar">

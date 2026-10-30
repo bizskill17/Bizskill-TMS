@@ -39,7 +39,6 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
  function open(note:Template){setSaveError('');setEdit({...note,note_html:sanitizeNote(note.note_html)});}
  return <div className="py-3 space-y-3 min-w-0">
   <style>{'.checklist-note{overflow-wrap:anywhere;line-height:1.6;white-space:normal}.checklist-note p,.checklist-note div,.checklist-note blockquote{margin:0 0 .5em}.checklist-note ol{list-style-type:decimal;padding-inline-start:1.6em;margin:.5em 0}.checklist-note ul{list-style-type:disc;padding-inline-start:1.6em;margin:.5em 0}.checklist-note li{margin:.15em 0}.checklist-note a{color:#4338ca;text-decoration:underline}.checklist-note blockquote{border-inline-start:3px solid #c7d2fe;padding-inline-start:.75em}'}</style>
-  <h1 className="text-xl font-bold text-indigo-700">Checklists</h1>
   <div className="flex items-center gap-2">
    <div className="relative flex-1 min-w-0"><Search size={17} className="absolute left-3 top-3 text-indigo-400"/><input aria-label="Search checklists" placeholder="Search notes..." className={input+' pl-9'} value={search} onChange={e=>setSearch(e.target.value)}/></div>
    {admin&&<button type="button" aria-label="Add Checklist" title="Add Checklist" disabled={loading||!csrf} className={iconButton+' !bg-indigo-600 !text-white'} onClick={()=>open(blank())}><Plus size={22}/></button>}
@@ -47,7 +46,7 @@ export function ChecklistsView({tenantCode}:{tenantCode:string}){
   {error&&<p role="alert" className="text-sm text-red-600">{error}</p>}
   {notice&&<p role="status" className="text-sm text-green-700">{notice}</p>}
   {loading&&<p className="text-sm text-gray-500">Loading...</p>}
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 items-start">
    {filtered.map(note=><article key={note.id} aria-label={note.name} className="min-w-0 border border-indigo-200 rounded-xl bg-white p-3 md:p-4">
     <div className="flex items-start justify-between gap-2 mb-3"><h2 className="min-w-0 break-words text-base font-semibold text-indigo-800">{note.name}{!Number(note.active)&&<span className="block text-xs text-gray-500">Inactive</span>}</h2>
      <div className="flex shrink-0 gap-1">{Number(note.active)>0&&<button type="button" aria-label={'Copy '+note.name} title="Copy note" className={iconButton} disabled={copying!==null} onClick={()=>void copy(note)}><Copy size={17}/></button>}{admin&&<button type="button" aria-label={'Edit '+note.name} title="Edit note" className={iconButton} onClick={()=>open(note)}><Edit2 size={17}/></button>}</div>

@@ -148,6 +148,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const isFormValid = () => {
 	    const basicValid = formData.title.trim() !== '' &&
 	        formData.priority !== '' &&
+          formData.firm.trim() !== '' &&
 	        formData.owner !== '' &&
 	        formData.dueDate !== '' ;
     
@@ -256,8 +257,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 	              ></textarea>
 	            </div>
 
-		            <div className="flex flex-col md:flex-row gap-4">
-		              <div className="w-full md:w-72">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+              <div className="space-y-1">
+                    <SearchableSelect
+                      label="Client"
+                      options={clientOptions}
+                      value={formData.firm}
+                      onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
+                      placeholder="Select Client..."
+                      required
+                    />
+			            </div>
+              <div className="min-w-0">
 		                <label className="text-sm font-medium text-black block mb-1">{getFieldLabel('task.priority', 'Priority')} <span className="text-red-500">*</span></label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['High', 'Medium', 'Low'] as const).map((priorityOption) => (
@@ -276,18 +287,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     ))}
                   </div>
 	              </div>
-	            </div>
-
-		            <div className="space-y-1">
-                    <SearchableSelect
-                      label="Client"
-                      options={clientOptions}
-                      value={formData.firm}
-                      onChange={(val) => setFormData(prev => ({ ...prev, firm: val }))}
-                      placeholder="Select Client..."
-                      required={isVendorView}
-                    />
-			            </div>
+            </div>
 
 	            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 	                {isVendorView ? (
@@ -400,8 +400,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 	                )}
 	            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+              <div className="space-y-1 min-w-0">
                 <label className="text-sm font-medium text-black block mb-1">Time</label>
                 <div className="relative">
                   <input
@@ -414,11 +414,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                   <Clock3 size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-black pointer-events-none" />
                 </div>
               </div>
-              
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <label className="text-sm font-medium text-black block mb-1">Photo</label>
                 <input
                   type="file"
@@ -436,7 +432,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 />
                 <p className="text-xs text-gray-500">{formData.photos.length > 0 ? 'Photo selected' : 'No photo selected'}</p>
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <label className="text-sm font-medium text-black block mb-1">PDF</label>
                 <input
                   type="file"
