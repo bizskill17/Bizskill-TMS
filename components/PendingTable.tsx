@@ -15,20 +15,24 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
 
   return (
     <div className={`${className || 'bg-white'} min-w-0 rounded-xl shadow-sm border-2 border-black overflow-hidden`}>
-      <div className="p-4 md:p-6 border-b border-black flex justify-between items-center">
+      <div className="p-3 md:p-4 border-b border-black flex justify-between items-center">
         <h3 className="text-lg font-bold text-blue-700 uppercase tracking-tight">{title}</h3>
-        
 
       </div>
       
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[600px] text-left">
+        <table className="table-fixed text-left" style={{width:`max(100%, ${96+(columns.length+1)*44}px)`}}>
+          <colgroup>
+            <col/>
+            <col style={{width:44}}/>
+            {columns.map(column=><col key={column} style={{width:44}}/>)}
+          </colgroup>
           <thead>
             <tr className="bg-blue-600 text-white">
-              <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-[10px] uppercase tracking-widest border-r border-black last:border-r-0">{headerLabel}</th>
-              <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-[10px] uppercase tracking-widest text-center border-r border-black last:border-r-0">Total Pending</th>
+              <th className="px-2 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words border-r border-black last:border-r-0">{headerLabel}</th>
+              <th className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words text-center border-r border-black last:border-r-0">Total Pending</th>
               {columns.map((column) => (
-                <th key={column} className="px-3 md:px-6 py-3 md:py-4 font-bold text-[10px] uppercase tracking-widest text-center border-r border-black last:border-r-0">
+                <th key={column} className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words text-center border-r border-black last:border-r-0">
                   {column}
                 </th>
               ))}
@@ -42,10 +46,10 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
                   className="hover:bg-blue-50/50 cursor-pointer transition-colors"
                   onClick={() => onRowClick(row.name)}
                 >
-                  <td className="px-3 md:px-6 py-3 md:py-4 text-sm text-black font-bold border-r border-black last:border-r-0">{row.name}</td>
-                  <td className="px-3 md:px-6 py-3 md:py-4 text-sm text-black text-center font-bold border-r border-black last:border-r-0">{row.total}</td>
+                  <td className="px-2 py-2 text-xs md:text-sm leading-snug whitespace-normal break-words text-black font-bold border-r border-black last:border-r-0">{row.name}</td>
+                  <td className="px-1 py-2 text-xs md:text-sm tabular-nums whitespace-nowrap text-black text-center font-bold border-r border-black last:border-r-0">{row.total}</td>
                   {columns.map((column) => (
-                    <td key={`${row.name}-${column}`} className="px-3 md:px-6 py-3 md:py-4 text-sm text-center font-extrabold border-r border-black last:border-r-0 text-blue-700">
+                    <td key={`${row.name}-${column}`} className="px-1 py-2 text-xs md:text-sm tabular-nums whitespace-nowrap text-center font-extrabold border-r border-black last:border-r-0 text-blue-700">
                       {row.statusCounts?.[column] || 0}
                     </td>
                   ))}
@@ -53,7 +57,7 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
               ))
             ) : (
               <tr>
-                <td colSpan={2 + columns.length} className="px-6 py-10 text-center text-blue-900/40 text-sm font-bold uppercase">
+                <td colSpan={2 + columns.length} className="px-2 py-6 text-center text-blue-900/40 text-sm font-bold uppercase">
                   No pending data found.
                 </td>
               </tr>
