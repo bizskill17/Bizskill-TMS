@@ -13,6 +13,10 @@ interface PendingTableProps {
 export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, data, onRowClick, className = '', statusColumns = [] }) => {
   const columns = statusColumns.length > 0 ? statusColumns : ['Not Yet Started', 'In Progress', 'Pending for Client', 'Pending for Owner', 'Pending for Training', 'Pending for Billing', 'Pending for Payment'];
 
+  const countWidth=60/(columns.length+1);
+  // Extra custom statuses may scroll; the usual four-column table fits the screen.
+  const minimumWidth=columns.length>2?Math.ceil((columns.length+1)*64/0.6):undefined;
+
   return (
     <div className={`${className || 'bg-white'} min-w-0 rounded-xl shadow-sm border-2 border-black overflow-hidden`}>
       <div className="p-3 md:p-4 border-b border-black flex justify-between items-center">
@@ -21,18 +25,18 @@ export const PendingTable: React.FC<PendingTableProps> = ({ title, headerLabel, 
       </div>
       
       <div className="overflow-x-auto">
-        <table className="table-fixed text-left" style={{width:`max(100%, ${96+(columns.length+1)*44}px)`}}>
+        <table className="w-full table-fixed text-left" style={{minWidth:minimumWidth}}>
           <colgroup>
-            <col/>
-            <col style={{width:44}}/>
-            {columns.map(column=><col key={column} style={{width:44}}/>)}
+            <col style={{width:'40%'}}/>
+            <col style={{width:countWidth+'%'}}/>
+            {columns.map(column=><col key={column} style={{width:countWidth+'%'}}/>)}
           </colgroup>
           <thead>
             <tr className="bg-blue-600 text-white">
-              <th className="px-2 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words border-r border-black last:border-r-0">{headerLabel}</th>
-              <th className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words text-center border-r border-black last:border-r-0">Total Pending</th>
+              <th className="px-2 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] border-r border-black last:border-r-0">{headerLabel}</th>
+              <th className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] text-center border-r border-black last:border-r-0">Total Pending</th>
               {columns.map((column) => (
-                <th key={column} className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-words text-center border-r border-black last:border-r-0">
+                <th key={column} className="px-1 py-2 font-bold text-[10px] uppercase leading-tight whitespace-normal break-normal [overflow-wrap:normal] text-center border-r border-black last:border-r-0">
                   {column}
                 </th>
               ))}

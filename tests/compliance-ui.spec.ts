@@ -35,3 +35,34 @@ test('Checklists copy saved text directly without a composer',async({page})=>{
  await expect(page.getByRole('dialog')).toHaveCount(0);
  await expect(page.getByText('Message Preview',{exact:true})).toHaveCount(0);
 });
+
+test('Mobile pending tables share width and keep heading words intact',async({page})=>{
+ await page.setViewportSize({width:360,height:800});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript((user)=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.goto('/');
+ for(const width of [360,393,430]){
+  await page.setViewportSize({width,height:800});
+  for(const name of ['Pending by Assignee','Pending by Priority','Pending by Category']){
+   const table=page.getByRole('heading',{name,exact:true}).locator('../..').getByRole('table');
+   await expect(table).toBeVisible();
+   await expect(table.getByRole('columnheader')).toHaveCount(4);
+   const sizes=await table.evaluate((node)=>{
+    const table=node as HTMLTableElement;const parent=table.parentElement!;
+    const headers=Array.from(table.querySelectorAll('th'));
+    return {overflow:parent.scrollWidth-parent.clientWidth,ratio:headers[0].getBoundingClientRect().width/table.getBoundingClientRect().width,splitWords:headers.flatMap(header=>{
+     const text=header.firstChild;if(!text||text.nodeType!==Node.TEXT_NODE)return [];
+     return Array.from((text.textContent||'').matchAll(/\\S+/g)).filter(word=>{
+      const range=document.createRange();range.setStart(text,word.index!);range.setEnd(text,word.index!+word[0].length);
+      return range.getClientRects().length>1;
+     }).map(word=>word[0]);
+    })};
+   });
+   expect(sizes.overflow).toBeLessThanOrEqual(1);
+   expect(sizes.ratio).toBeGreaterThan(0.38);
+   expect(sizes.ratio).toBeLessThan(0.42);
+   expect(sizes.splitWords).toEqual([]);
+  }
+ }
+});
