@@ -136,9 +136,6 @@ export function DscRegisterView({tenantCode}:{tenantCode:string}) {
     <button aria-label="Add DSC" title="Add DSC" disabled={loading||saving||!data.csrf} onClick={()=>void open('create')} className="flex gap-0 md:gap-2 items-center px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add DSC</span></button>
    </div>
    </div>
-   <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-indigo-600">Responsible User: {data.settings.responsible_user_name||'Not set in DSC Settings'}</p>
-    <span className={'text-xs px-3 py-2 rounded-full '+(Number(data.settings.enabled)?'bg-green-50 text-green-700':'bg-gray-100 text-gray-600')}>Office Reminders {Number(data.settings.enabled)?'On':'Off'}</span>
-   </div>
    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
     <div><span className={label}>Client</span><SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name))).map(name=>({value:name,label:name}))]} value={clientFilter} onChange={setClientFilter}/></div>
     <label><span className={label}>Expiry From</span><input aria-label="Expiry from" type="date" className={input} value={dateFrom} onChange={e=>setDateFrom(e.target.value)}/></label>
