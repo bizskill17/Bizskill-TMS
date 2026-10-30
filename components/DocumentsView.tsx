@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom';
 import React, { useEffect, useState } from 'react';
-import { Plus, X, RefreshCw, Search, CheckCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { Plus, X, Search, CheckCircle, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import { SearchableSelect } from './SearchableSelect';
 import { User, Firm } from '../types';
 import { localDate, matchesTab, documentStatus } from './documentRules.mjs';
@@ -69,17 +69,13 @@ export function DocumentsView({users, clients, tenantCode}: {users:User[]; clien
  const formField=(key:string,value:unknown)=>setForm(p=>({...p,[key]:value}));
  const busy=loading||saving;
  return <div className="p-4 md:p-6 space-y-4">
-  <div className="flex flex-wrap items-center justify-between gap-3">
-   
-   <div className="flex gap-2">
-    <button type="button" disabled={busy} onClick={()=>void load()} className="p-2 border border-indigo-200 rounded-lg text-indigo-600 disabled:opacity-50" aria-label="Refresh documents"><RefreshCw size={18}/></button>
-    <button aria-label="Add Document" title="Add Document" type="button" disabled={busy||!csrf} onClick={()=>{setError('');setForm(blankForm());setOpen(true);}} className="inline-flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add Document</span></button>
-   </div>
-  </div>
   {error&&<div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 p-3">{error}</div>}
   {tabsTarget && createPortal(<div role="tablist" aria-label="Document views" className="flex flex-nowrap items-center gap-2">{tabs.map(t=><button key={t.id} role="tab" aria-selected={tab===t.id} onClick={()=>setTab(t.id)} className={'shrink-0 whitespace-nowrap px-4 py-2 rounded-full border text-sm font-semibold '+(tab===t.id?'bg-indigo-600 text-white border-indigo-600':'bg-white text-indigo-700 border-indigo-200')}>{t.label}<span className="ml-2 opacity-75">{rows.filter(r=>matchesTab(r,t.id)).length}</span></button>)}</div>,tabsTarget)}
   <div className="bg-white rounded-xl border border-indigo-100 p-3 space-y-3">
-   <div className="relative"><Search className="absolute left-3 top-2.5 text-indigo-400" size={18}/><input aria-label="Search documents" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, clients or people..." className={input+' pl-10'}/></div>
+   <div className="flex items-center gap-3">
+   <div className="relative flex-1 min-w-0"><Search className="absolute left-3 top-2.5 text-indigo-400" size={18}/><input aria-label="Search documents" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search documents, clients or people..." className={input+' pl-10'}/></div>
+    <button aria-label="Add Document" title="Add Document" type="button" disabled={busy||!csrf} onClick={()=>{setError('');setForm(blankForm());setOpen(true);}} className="shrink-0 whitespace-nowrap inline-flex items-center gap-0 md:gap-2 px-2 md:px-4 py-2 bg-indigo-600 text-white rounded-lg disabled:opacity-50"><Plus size={18}/><span className="sr-only md:not-sr-only">Add Document</span></button>
+   </div>
    <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
     <label className="text-xs text-gray-600">In / Out<select aria-label="Filter movement" className={input} value={direction} onChange={e=>setDirection(e.target.value)}><option value="">All</option><option>In</option><option>Out</option></select></label>
     <div className="text-xs text-gray-600">Client<SearchableSelect compact options={[{value:'',label:'All Clients'},...Array.from(new Set(rows.map(r=>r.client_name).filter(Boolean))).sort().map(n=>({value:n,label:n}))]} value={clientFilter} onChange={setClientFilter}/></div>
