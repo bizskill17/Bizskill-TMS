@@ -17,7 +17,6 @@ import { ProjectsView } from './components/ProjectsView';
 import { ClientsView } from './components/ClientsView';
 import { FirmsView } from './components/FirmsView';
 import { ActionLogView } from './components/ActionLogView';
-import { ActivityDashboardView } from './components/ActivityDashboardView';
 import { RecurringTasksView } from './components/RecurringTasksView';
 import { RecurringTaskActionsView } from './components/RecurringTaskActionsView';
 import { UpdateMultipleView } from './components/UpdateMultipleView';
@@ -79,12 +78,11 @@ const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
   
   // Tasks Section
-  { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={20} />, section: 'Tasks' },
   { id: 'pending-group', label: 'Pending', icon: <Clock size={20} />, section: 'Tasks' },
   { id: 'pending', label: 'Pending Tasks', icon: <Clock size={20} />, section: 'Tasks' },
-  { id: 'completed', label: 'Completed Tasks', icon: <CheckCircle size={20} />, section: 'Tasks' },
-  { id: 'activity-dashboard', label: 'Activity Dashboard', icon: <BarChart3 size={20} />, section: 'Tasks' },
   { id: 'action-log', label: 'Action Log', icon: <History size={20} />, section: 'Tasks' },
+  { id: 'completed', label: 'Completed Tasks', icon: <CheckCircle size={20} />, section: 'Tasks' },
+  { id: 'all-tasks', label: 'All Tasks', icon: <CheckSquare size={20} />, section: 'Tasks' },
   
 	  // Recurring Tasks Section
   { id: 'recurring-tasks', label: 'Recurring Master', icon: <RotateCcw size={20} />, section: 'Recurring Tasks' },
@@ -285,7 +283,7 @@ export default function App() {
   });
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId === 'master' ? 'users' : tabId);
+    setActiveTab(tabId === 'master' ? 'users' : tabId === 'activity-dashboard' ? 'dashboard' : tabId);
 
   };
 
@@ -499,7 +497,12 @@ export default function App() {
   const sectionTabs = navItemsWithCounts.filter(item =>
     (item.section || 'main') === activeSection &&
     !['pending-group', 'add-multiple', 'update-multiple'].includes(item.id)
-  );
+  ).sort((left, right) => {
+    if (activeSection !== 'Tasks') return 0;
+    const order = ['pending', 'action-log', 'completed', 'all-tasks'];
+    const rank = (id: string) => { const index = order.indexOf(id); return index < 0 ? order.length : index; };
+    return rank(left.id) - rank(right.id);
+  });
 
   const [lastAddedCategory, setLastAddedCategory] = useState<string>('');
   const [lastAddedProject, setLastAddedProject] = useState<string>('');
@@ -1373,7 +1376,7 @@ export default function App() {
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
 		        return <Dashboard 
-		          isAdmin={isAdmin} quickControlsHidden={isAnyFormModalOpen || isSidebarOpen || isSyncing} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
+		          currentUser={currentUser} isAdmin={isAdmin} quickControlsHidden={isAnyFormModalOpen || isSidebarOpen || isSyncing} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
 	          onNavigate={(tab) => {
               if (tab === 'pending-client') setActiveTab(makePendingStatusId('Pending for Client'));
               else if (tab === 'pending-owner') setActiveTab(makePendingStatusId('Pending for Owner'));
@@ -1408,7 +1411,6 @@ export default function App() {
       case 'pending': return <TasksView title={getViewLabel('pending', 'Pending Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status !== 'Completed')} {...commonTaskProps} filterType="pending" />;
 		      case 'completed': return <TasksView title={getViewLabel('completed', 'Completed Tasks')} tasks={visibleTasks.filter(t => (!t.vendor || t.vendor === '') && t.status === 'Completed')} {...commonTaskProps} filterType="completed" />;
       case 'update-multiple': return <UpdateMultipleView projects={projects} tasks={visibleTasks.filter(t => t.status !== 'Completed')} onUpdateTasks={async (updates) => { for (const u of updates) await handleUpdateTaskOptimistic(u); setActiveTab('pending'); }} />;
-      case 'activity-dashboard': return <ActivityDashboardView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} users={users} currentUser={currentUser} />;
       case 'action-log': return <ActionLogView logs={visibleActionLogs.filter(l => !l.vendor || l.vendor === '')} isAdmin={isAdmin} projects={projects} onDeleteLog={(logId, taskId) => handleDeleteLog(logId, taskId, false)} dashboardFilter={logDashboardFilter} onClearDashboardFilter={() => setLogDashboardFilter(null)} />;
       case 'due-recurring-tasks': return <RecurringTasksView title={getViewLabel('due-recurring-tasks', 'Due Recurring Tasks')} filterType="due" tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;
       case 'recurring-tasks': return <RecurringTasksView title={getViewLabel('recurring-tasks', 'Recurring Tasks')} tasks={visibleRecurringTasks} actions={visibleRecurringActions} onAdd={() => setIsRecurringTaskModalOpen(true)} onUpdate={(t) => { setSelectedRecurringTask(t); setIsRecurringTaskUpdateModalOpen(true); }} onEdit={(t) => { setSelectedRecurringTask(t); setIsEditRecurringTaskModalOpen(true); }} onViewHistory={(t) => { setSelectedRecurringTask(t); setIsRecurringHistoryModalOpen(true); }} onDelete={async (id) => { if (!confirmDelete('this recurring task')) return; setRecurringTasks(prev => prev.filter(t => t.id !== id)); await apiPost('deleteRecord', { id }, 'RecurringTasks'); }} currentUser={currentUser} sidebarCollapsed={layoutMode === 'side' && isSidebarCollapsed} />;

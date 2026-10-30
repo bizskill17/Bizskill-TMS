@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityDashboardView } from './ActivityDashboardView';
 import {createPortal} from 'react-dom';
 import {dashboardToday, isDelayedTask, taskAssignees} from './dashboardRules.mjs';
 import { Plus, UserPlus, Folder, CheckSquare, Clock, AlertTriangle, CheckCircle, Users, Building2, Truck, FileText, RotateCcw, LayoutList, History, ShieldAlert, Tags } from 'lucide-react';
@@ -12,6 +13,7 @@ import { useLabels } from '../labelOverrides';
 const VENDOR_MODULE_ENABLED = false;
 
 interface DashboardProps {
+  currentUser: User | null;
   isAdmin: boolean;
   quickControlsHidden?: boolean;
   onOpenNewTask: () => void;
@@ -33,6 +35,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
+  currentUser,
   isAdmin,
   quickControlsHidden=false,
   onOpenNewTask, 
@@ -379,6 +382,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <thead className="bg-indigo-600 text-white"><tr>{['User','Simple Updates','Recurring Updates','Total'].map(title=><th key={title} className="px-1 py-2 text-[10px] leading-tight whitespace-normal break-normal">{title}</th>)}</tr></thead>
           <tbody>{activityRows.map(row=><tr key={row.name}><td className="p-2 break-words font-semibold">{row.name}</td><td className="px-1 py-2 text-center tabular-nums"><button type="button" disabled={!row.simple} aria-label={'Simple updates by '+row.name} className="text-blue-700 font-bold disabled:text-gray-500" onClick={()=>onFilterChange('employee-log',row.name)}>{row.simple}</button></td><td className="px-1 py-2 text-center tabular-nums"><button type="button" disabled={!row.recurring} aria-label={'Recurring updates by '+row.name} className="text-blue-700 font-bold disabled:text-gray-500" onClick={()=>onFilterChange('recurring-log',row.name)}>{row.recurring}</button></td><td className="px-1 py-2 text-center font-bold tabular-nums">{row.total}</td></tr>)}{!activityRows.length&&<tr><td colSpan={4} className="px-3 py-2 text-center text-xs text-gray-500">No activity today.</td></tr>}</tbody>
         </table></div>
+      </section>
+      <section aria-label="Activity Dashboard" className="min-w-0 space-y-3">
+        <h3 className="text-lg font-bold text-blue-700">Activity Dashboard</h3>
+        <ActivityDashboardView logs={actionLogs.filter(log=>!log.vendor || log.vendor==='')} users={users} currentUser={currentUser} embedded />
       </section>
       {!quickControlsHidden&&createPortal(<nav aria-label="Quick Control" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-indigo-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]" style={{paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>
         <div className={'grid '+(isAdmin?'grid-cols-4':'grid-cols-2')}>
