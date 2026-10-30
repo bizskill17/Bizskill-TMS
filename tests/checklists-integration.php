@@ -36,4 +36,14 @@ note_expect($old['introduction']==='PAN and Aadhaar'&&$old['closing_note']==='Do
 [$status]=note_call(['csrf'=>$csrf,'id'=>$legacyId,'version'=>1,'name'=>'Stale','note_html'=>'<p>Old</p>']);note_expect($status===400,'Stale edits denied');
 foreach(['<p><br></p>','<p>&nbsp;</p>','<script>bad()</script>'] as $empty){[$status]=note_call(['csrf'=>$csrf,'name'=>'Empty','note_html'=>$empty]);note_expect($status===400,'Empty note rejected');}
 [$status,$dedicated]=note_call(null,'test-c','c');note_expect($status===200&&!$dedicated['templates'],'Dedicated database isolated');
+$master=$data['categories'][0]['name'];
+[$status,$categoryNote]=note_call(['csrf'=>$csrf,'name'=>'Category test','category'=>$master,'note_html'=>'<p>Category note</p>']);note_expect($status===200,'Master category accepted');
+$categoryId=(int)$categoryNote['id'];
+[$status,$loaded]=note_call();$found=array_values(array_filter($loaded['templates'],fn($n)=>(int)$n['id']===$categoryId))[0];note_expect($found['category']===$master,'Category saved and returned');
+[$status]=note_call(['csrf'=>$csrf,'name'=>'Invalid category','category'=>'Unknown category not in master','note_html'=>'<p>Note</p>']);note_expect($status===400,'Unknown category rejected');
+[$status]=note_call(['csrf'=>$ordinary['csrf'],'action'=>'delete','id'=>$categoryId,'version'=>1],'test-a','ordinary');note_expect($status===403,'Only Admin can delete');
+[$status]=note_call(['csrf'=>$other['csrf'],'action'=>'delete','id'=>$categoryId,'version'=>1],'test-b','b');note_expect($status===400,'Cross tenant deletion denied');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'delete','id'=>$categoryId,'version'=>999]);note_expect($status===400,'Stale deletion denied');
+[$status]=note_call(['csrf'=>$csrf,'action'=>'delete','id'=>$categoryId,'version'=>1]);note_expect($status===200,'Admin can delete checklist');
+[$status,$loaded]=note_call();note_expect(!in_array($categoryId,array_map('intval',array_column($loaded['templates'],'id')),true),'Deleted checklist no longer listed');
 echo "Checklist API passed: legacy migration, rich notes, CSRF, permissions, concurrency and tenant isolation.\n";

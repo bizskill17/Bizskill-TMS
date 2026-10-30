@@ -13,6 +13,18 @@ try{
     cp_schema($conn);
     if($_SERVER['REQUEST_METHOD']==='GET'){
         if(isset($_GET['session']))cp_reply(['success'=>true,'csrf'=>$csrf]);
+        if(isset($_GET['task_defaults'])){
+            $source=(string)($_GET['source_type']??'');$sourceId=(int)($_GET['source_id']??0);
+            if(!in_array($source,['Simple','Recurring Master'],true))throw new InvalidArgumentException('Invalid source.');
+            $table=$source==='Simple'?'main_tasks':'recurring_tasks';$scope=app_table_is_scoped($conn,$table)?' AND tenant_id=?':'';
+            $rows=dsc_all($conn,'SELECT * FROM '.$table.' WHERE id=?'.$scope,$scope?[$sourceId,$tenant]:[$sourceId]);
+            if(!$rows)throw new InvalidArgumentException('Task unavailable.');
+            if(!$admin)cp_reply(['success'=>true,'editable'=>false,'csrf'=>$csrf]);
+            $defaults=dsc_all($conn,'SELECT billing_type,fee FROM task_billing_defaults WHERE tenant_id=? AND source_type=? AND source_id=?',[$tenant,$source,$sourceId]);
+            $entries=dsc_all($conn,'SELECT billing_type,fee,billing_status FROM compliance_entries WHERE tenant_id=? AND source_type=? AND source_key=?',[$tenant,$source,(string)$sourceId]);
+            $value=$defaults[0]??$entries[0]??[];
+            cp_reply(['success'=>true,'editable'=>($entries[0]['billing_status']??'')!=='Billed','billing_type'=>$value['billing_type']??'','fee'=>$value['fee']??null,'csrf'=>$csrf]);
+        }
         $id=(int)($_GET['id']??0);
         if($id){$row=cp_find($conn,'compliance_entries',$id);if(!$admin&&!in_array($actorName,array_map('trim',explode(',',$row['assigned_user_name'])),true))cp_reply(['success'=>false,'error'=>'Access denied.'],403);$events=dsc_all($conn,'SELECT * FROM compliance_history WHERE tenant_id=? AND entry_id=? ORDER BY id DESC',[$tenant,$id]);if(!$admin){$events=array_values(array_filter($events,fn($e)=>in_array($e['action'],['Generated','updateEntry','extend','cancel'],true)));foreach($events as &$event){$details=json_decode($event['details'],true);$event['details']=json_encode(['stage'=>$details['changes']['current_stage']??null,'remarks'=>$details['changes']['remarks']??'','reason'=>$details['reason']??'']);}unset($event);}cp_reply(['success'=>true,'history'=>$events]);}
         if($admin){cp_sync_work($conn);cp_generate($conn);}
@@ -37,9 +49,9 @@ try{
         $table=$source==='Simple'?'main_tasks':'recurring_tasks';$scope=app_table_is_scoped($conn,$table)?' AND tenant_id=?':'';
         $found=dsc_all($conn,'SELECT * FROM '.$table.' WHERE id=?'.$scope,$scope?[$sourceId,$tenant]:[$sourceId]);if(!$found)throw new InvalidArgumentException('Task unavailable.');
         $sourceRow=$found[0];$prior=dsc_all($conn,'SELECT id FROM task_billing_defaults WHERE tenant_id=? AND source_type=? AND source_id=?',[$tenant,$source,$sourceId]);
-        if($prior)throw new InvalidArgumentException('Use Billing Type / Fee to update existing defaults.');
         if(!$admin&&($prior||!in_array($actorName,array_map('trim',explode(',',($sourceRow['owner']??'').','.($sourceRow['assignees']??$sourceRow['assignee']??''))),true)))throw new InvalidArgumentException('Only an Admin can change existing Billing Type.');
         $type=cp_billing($data['billing_type']??'');$fee=$type==='Billable'?cp_money($data['fee']??null):null;
+        if($type==='Billable'&&$fee===null)throw new InvalidArgumentException('Enter a Fee for Billable work.');
         dsc_query($conn,'INSERT INTO task_billing_defaults (tenant_id,source_type,source_id,billing_type,fee) VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE billing_type=VALUES(billing_type),fee=VALUES(fee)',[$tenant,$source,$sourceId,$type,$fee]);
         $entry=dsc_all($conn,'SELECT * FROM compliance_entries WHERE tenant_id=? AND source_type=? AND source_key=? FOR UPDATE',[$tenant,$source,(string)$sourceId]);
         if($entry){if($entry[0]['billing_status']==='Billed')throw new InvalidArgumentException('Reverse billing before changing fee.');cp_patch($conn,'compliance_entries',$entry[0],['billing_type'=>$type,'fee'=>$fee]);}

@@ -7,6 +7,7 @@ on:
       - 'api/compliance*'
       - 'components/ComplianceView.tsx'
       - 'components/BillingFields.tsx'
+      - 'components/useTaskBilling.ts'
       - 'tests/compliance*'
       - 'App.tsx'
       - 'api/checklist*'

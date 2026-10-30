@@ -60,3 +60,9 @@ $db->query("INSERT INTO recurring_actions(id,taskId,taskTitle,firm,status,update
 $simple=array_values(array_filter($data['entries'],fn($r)=>$r['source_type']==='Simple'&&(int)$r['source_id']===90001))[0];ck($simple['billing_type']==='Billable'&&$simple['billing_status']==='Not Billed','Simple task defaults inherited');
 [$code,$dedicated]=call_cp(null,'test-c','c');ck($code===200&&count($dedicated['entries'])===0,'Dedicated database isolated');
 echo "Compliance integration passed: stages, generation, isolation, billing, reversal, defaults and occurrences. No real messages sent.\n";
+
+[$code]=call_cp(['csrf'=>$csrf,'action'=>'taskDefaults','source_type'=>'Simple','source_id'=>90001,'billing_type'=>'Billable','fee'=>'']);ck($code===422,'Billable task requires a Fee');
+post_cp('taskDefaults',['source_type'=>'Simple','source_id'=>90001,'billing_type'=>'Billable','fee'=>'2500']);
+[$code,$defaults]=call_cp(null,'test-a','a','&task_defaults=1&source_type=Simple&source_id=90001');ck($code===200&&$defaults['editable']&&(float)$defaults['fee']===2500.0,'Edit form can load saved Billing Type and Fee');
+[$code,$hidden]=call_cp(null,'test-a','ordinary','&task_defaults=1&source_type=Simple&source_id=90001');ck($code===200&&!$hidden['editable']&&!isset($hidden['fee']),'Existing fees stay private for ordinary Users');
+[$code]=call_cp(['csrf'=>$ordinary['csrf'],'action'=>'taskDefaults','source_type'=>'Simple','source_id'=>90001,'billing_type'=>'Billable','fee'=>'999'],'test-a','ordinary');ck($code===422,'Ordinary Users cannot change saved billing defaults');
