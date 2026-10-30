@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, FileText, LayoutGrid, LayoutList, Calendar, User, Clock, AlertCircle, Filter, ArrowUpDown, ArrowUp, ArrowDown, X, Trash2, Briefcase, Building2, Download } from 'lucide-react';
 import { ActionLogEntry, Project } from '../types';
 import { SearchableSelect } from './SearchableSelect';
+import { TaskCardFields, TaskCardField } from './TaskCardFields';
 import { formatToIndianDate, formatToIndianDateTime, parseToISO } from '../App';
 
 interface ActionLogViewProps {
@@ -458,8 +459,8 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
         </div>
         <div className="flex gap-3 w-full md:auto items-center">
             <div className="flex bg-blue-50 p-1 rounded-lg md:hidden border border-blue-200">
-                <button onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-blue-600' : 'text-blue-500'}`}><LayoutGrid size={18} /></button>
-                <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-blue-500'}`}><LayoutList size={18} /></button>
+                <button aria-label="Card View" title="Card View" onClick={() => setViewMode('card')} className={`p-1.5 rounded-md transition-all ${viewMode === 'card' ? 'bg-white shadow text-blue-600' : 'text-blue-500'}`}><LayoutGrid size={18} /></button>
+                <button aria-label="Table View" title="Table View" onClick={() => setViewMode('table')} className={`p-1.5 rounded-md transition-all ${viewMode === 'table' ? 'bg-white shadow text-indigo-600' : 'text-blue-500'}`}><LayoutList size={18} /></button>
             </div>
             <button onClick={handleExportExcel} title="Export Excel" className="flex items-center justify-center p-2.5 bg-blue-600 text-white border-2 border-blue-700 rounded-md hover:bg-blue-700 shadow-sm transition-colors">
               <FileText size={16} />
@@ -532,81 +533,25 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
       </div>
 
       <div className={`space-y-4 md:hidden ${viewMode === 'card' ? 'block' : 'hidden'}`}>
-        {paginatedLogs.map((log) => (
-            <div key={log.id} className="bg-white border-2 border-blue-200 rounded-xl p-4 shadow-sm space-y-3 relative overflow-hidden">
-                <div className="flex justify-between items-start">
-                    <div className="space-y-1 max-w-[70%]">
-                        <h4 className="text-sm font-black text-blue-900 leading-tight whitespace-normal break-words">{log.task}</h4>
-                        <div className="flex items-center gap-1.5 text-[10px] text-blue-600 font-black uppercase whitespace-normal break-words">
-                            <Clock size={12} />
-                            {formatToIndianDate(log.updateDate)}
-                        </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                        <span className="px-2 py-0.5 bg-blue-600 text-white rounded text-[8px] font-black uppercase tracking-widest shadow-sm whitespace-normal break-words">
-                            {log.status}
-                        </span>
-                        <span className="text-[10px] font-black text-indigo-600">{log.hours || 0} min</span>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 py-2 border-y border-black">
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Owner</span>
-                        <div className="flex items-center gap-1 text-[10px] text-blue-900 font-black whitespace-normal break-words">
-                            <User size={10} /> {log.owner}
-                        </div>
-                    </div>
-                    
-                    
-                    
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Photo</span>
-                        {parsePhotos(log.photos).length > 0 ? (
-                            <button type="button" onClick={() => setPhotoViewer({ photos: parsePhotos(log.photos), index: 0 })} className="text-[10px] text-indigo-600 font-black underline">
-                                {parsePhotos(log.photos).length} photo(s)
-                            </button>
-                        ) : (
-                            <div className="text-[10px] text-blue-900 font-black">-</div>
-                        )}
-                    </div>
-                    <div className="space-y-0.5">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">PDF</span>
-	                        {normalizePdfHref(log.pdf) ? (
-	                            <button type="button" onClick={() => openPdf(log.pdf)} className="text-[10px] text-indigo-600 font-black underline text-left">
-	                                Open PDF
-	                            </button>
-	                        ) : (
-	                            <div className="text-[10px] text-blue-900 font-black">-</div>
-	                        )}
-                    </div>
-                    {isVendorView ? (
-                         <div className="space-y-0.5">
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Vendor</span>
-                            <div className="flex items-center gap-1 text-[10px] text-blue-900 font-bold whitespace-normal break-words">
-                                <Building2 size={10} /> {log.vendor}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-0.5">
-                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Assignee</span>
-                            <div className="flex items-center gap-1 text-[10px] text-blue-900 font-black whitespace-normal break-words">
-                                <User size={10} /> {log.assignees}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="bg-blue-50/50 p-2 rounded-lg border border-blue-100">
-                    <p className="text-[11px] text-blue-800 italic leading-relaxed whitespace-normal break-words">"{log.remarks}"</p>
-                </div>
-
-                {isAdmin && (
-                  <button onClick={() => onDeleteLog(log.id, log.taskId)} className="absolute bottom-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                      <Trash2 size={16} />
-                  </button>
-                )}
-            </div>
+        {paginatedLogs.map(log=>(
+          <article key={log.id} aria-label={log.task || 'Action log'} className="min-w-0 bg-white border border-blue-200 rounded-xl p-4 shadow-sm">
+            <TaskCardFields>
+              <TaskCardField label="Task"><h4 className="font-semibold text-indigo-800">{log.task}</h4></TaskCardField>
+              <TaskCardField label="Update Date">{formatToIndianDate(log.updateDate)}</TaskCardField>
+              <TaskCardField label={isVendorView ? 'Vendor' : 'Assignee'}>{isVendorView ? log.vendor : log.assignees}</TaskCardField>
+              <TaskCardField label="Status">{log.status}</TaskCardField>
+              <TaskCardField label="Client">{log.clientName || log.firm}</TaskCardField>
+              <TaskCardField label="Owner">{log.owner}</TaskCardField>
+              <TaskCardField label="Task Date">{formatToIndianDate(log.taskDate)}</TaskCardField>
+              <TaskCardField label="Minutes">{log.hours}</TaskCardField>
+              <TaskCardField label="Remarks">{log.remarks}</TaskCardField>
+              <TaskCardField label="Photo">{parsePhotos(log.photos).length>0 ? <button type="button" onClick={()=>setPhotoViewer({photos:parsePhotos(log.photos),index:0})} className="text-indigo-700 underline">{parsePhotos(log.photos).length} photo(s)</button> : null}</TaskCardField>
+              <TaskCardField label="PDF">{normalizePdfHref(log.pdf) ? <button type="button" onClick={()=>openPdf(log.pdf)} className="text-indigo-700 underline">Open PDF</button> : null}</TaskCardField>
+            </TaskCardFields>
+            {isAdmin && <div className="flex justify-end pt-3">
+              <button type="button" aria-label={'Delete log for '+log.task} onClick={()=>onDeleteLog(log.id,log.taskId)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"><Trash2 size={16}/>Delete</button>
+            </div>}
+          </article>
         ))}
         {paginatedLogs.length === 0 && <div className="text-center py-10 text-blue-300 font-black uppercase text-xs">No logs found.</div>}
       </div>

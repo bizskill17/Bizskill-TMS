@@ -289,13 +289,14 @@ test('Task navigation starts with Pending and activity is inside the main Dashbo
  await page.goto('/');
  const activity=page.getByRole('region',{name:'Activity Dashboard',exact:true});
  await expect(activity.getByRole('table')).toBeVisible();
- await expect(activity.getByRole('columnheader',{name:'Activity User',exact:true})).toBeVisible();
+ await expect(activity.getByRole('columnheader',{name:'User',exact:true})).toBeVisible();
  await expect(activity.getByRole('cell',{name:'02:00',exact:true}).first()).toBeVisible();
- await activity.getByRole('button',{name:'Toggle Filters',exact:true}).click();
- await activity.getByLabel('From',{exact:true}).fill('2026-10-31');
- await expect(activity.getByText('No activity logs found for the selected range.',{exact:true})).toBeVisible();
- await activity.getByLabel('From',{exact:true}).fill('2026-10-01');
- await activity.getByRole('textbox',{name:'Search activity by user or date',exact:true}).fill('Activity User');
+ await activity.getByLabel('Activity period',{exact:true}).selectOption('custom');
+ await activity.getByLabel('Activity from',{exact:true}).fill('2026-10-31');
+ await expect(activity.getByRole('alert')).toHaveText('From date must be on or before To date.');
+ await expect(activity.getByText('No activity for this period.',{exact:true})).toBeVisible();
+ await activity.getByLabel('Activity from',{exact:true}).fill('2026-10-01');
+ await activity.getByRole('textbox',{name:'Search activity by user',exact:true}).fill('Activity User');
  await expect(activity.getByRole('cell',{name:'02:00',exact:true}).first()).toBeVisible();
  await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
  const tabs=page.getByRole('navigation',{name:'Section views',exact:true});
@@ -346,4 +347,122 @@ test('Action Log defaults to all dates while Dashboard drill-down keeps its date
  await tabs.getByRole('button',{name:/^Action Log/}).click();
  await expect(page.getByText('No filters applied',{exact:true})).toBeVisible();
  await expect(page.getByText('Showing 1 to 4 of 4 entries',{exact:true})).toBeVisible();
+});
+
+test('Mobile Users cards use label and value columns with Name and Mobile first',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ const longEmail='a'.repeat(75)+'@example.com';
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.users=[
+   {id:98001,name:'Mobile Test User',mobile:'9864023964',email:longEmail,employeeId:'MTU',designation:'Senior Accountant',role:'Employee',telegramUserName:'mobiletest',isActive:true},
+   {id:98002,name:'Minimal User',mobile:'',email:'',employeeId:'',designation:'',role:'Employee',telegramUserName:'',isActive:false}
+  ];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Master',exact:true}).click();
+ const card=page.getByRole('article',{name:'Mobile Test User',exact:true});
+ await expect(card).toBeVisible();
+ await expect(card.locator('dt')).toHaveText(['Name','Mobile','Email','Employee ID','Designation','Role','Telegram','Status']);
+ await expect(card.getByRole('link',{name:'9864023964',exact:true})).toHaveAttribute('href','tel:9864023964');
+ await expect(card.getByRole('switch',{name:'Active status for Mobile Test User',exact:true})).toHaveAttribute('aria-checked','true');
+ await expect(card.getByRole('button',{name:'Edit Mobile Test User',exact:true})).toBeVisible();
+ await expect(card.getByRole('button',{name:'Delete Mobile Test User',exact:true})).toBeVisible();
+ const minimal=page.getByRole('article',{name:'Minimal User',exact:true});
+ await expect(minimal.locator('dt')).toHaveText(['Name','Role','Status']);
+ await expect(minimal.getByRole('switch')).toHaveAttribute('aria-checked','false');
+ for(const width of [320,360,393,430]){
+  await page.setViewportSize({width,height:850});
+  const rows=await card.locator('dl > div').evaluateAll(nodes=>nodes.map(node=>{
+   const label=node.querySelector('dt')!.getBoundingClientRect(),value=node.querySelector('dd')!.getBoundingClientRect();
+   return Math.abs(label.top-value.top)<1 && value.left>=label.right && node.scrollWidth-node.clientWidth<=1;
+  }));
+  expect(rows.every(Boolean)).toBeTruthy();
+  expect(await card.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
+ }
+ await page.getByPlaceholder('Search users...',{exact:true}).fill('Minimal User');
+ await expect(card).toHaveCount(0);await expect(minimal).toBeVisible();
+ await page.getByPlaceholder('Search users...',{exact:true}).fill('');
+ await page.setViewportSize({width:1280,height:900});
+ await expect(card).toBeHidden();
+ await expect(page.getByRole('table')).toBeVisible();
+ await expect(page.getByRole('table').getByRole('cell',{name:'Mobile Test User',exact:true})).toBeVisible();
+});
+
+test('Compact Activity Dashboard has period totals, exports and filtered Action Log links',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ await page.clock.install({time:new Date('2026-10-30T06:00:00Z')});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.actionLogs=[
+   {id:99101,taskId:99201,task:'Today one',assignees:'Alice, Alice',updateDate:'30/10/2026',hours:60},
+   {id:99102,taskId:99202,task:'Today two',assignees:'Alice',updateDate:'30/10/2026',hours:'30'},
+   {id:99103,taskId:99203,task:'Bob update',assignees:'Bob',updateDate:'30/10/2026',hours:15},
+   {id:99104,taskId:99204,task:'Yesterday update',assignees:'Alice',updateDate:'29/10/2026',hours:45},
+   {id:99105,taskId:99205,task:'Earlier this month',assignees:'Alice',updateDate:'01/10/2026',hours:120}
+  ].map(log=>({...log,status:'In Progress',taskDate:'01/10/2026',owner:'Alice',remarks:'Updated'}));
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ const activity=page.getByRole('region',{name:'Activity Dashboard',exact:true});
+ await expect(activity.getByLabel('Activity period',{exact:true})).toHaveValue('today');
+ await expect(activity.getByRole('columnheader')).toHaveText(['User','Updates','Time Spent']);
+ const alice=activity.locator('tbody tr').filter({has:page.getByRole('button',{name:'View activity for Alice',exact:true})});
+ await expect(alice.locator('td')).toHaveText(['Alice','2','01:30']);
+ await expect(activity.locator('tfoot td')).toHaveText(['Total','3','01:45']);
+ for(const width of [320,360,430]){
+  await page.setViewportSize({width,height:850});
+  expect(await activity.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
+ }
+ await activity.getByLabel('Activity period',{exact:true}).selectOption('yesterday');
+ await expect(alice.locator('td')).toHaveText(['Alice','1','00:45']);
+ await activity.getByLabel('Activity period',{exact:true}).selectOption('week');
+ await expect(alice.locator('td')).toHaveText(['Alice','3','02:15']);
+ await activity.getByLabel('Activity period',{exact:true}).selectOption('month');
+ await expect(alice.locator('td')).toHaveText(['Alice','4','04:15']);
+ const download=page.waitForEvent('download');
+ await activity.getByRole('button',{name:'Export activity Excel',exact:true}).click();
+ expect((await download).suggestedFilename()).toBe('Activity_2026-10-30.csv');
+ await activity.getByLabel('Activity period',{exact:true}).selectOption('custom');
+ await activity.getByLabel('Activity from',{exact:true}).fill('2026-10-01');
+ await activity.getByLabel('Activity to',{exact:true}).fill('2026-10-01');
+ await expect(alice.locator('td')).toHaveText(['Alice','1','02:00']);
+ await activity.getByRole('button',{name:'View activity for Alice',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Earlier this month',exact:true})).toBeVisible();
+ const logCard=page.getByRole('article',{name:'Earlier this month',exact:true});
+ await expect(logCard.locator('dt')).toHaveText(['Task','Update Date','Assignee','Status','Owner','Task Date','Minutes','Remarks']);
+ for(const width of [320,393]){
+  await page.setViewportSize({width,height:850});
+  expect(await logCard.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
+ }
+ await expect(logCard.getByRole('button',{name:'Delete log for Earlier this month',exact:true})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Today one',exact:true})).toHaveCount(0);
+});
+
+test('Action Log cards hide zero minutes and blank details',async({page})=>{
+ await page.setViewportSize({width:360,height:800});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.actionLogs=[{id:99301,taskId:99401,task:'Minimal log',taskDate:'',updateDate:'30/10/2026',status:'Not Yet Started',hours:0,owner:'',assignees:'',remarks:'',photos:'[]',pdf:''}];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Open menu',exact:true}).click();
+ await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
+ await page.getByRole('navigation',{name:'Section views',exact:true}).getByRole('button',{name:/^Action Log/}).click();
+ const card=page.getByRole('article',{name:'Minimal log',exact:true});
+ await expect(card.locator('dt')).toHaveText(['Task','Update Date','Status']);
+ await page.getByRole('button',{name:'Table View',exact:true}).click();
+ await expect(card).toBeHidden();await expect(page.getByRole('table')).toBeVisible();
 });

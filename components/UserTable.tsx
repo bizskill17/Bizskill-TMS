@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { User } from '../types';
-import { Edit2, Trash2, Phone, Mail, Shield, Briefcase, Send, ArrowUpDown, ArrowUp, ArrowDown, Building2 } from 'lucide-react';
+import { TaskCardFields, TaskCardField } from './TaskCardFields';
+import { Edit2, Trash2, Send, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface UserTableProps {
   users: User[];
@@ -131,35 +132,30 @@ export const UserTable: React.FC<UserTableProps> = ({ users, onToggleStatus, onD
     </div>
 
     <div className={`space-y-4 md:hidden ${viewMode === 'card' ? 'block' : 'hidden'}`}>
-        {sortedUsers.map((user) => (
-            <div key={user.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">{user.name.charAt(0).toUpperCase()}</div>
-                        <div>
-                            <h3 className="font-bold text-gray-900 whitespace-normal break-words">{user.name}</h3>
-                            <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-normal break-words">
-                                <Shield size={12} />
-                                <span>{user.role}</span>
-                                {user.employeeId && <span> • ID: {user.employeeId}</span>}
-                            </div>
-                        </div>
-                    </div>
-                     <button onClick={() => onToggleStatus(user.id)} className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${user.isActive ? 'bg-green-500' : 'bg-gray-200 border-gray-200'}`}>
-                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${user.isActive ? 'translate-x-4' : 'translate-x-0'}`} />
-                    </button>
-                </div>
-                <div className="space-y-2 text-sm text-gray-600 mb-4">
-                     <div className="flex items-center gap-2 whitespace-normal break-words"><Mail size={14} className="text-gray-400" /><span>{user.email}</span></div>
-                     <div className="flex items-center gap-2 whitespace-normal break-words"><Phone size={14} className="text-gray-400" /><span>{user.mobile}</span></div>
-                     <div className="flex items-center gap-2 whitespace-normal break-words"><Briefcase size={14} className="text-gray-400" /><span>{user.designation || 'N/A'}</span></div>
-                     {user.telegramUserName && <div className="flex items-center gap-2 whitespace-normal break-words"><Send size={14} className="text-blue-400" /><span>@{user.telegramUserName}</span></div>}
-                </div>
-                <div className="flex gap-2 pt-3 border-t border-gray-100">
-                     <button onClick={() => onEditUser(user)} className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"><Edit2 size={16} />Edit</button>
-                     <button onClick={() => onDeleteUser(user.id)} className="flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"><Trash2 size={16} />Delete</button>
-                </div>
+        {sortedUsers.map(user => (
+          <article key={user.id} aria-label={user.name} className="min-w-0 bg-white rounded-xl shadow-sm border border-blue-200 p-4">
+            <TaskCardFields>
+              <TaskCardField label="Name"><h3 className="font-semibold text-indigo-800">{user.name}</h3></TaskCardField>
+              <TaskCardField label="Mobile">{user.mobile ? <a href={'tel:'+String(user.mobile).replace(/[^+0-9]/g,'')} className="text-indigo-700 underline">{user.mobile}</a> : null}</TaskCardField>
+              <TaskCardField label="Email">{user.email}</TaskCardField>
+              <TaskCardField label="Employee ID">{user.employeeId}</TaskCardField>
+              <TaskCardField label="Designation">{user.designation}</TaskCardField>
+              <TaskCardField label="Role">{user.role}</TaskCardField>
+              <TaskCardField label="Telegram">{user.telegramUserName ? '@'+user.telegramUserName.replace(/^@/,'') : null}</TaskCardField>
+              <TaskCardField label="Status">
+                <button type="button" role="switch" aria-label={'Active status for '+user.name} aria-checked={user.isActive} onClick={()=>onToggleStatus(user.id)} className="inline-flex flex-wrap items-center gap-2 text-sm">
+                  <span aria-hidden="true" className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${user.isActive ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${user.isActive ? 'translate-x-4' : ''}`}/>
+                  </span>
+                  {user.isActive ? 'Active' : 'Inactive'}
+                </button>
+              </TaskCardField>
+            </TaskCardFields>
+            <div className="flex flex-wrap justify-end gap-2 pt-3">
+              <button type="button" aria-label={'Edit '+user.name} onClick={()=>onEditUser(user)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100"><Edit2 size={16}/>Edit</button>
+              <button type="button" aria-label={'Delete '+user.name} onClick={()=>onDeleteUser(user.id)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100"><Trash2 size={16}/>Delete</button>
             </div>
+          </article>
         ))}
     </div>
     {users.length === 0 && <div className="p-8 text-center text-gray-500 bg-white rounded-lg border border-gray-200">No users found.</div>}
