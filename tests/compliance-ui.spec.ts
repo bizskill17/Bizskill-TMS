@@ -53,7 +53,7 @@ test('Mobile pending tables share width and keep heading words intact',async({pa
     const headers=Array.from(table.querySelectorAll('th'));
     return {overflow:parent.scrollWidth-parent.clientWidth,ratio:headers[0].getBoundingClientRect().width/table.getBoundingClientRect().width,splitWords:headers.flatMap(header=>{
      const text=header.firstChild;if(!text||text.nodeType!==Node.TEXT_NODE)return [];
-     return Array.from((text.textContent||'').matchAll(/\\S+/g)).filter(word=>{
+     return Array.from((text.textContent||'').matchAll(/\S+/g)).filter(word=>{
       const range=document.createRange();range.setStart(text,word.index!);range.setEnd(text,word.index!+word[0].length);
       return range.getClientRects().length>1;
      }).map(word=>word[0]);
