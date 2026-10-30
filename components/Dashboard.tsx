@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {createPortal} from 'react-dom';
+import {dashboardToday, isDelayedTask, taskAssignees} from './dashboardRules.mjs';
 import { Plus, UserPlus, Folder, CheckSquare, Clock, AlertTriangle, CheckCircle, Users, Building2, Truck, FileText, RotateCcw, LayoutList, History, ShieldAlert, Tags } from 'lucide-react';
 import { StatCard } from './StatCard';
 import { QuickAction } from './QuickAction';
@@ -11,6 +13,7 @@ const VENDOR_MODULE_ENABLED = false;
 
 interface DashboardProps {
   isAdmin: boolean;
+  quickControlsHidden?: boolean;
   onOpenNewTask: () => void;
   onOpenNewRecurringTask: () => void;
   onOpenAddUser: () => void;
@@ -31,6 +34,7 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   isAdmin,
+  quickControlsHidden=false,
   onOpenNewTask, 
   onOpenNewRecurringTask,
   onOpenAddUser,
@@ -50,23 +54,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const { getFieldLabel } = useLabels();
   const categoryLabel = getFieldLabel('task.category', 'Category');
+  const [isoToday,setIsoToday]=useState(()=>dashboardToday());
+  useEffect(()=>{const id=window.setInterval(()=>setIsoToday(dashboardToday()),30000);return()=>window.clearInterval(id);},[]);
   
   const stats = useMemo(() => {
     const regularTasks = tasks.filter(t => !t.vendor || t.vendor.trim() === '');
     const totalTasks = regularTasks.length;
     const pendingTasks = regularTasks.filter(t => t.status !== 'Completed').length;
 
-    const todayISO = new Date().toISOString().split('T')[0];
+    const todayISO = isoToday;
     const overdueTasks = regularTasks.filter(t => {
       if (t.status === 'Completed' || !t.dueDate) return false;
-      const dueISO = parseToISO(t.dueDate);
-      return dueISO && dueISO < todayISO;
+      return isDelayedTask(t,todayISO);
     }).length;
 
     const completedTasks = regularTasks.filter(t => t.status === 'Completed').length;
     const totalUsers = users.length;
     return { totalTasks, pendingTasks, overdueTasks, completedTasks, totalUsers };
-  }, [tasks, users]);
+  }, [tasks, users, isoToday]);
 
   const dynamicLiveStatuses = useMemo(() => {
     const baseStatuses = statuses
@@ -134,13 +139,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
     tasks.forEach(task => {
       if (!!(task.vendor && task.vendor.trim() !== '')) return; 
       if (task.status === 'Completed') return;
-      const assignees = task.assignees ? task.assignees.split(',').map(s => s.trim()) : ['Unassigned'];
+      const assignees = taskAssignees(task.assignees);
       assignees.forEach(assignee => {
         updateTableDataMap(map, assignee, task.status);
       });
     });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
+
+  const delayedData=useMemo(()=>{
+    const map=new Map<string,TableRow>();
+    tasks.filter(task=>isDelayedTask(task,isoToday)).forEach(task=>{
+      taskAssignees(task.assignees).forEach(name=>updateTableDataMap(map,name,task.status));
+    });
+    return Array.from(map.values()).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name));
+  },[tasks,isoToday]);
 
   const priorityData = useMemo(() => {
     const map = new Map<string, TableRow>();
@@ -191,11 +204,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
 
-  const isoToday = useMemo(() => {
-    const now = new Date();
-    return now.toLocaleDateString('en-CA');
-  }, []);
-
   const dailyUpdates = useMemo(() => {
     const map = new Map<string, number>();
     actionLogs
@@ -241,13 +249,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
       })
       .forEach(action => {
         if (action.assignee) {
-          map.set(action.assignee, (map.get(action.assignee) || 0) + 1);
+          taskAssignees(action.assignee).forEach(name=>map.set(name,(map.get(name)||0)+1));
         }
       });
     return Array.from(map.entries())
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
   }, [recurringActions, isoToday]);
+
+  const activityRows=useMemo(()=>{
+    const map=new Map<string,{name:string;simple:number;recurring:number;total:number}>();
+    const add=(name:string,count:number,key:'simple'|'recurring')=>{
+      const row=map.get(name)||{name,simple:0,recurring:0,total:0};row[key]+=count;row.total+=count;map.set(name,row);
+    };
+    dailyUpdates.forEach(row=>add(row.name,row.count,'simple'));
+    recurringUpdates.forEach(row=>add(row.name,row.count,'recurring'));
+    return Array.from(map.values()).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name));
+  },[dailyUpdates,recurringUpdates]);
 
   const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
     <div className="flex items-center gap-2 mb-4">
@@ -257,15 +275,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   );
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="flex flex-col gap-4 md:gap-8 pb-6 md:pb-10">
       {/* Centered Dashboard Title as requested */}
-      <div className="flex flex-col items-center justify-center pt-2">
+      <div className="hidden md:flex flex-col items-center justify-center pt-2">
         <h2 className="text-3xl font-black text-blue-700 uppercase tracking-[0.1em]">Task Dashboard</h2>
         <div className="w-64 h-1 bg-blue-600 mt-2 rounded-full"></div>
       </div>
 
 	      {isAdmin && (
-	        <div className="bg-sky-50 p-6 rounded-2xl shadow-md border-2 border-blue-300">
+	        <div className="hidden md:block bg-sky-50 p-6 rounded-2xl shadow-md border-2 border-blue-300">
 	          <SectionHeader title="Quick Control" icon={<LayoutList size={20}/>} />
 	          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 		            <QuickAction label="Simple Task" icon={<Plus size={18} />} colorClass="bg-blue-600 hover:bg-blue-700 text-white" onClick={onOpenNewTask}/>
@@ -277,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 	        </div>
 	      )}
 
-      <div className="bg-blue-50/70 p-6 rounded-2xl border-2 border-blue-300 shadow-sm">
+      <div className="hidden md:block bg-blue-50/70 p-6 rounded-2xl border-2 border-blue-300 shadow-sm">
         <SectionHeader title="Live Statistics" icon={<Clock size={20}/>} />
 	        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-10 gap-4">
 	            <StatCard title="Total Tasks" value={stats.totalTasks} icon={<CheckSquare size={20}/>} iconBgColor="bg-blue-100" iconColor="text-blue-600" onClick={() => onNavigate('all-tasks')} />
@@ -299,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 	        </div>
 	      </div>
 
-      <div className="space-y-6">
+      <div className="hidden md:block space-y-6">
         <SectionHeader title="Today's Activity" icon={<History size={20}/>} />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            <div className="bg-white p-5 rounded-2xl border-2 border-blue-200 shadow-sm flex flex-col">
@@ -347,12 +365,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
 	        </div>
 	      </div>
 
-	      <div className="grid grid-cols-1 gap-8">
+	      <div className="order-first md:order-none grid grid-cols-1 gap-4 md:gap-8">
+            <PendingTable title="Delayed Pending Tasks by Assignee" headerLabel="Assignee Name" totalLabel="Total Delayed" emptyMessage="No delayed pending tasks." data={delayedData} onRowClick={name=>onFilterChange('delayed-assignee',name)} statusColumns={dynamicPendingStatuses}/>
 	        <PendingTable title="Pending by Assignee" headerLabel="Assignee Name" data={assigneeData} onRowClick={(name) => onFilterChange('assignee', name)} statusColumns={dynamicPendingStatuses}/>
 	        <PendingTable title="Pending by Priority" headerLabel="Priority Level" data={priorityData} onRowClick={(name) => onFilterChange('priority', name)} className="bg-indigo-50/30" statusColumns={dynamicPendingStatuses}/>
 		        <PendingTable title={`Pending by ${categoryLabel}`} headerLabel={`${categoryLabel} Name`} data={categoryData} onRowClick={(name) => onFilterChange('category', name)} className="bg-indigo-50/30" statusColumns={dynamicPendingStatuses}/>
 	        
 	      </div>
+      <section aria-label="Today's Activity" className="md:hidden min-w-0 rounded-xl border-2 border-blue-200 overflow-hidden bg-white">
+        <h3 className="p-3 font-bold text-blue-700 uppercase">Today's Activity</h3>
+        <div className="overflow-x-auto"><table className="w-full table-fixed text-xs">
+          <colgroup><col style={{width:'40%'}}/><col style={{width:'20%'}}/><col style={{width:'20%'}}/><col style={{width:'20%'}}/></colgroup>
+          <thead className="bg-indigo-600 text-white"><tr>{['User','Simple Updates','Recurring Updates','Total'].map(title=><th key={title} className="px-1 py-2 text-[10px] leading-tight whitespace-normal break-normal">{title}</th>)}</tr></thead>
+          <tbody>{activityRows.map(row=><tr key={row.name}><td className="p-2 break-words font-semibold">{row.name}</td><td className="px-1 py-2 text-center tabular-nums"><button type="button" disabled={!row.simple} aria-label={'Simple updates by '+row.name} className="text-blue-700 font-bold disabled:text-gray-500" onClick={()=>onFilterChange('employee-log',row.name)}>{row.simple}</button></td><td className="px-1 py-2 text-center tabular-nums"><button type="button" disabled={!row.recurring} aria-label={'Recurring updates by '+row.name} className="text-blue-700 font-bold disabled:text-gray-500" onClick={()=>onFilterChange('recurring-log',row.name)}>{row.recurring}</button></td><td className="px-1 py-2 text-center font-bold tabular-nums">{row.total}</td></tr>)}{!activityRows.length&&<tr><td colSpan={4} className="px-3 py-2 text-center text-xs text-gray-500">No activity today.</td></tr>}</tbody>
+        </table></div>
+      </section>
+      {!quickControlsHidden&&createPortal(<nav aria-label="Quick Control" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-indigo-200 shadow-[0_-2px_10px_rgba(0,0,0,0.08)]" style={{paddingBottom:'env(safe-area-inset-bottom, 0px)'}}>
+        <div className={'grid '+(isAdmin?'grid-cols-4':'grid-cols-2')}>
+          {[{label:'Task',title:'Add Simple Task',icon:<Plus size={22}/>,action:onOpenNewTask},{label:'Recurring',title:'Add Recurring Task',icon:<RotateCcw size={22}/>,action:onOpenNewRecurringTask},...(isAdmin?[{label:'User',title:'Add User',icon:<UserPlus size={22}/>,action:onOpenAddUser},{label:categoryLabel,title:'Add '+categoryLabel,icon:<Tags size={22}/>,action:onOpenAddCategory}]:[])].map(item=><button type="button" key={item.title} aria-label={item.title} className="min-h-[64px] px-1 py-2 flex flex-col items-center justify-center gap-1 text-indigo-700 active:bg-indigo-50" onClick={item.action}>{item.icon}<span className="text-[11px] font-semibold leading-tight text-center">{item.label}</span></button>)}
+        </div>
+      </nav>,document.body)}
     </div>
   );
 };

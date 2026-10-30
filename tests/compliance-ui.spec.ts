@@ -66,3 +66,66 @@ test('Mobile pending tables share width and keep heading words intact',async({pa
   }
  }
 });
+
+test('Mobile dashboard prioritises delayed work and has compact activity and quick actions',async({page})=>{
+ await page.setViewportSize({width:393,height:850});
+ await page.clock.install({time:new Date('2026-10-29T18:35:00Z')});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'test-admin@example.com',password:'test-admin-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ const task=(id:number,title:string,assignees:string,dueDate:string,status='In Progress')=>({id,title,assignees,dueDate,status,priority:'Medium',category:'GST',firm:'Client A',date:'29/10/2026',notes:''});
+ await page.route('**/api/init.php?**',async route=>{
+  const response=await route.fetch();const payload=await response.json();
+  payload.data.mainTasks=[task(91001,'Late A','User A','29/10/2026'),task(91002,'Late B','User B','28/10/2026'),task(91003,'Today A','User A','30/10/2026'),task(91004,'Future A','User A','01/11/2026'),task(91005,'Completed old','User A','28/10/2026','Completed'),task(91006,'Missing due','User A',''),task(91007,'Shared late','User A, User B, User A','29/10/2026'),task(91008,'Another B','User B','29/10/2026')];
+  payload.data.vendorTasks=[];
+  payload.data.actionLogs=[{id:92001,taskId:91001,task:'Late A',assignees:'User A',updateDate:'30/10/2026',status:'In Progress'},{id:92002,taskId:91001,task:'Old activity',assignees:'User A',updateDate:'29/10/2026',status:'In Progress'}];
+  payload.data.recurringActions=[{id:93001,assignee:'User A',updatedOn:'30/10/2026'},{id:93002,assignee:'User B',updatedOn:'30/10/2026'}];
+  await route.fulfill({response,json:payload});
+ });
+ await page.goto('/');
+ const delayed=page.getByRole('heading',{name:'Delayed Pending Tasks by Assignee',exact:true}).locator('../..');
+ await expect(delayed).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Live Statistics',exact:true})).toBeHidden();
+ await expect(page.getByRole('heading',{name:'Quick Control',exact:true})).toBeHidden();
+ await expect(page.locator('main').getByRole('heading').first()).toHaveText('Delayed Pending Tasks by Assignee');
+ const delayedRows=delayed.locator('tbody tr');
+ await expect(delayedRows.nth(0).locator('td').first()).toHaveText('User B');
+ await expect(delayedRows.nth(0).locator('td').nth(1)).toHaveText('3');
+ await expect(delayedRows.nth(1).locator('td').first()).toHaveText('User A');
+ await expect(delayedRows.nth(1).locator('td').nth(1)).toHaveText('2');
+ const activity=page.getByRole('region',{name:"Today's Activity",exact:true});
+ await expect(activity.getByRole('table')).toBeVisible();
+ await expect(activity.locator('tbody tr').filter({hasText:'User A'}).locator('td').last()).toHaveText('2');
+ await expect(activity.locator('tbody tr')).toHaveCount(2);
+ const bar=page.getByRole('navigation',{name:'Quick Control',exact:true});
+ await expect(bar).toBeVisible();await expect(bar.getByRole('button')).toHaveCount(4);
+ await expect(bar).toHaveCSS('position','fixed');
+ await bar.getByRole('button',{name:'Add Simple Task',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Add Task',exact:true})).toBeVisible();
+ await expect(bar).toHaveCount(0);
+ await page.getByRole('button',{name:'Cancel',exact:true}).last().click();
+ await expect(bar).toBeVisible();
+ await delayedRows.filter({hasText:'User A'}).click();
+ await expect(page.getByText('Late A',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Shared late',{exact:true}).first()).toBeVisible();
+ await expect(page.getByText('Today A',{exact:true})).toHaveCount(0);
+ await expect(page.getByText('Late B',{exact:true})).toHaveCount(0);
+});
+
+test('Empty mobile activity remains small and ordinary Users have only task quick actions',async({page})=>{
+ await page.setViewportSize({width:360,height:800});
+ const response=await page.request.post('/api/login.php',{data:{orgId:'test-a',email:'user-a@example.com',password:'user-password'}});
+ const auth=await response.json();expect(auth.success).toBeTruthy();
+ await page.addInitScript(user=>{localStorage.setItem('taskpro_user',JSON.stringify(user));localStorage.setItem('taskpro_tenant_code','test-a');localStorage.setItem('taskpro_api_url','/api/init.php');},auth.user);
+ await page.route('**/api/init.php?**',async route=>{const response=await route.fetch();const payload=await response.json();payload.data.actionLogs=[];payload.data.recurringActions=[];await route.fulfill({response,json:payload});});
+ await page.goto('/');
+ const activity=page.getByRole('region',{name:"Today's Activity",exact:true});
+ await expect(activity.getByRole('cell',{name:'No activity today.',exact:true})).toBeVisible();
+ expect((await activity.boundingBox())!.height).toBeLessThan(150);
+ const bar=page.getByRole('navigation',{name:'Quick Control',exact:true});
+ await expect(bar.getByRole('button')).toHaveCount(2);
+ await expect(bar.getByRole('button',{name:'Add User',exact:true})).toHaveCount(0);
+ await page.setViewportSize({width:1280,height:900});
+ await expect(page.getByRole('heading',{name:'Live Statistics',exact:true})).toBeVisible();
+ await expect(bar).toBeHidden();
+});

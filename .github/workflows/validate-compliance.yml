@@ -9,6 +9,11 @@ on:
       - 'components/BillingFields.tsx'
       - 'tests/compliance*'
       - 'App.tsx'
+      - 'components/Dashboard.tsx'
+      - 'components/PendingTable.tsx'
+      - 'components/dashboardRules.mjs'
+      - 'components/TasksView.tsx'
+      - 'tests/dashboard.test.mjs'
       - '.github/workflows/validate-compliance.yml'
       - 'api/dsc*'
       - 'components/DscRegisterView.tsx'
@@ -54,7 +59,7 @@ jobs:
         run: find api tests -name '*.php' -print0 | xargs -0 -n1 php -l
       - name: Return and expiry rules
         run: |
-          node --test tests/documents.test.mjs tests/dsc.test.mjs
+          node --test tests/documents.test.mjs tests/dsc.test.mjs tests/dashboard.test.mjs
           php tests/dsc-rules.php
           php tests/compliance-rules.php
       - name: Start test API

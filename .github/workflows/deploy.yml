@@ -25,7 +25,7 @@ jobs:
 
       - name: Check document return rules
         run: |
-          node --test tests/documents.test.mjs tests/dsc.test.mjs
+          node --test tests/documents.test.mjs tests/dsc.test.mjs tests/dashboard.test.mjs
           php tests/dsc-rules.php
 
       - name: Install dependencies

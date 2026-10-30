@@ -1,3 +1,4 @@
+import {dashboardToday} from './components/dashboardRules.mjs';
 import { ChecklistsView } from './components/Checklists';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ComplianceView } from './components/ComplianceView';
@@ -1112,13 +1113,18 @@ export default function App() {
 
 	  const handleDashboardFilterChange = (type: string, value: string) => {
 	    isDashboardNavigation.current = true;
-	    const today = new Date().toLocaleDateString('en-CA');
+	    const today = dashboardToday();
 	    if (type === 'vendor') {
 	      if (!VENDOR_MODULE_ENABLED) return;
 	      setActiveTab('pending-vendor-tasks');
 	      setFilterVendor([value]);
 	    }
-	    else if (type === 'assignee') { setActiveTab('pending'); setFilterAssignee([value]); }
+	    else if (type === 'delayed-assignee') {
+          setFilterPriority([]);setFilterProject([]);setFilterFirm([]);setFilterClient([]);setFilterOwner([]);setFilterVendor([]);setFilterCategory([]);
+          setDateFrom('');setDateTo('');setLastUpdateFrom('');setLastUpdateTo('');setSearchTerm('');
+          setActiveTab('pending');setFilterAssignee([value]);setFilterStatus(['Overdue']);
+        }
+        else if (type === 'assignee') { setActiveTab('pending'); setFilterAssignee([value]); }
 	    else if (type === 'project') { setActiveTab('pending'); setFilterProject([value]); }
 	    else if (type === 'priority') { setActiveTab('pending'); setFilterPriority([value]); }
 	    else if (type === 'category') { setActiveTab('pending'); setFilterCategory([value]); }
@@ -1367,7 +1373,7 @@ export default function App() {
       case 'documents': return <DocumentsView key={tenantCode || currentUser?.tenantCode} users={users} clients={firms} tenantCode={tenantCode || currentUser?.tenantCode || ''} />;
       case 'dashboard': 
 		        return <Dashboard 
-		          isAdmin={isAdmin} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
+		          isAdmin={isAdmin} quickControlsHidden={isAnyFormModalOpen || isSidebarOpen || isSyncing} tasks={visibleTasks} users={users} projects={projects} categories={categories} statuses={statuses} actionLogs={visibleActionLogs} recurringActions={visibleRecurringActions} recurringTasks={visibleRecurringTasks}
 	          onNavigate={(tab) => {
               if (tab === 'pending-client') setActiveTab(makePendingStatusId('Pending for Client'));
               else if (tab === 'pending-owner') setActiveTab(makePendingStatusId('Pending for Owner'));
@@ -1546,7 +1552,7 @@ export default function App() {
                               </section>
                             )}
 <main
-			                  className="flex-1 min-h-0 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 pb-0 custom-scrollbar relative"
+			                  className={`flex-1 min-h-0 overflow-y-auto pt-2 md:pt-4 px-2 md:px-4 custom-scrollbar relative ${activeTab==='dashboard'?'pb-[calc(84px+env(safe-area-inset-bottom))] md:pb-0':'pb-0'}`}
 			                >
 				              {isLoading ? (
 		                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
