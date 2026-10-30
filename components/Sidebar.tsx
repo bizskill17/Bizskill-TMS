@@ -165,12 +165,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <aside className={`
-        w-64 bg-blue-50 h-screen shadow-lg flex flex-col flex-shrink-0 z-[80] border-r border-blue-100
+        w-64 bg-blue-50 h-[calc(100dvh/0.9)] md:h-full min-h-0 overflow-hidden shadow-lg flex flex-col flex-shrink-0 z-[80] border-r border-blue-100
         fixed md:relative inset-y-0 left-0 transition-transform duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         ${className}
       `}>
-        <div className="p-4 border-b-2 border-indigo-500 flex flex-col bg-white/40">
+        <div className="shrink-0 p-4 border-b-2 border-indigo-500 flex flex-col bg-white/40">
           <div className="flex justify-between items-center w-full">
             <a 
               href="https://bizskilledu.com/" 
@@ -197,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-4">
           {[
             { key: 'Dashboard', source: 'main' },
             { key: 'Master', source: 'Master' },
@@ -226,7 +226,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        <div className="hidden md:block p-4 bg-white/50 border-t-2 border-indigo-500 space-y-3 mt-auto">
+        <div className="hidden md:block shrink-0 p-4 bg-white/50 border-t-2 border-indigo-500 space-y-3 mt-auto">
 
           <div className="grid grid-cols-2 gap-2">
             <button onClick={onLogout} className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-indigo-600 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-50">
@@ -240,7 +240,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <div className="md:hidden p-4 bg-white/50 border-t-2 border-indigo-500 mt-auto">
+        <div className="md:hidden shrink-0 p-4 bg-white/50 border-t-2 border-indigo-500 mt-auto">
           <div className="grid grid-cols-2 gap-2">
             <button onClick={onLogout} className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-indigo-600 bg-white border border-indigo-200 rounded-lg hover:bg-indigo-50">
               <LogOut size={14} />
