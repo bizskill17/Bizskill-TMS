@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TaskCardFields, TaskCardField } from './TaskCardFields';
 import { Task, Project, User as UserType } from '../types';
 import { Edit2, Info, Calendar, Clock, User, Users, ArrowUpDown, ArrowUp, ArrowDown, Loader2, Trash2, Tag, Layout, Building2, AlertTriangle, ChevronDown, ChevronUp, Hammer, X } from 'lucide-react';
 import { formatToIndianDate } from '../App';
@@ -302,155 +303,53 @@ export const TaskTable: React.FC<TaskTableProps> = ({
           const canDelete = currentUser?.role === 'Admin';
           const isVendorTask = !!(task.vendor && task.vendor.trim() !== '');
           const priorityBorderColor = task.priority === 'High' ? 'border-red-500' : task.priority === 'Medium' ? 'border-amber-500' : 'border-blue-400';
-          const responsiblePartyIcon = isVendorTask ? <Hammer size={12} className="text-orange-500"/> : <Users size={12} className="text-indigo-700"/>;
           const responsiblePartyText = isVendorTask ? (task.vendor || '-') : (task.assignees || '-');
           const displayCategory = isVendorTask ? (task.vendorCategory || '-') : (task.category || '-');
-          // Card Highlight condition: Last update is today AND status is NOT 'Not Yet Started'
           const isCardHighlighted = task.status !== 'Not Yet Started' && isUpdatedToday(task.lastUpdateDate);
-
           return (
-            <div 
-              key={task.id} 
-              onDoubleClick={() => onUpdateTask(task)}
-              className={`bg-white rounded-xl shadow-lg p-5 relative border-2 cursor-pointer ${priorityBorderColor} ${isSyncing ? 'opacity-70' : ''} ${isCardHighlighted ? '!bg-green-50/80 !border-green-400' : ''}`}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2" onClick={() => toggleExpand(task.id)}>
-                    <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-[10px] font-bold">#{startIndex + idx}</span>
-                    <h3 className="text-base font-bold leading-tight text-blue-800">{task.title || '-'}</h3>
-                </div>
-                <div className="flex items-center gap-2" onDoubleClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => toggleExpand(task.id)} className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            <article key={task.id} aria-label={task.title || 'Task'} onDoubleClick={() => onUpdateTask(task)}
+              className={`min-w-0 bg-white rounded-xl shadow-sm p-4 border-2 ${priorityBorderColor} ${isSyncing ? 'opacity-70' : ''} ${isCardHighlighted ? '!bg-green-50/80 !border-green-400' : ''}`}>
+              <div className="flex items-center justify-between gap-2 mb-3" onDoubleClick={e=>e.stopPropagation()}>
+                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-semibold">#{startIndex + idx}</span>
+                <div className="flex items-center gap-3">
+                  {showSelection && <input aria-label={'Select '+task.title} type="checkbox" className="rounded border-blue-300 text-blue-600 h-5 w-5" checked={selectedIds.includes(task.id)} onChange={() => handleSelectOne(task.id)}/>}
+                  <button type="button" aria-label={isExpanded ? 'Hide details' : 'Show details'} aria-expanded={isExpanded} aria-controls={'task-card-details-'+task.id} onClick={() => toggleExpand(task.id)} className="p-2 text-blue-600 hover:bg-blue-50 rounded">
+                    {isExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}
                   </button>
-                  {showSelection && (
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-blue-300 text-blue-600 h-5 w-5" 
-                      checked={selectedIds.includes(task.id)} 
-                      onChange={() => handleSelectOne(task.id)}
-                    />
-                  )}
                 </div>
               </div>
-
-              <div className="space-y-3 mb-5">
-                <div className="grid grid-cols-2 gap-x-3 gap-y-4">
-                      <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-black text-blue-900/60">Client</span>
-                        <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words">{getClientDisplay(task) || '-'}</div>
-                      </div>
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-black text-blue-900/60">Priority</span>
-                        <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words">
-                            <AlertTriangle size={12} className={task.priority === 'High' ? 'text-red-500' : task.priority === 'Medium' ? 'text-amber-500' : 'text-blue-500'} /> 
-                            {task.priority}
-                        </div>
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-[10px] uppercase font-black text-blue-900/60">Total Minutes</span>
-                        <div className="flex items-center gap-1.5 text-xs text-indigo-700 font-black uppercase whitespace-normal break-words"><Clock size={12} /> {task.hours || 0} min</div>
-                    </div>
-
-                    {isExpanded && (
-                      <>
-                        <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-black text-blue-900/60">Owner</span>
-                            <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words"><User size={12} className="text-blue-700" /> {task.owner}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-black text-blue-900/60">{isVendorTask ? 'Vendor' : 'Assignees'}</span>
-                            <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words">{responsiblePartyIcon} {responsiblePartyText}</div>
-                        </div>
-                        
-                        <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-black text-blue-900/60">{getFieldLabel('task.category', 'Category')}</span>
-                            <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words"><Tag size={12} className="text-green-600" /> {displayCategory}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-black text-blue-900/60">Task Date</span>
-                            <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words"><Calendar size={12} className="text-blue-900" /> {formatDate(task.date)}</div>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-[10px] uppercase font-black text-blue-900/60">Update Date</span>
-                            <div className="flex items-center gap-1.5 text-xs text-black font-bold uppercase whitespace-normal break-words"><Clock size={12} className="text-indigo-600" /> {formatDate(task.lastUpdateDate || '')}</div>
-                        </div>
-                      </>
-                    )}
-                </div>
-
-                {isExpanded && (
-                  <>
-                      {(task.time || parsePhotos(task.photos).length > 0 || task.pdf) && (
-                      <div className="grid grid-cols-2 gap-x-3 gap-y-4 mt-2">
-                        <div>
-                          <span className="text-[10px] uppercase font-black text-blue-900/60 block">Time</span>
-                          <span className="text-xs font-bold text-black">{task.time || '-'}</span>
-                        </div>
-	                        
-	                        
-	                        
-                        <div>
-                          <span className="text-[10px] uppercase font-black text-blue-900/60 block">Photo</span>
-                          {parsePhotos(task.photos).length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openPhotos(task.photos);
-                              }}
-                              className="text-xs font-bold text-indigo-600 underline"
-                            >
-                              {parsePhotos(task.photos).length} photo(s)
-                            </button>
-                          ) : (
-                            <span className="text-xs font-bold text-black">-</span>
-                          )}
-                        </div>
-                        <div>
-                          <span className="text-[10px] uppercase font-black text-blue-900/60 block">PDF</span>
-                          {normalizePdfHref(task.pdf) ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openPdf(task.pdf);
-                              }}
-                              className="text-xs font-bold text-indigo-600 underline"
-                            >
-                              Open PDF
-                            </button>
-                          ) : (
-                            <span className="text-xs font-bold text-black">-</span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {task.lastUpdateRemarks && task.lastUpdateRemarks.trim() !== '' && (
-                      <div className="flex items-start gap-2 bg-blue-50 p-2 rounded-lg text-blue-700 border border-blue-100 mt-2 min-w-0 overflow-hidden">
-                          <Info size={14} className="mt-0.5 shrink-0 opacity-70" />
-                          <p className="text-xs italic leading-relaxed whitespace-normal break-all">{task.lastUpdateRemarks}</p>
-                      </div>
-                    )}
-                  </>
-                )}
+              <TaskCardFields>
+                <TaskCardField label="Task"><h3 className="font-semibold text-blue-800">{task.title || '-'}</h3></TaskCardField>
+                <TaskCardField label="Client">{getClientDisplay(task) || '-'}</TaskCardField>
+                <TaskCardField label={isVendorTask ? 'Vendor' : 'Assignee'}>{responsiblePartyText}</TaskCardField>
+                <TaskCardField label="Due Date">{formatDate(task.dueDate) || '-'}</TaskCardField>
+                <TaskCardField label="Priority">{task.priority || '-'}</TaskCardField>
+                <TaskCardField label="Status"><span className={`inline-block max-w-full rounded px-2 py-0.5 text-xs font-medium ${getStatusColor(task.status)}`}>{task.status || '-'}</span></TaskCardField>
+                <TaskCardField label="Total Minutes">{task.hours || 0}</TaskCardField>
+              </TaskCardFields>
+              {isExpanded && <div id={'task-card-details-'+task.id}>
+                <TaskCardFields>
+                  <TaskCardField label="Owner">{task.owner || '-'}</TaskCardField>
+                  <TaskCardField label={getFieldLabel('task.category', 'Category')}>{displayCategory}</TaskCardField>
+                  <TaskCardField label="Task Date">{formatDate(task.date) || '-'}</TaskCardField>
+                  <TaskCardField label="Time">{task.time || '-'}</TaskCardField>
+                  <TaskCardField label="Notes">{task.remarks || '-'}</TaskCardField>
+                  <TaskCardField label="Update Date">{task.status === 'Not Yet Started' ? '-' : (formatDate(task.lastUpdateDate || '') || '-')}</TaskCardField>
+                  <TaskCardField label="Remark">{task.status === 'Not Yet Started' ? '-' : (task.lastUpdateRemarks || '-')}</TaskCardField>
+                  <TaskCardField label="Photo">{parsePhotos(task.photos).length > 0 ? <button type="button" onDoubleClick={e=>e.stopPropagation()} onClick={()=>openPhotos(task.photos)} className="text-indigo-600 underline">{parsePhotos(task.photos).length} photo(s)</button> : '-'}</TaskCardField>
+                  <TaskCardField label="PDF">{normalizePdfHref(task.pdf) ? <button type="button" onDoubleClick={e=>e.stopPropagation()} onClick={()=>openPdf(task.pdf)} className="text-indigo-600 underline">Open PDF</button> : '-'}</TaskCardField>
+                </TaskCardFields>
+              </div>}
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-3" onDoubleClick={e=>e.stopPropagation()}>
+                <button aria-label="View history" onClick={() => onViewHistory(task)} disabled={isSyncing} className="p-2 text-blue-600 bg-blue-50 rounded-lg disabled:opacity-40"><Info size={18}/></button>
+                <button aria-label="Edit task" onClick={() => onEditTask(task)} disabled={isSyncing} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg disabled:opacity-40"><Edit2 size={18}/></button>
+                {canDelete && <button aria-label="Delete task" onClick={() => onDeleteTask(task.id, isVendorView)} disabled={isSyncing} className="p-2 text-red-600 bg-red-50 rounded-lg disabled:opacity-40"><Trash2 size={18}/></button>}
+                <button onClick={() => onUpdateTask(task)} disabled={isSyncing} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold disabled:opacity-40">
+                  {isSyncing && <Loader2 className="animate-spin" size={14}/>}
+                  {isSyncing ? 'Updating' : 'Update'}
+                </button>
               </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <span className={`flex items-center justify-center text-center px-2 py-1.5 rounded-full text-[8px] font-black uppercase whitespace-normal break-words min-w-[90px] ${getStatusColor(task.status)}`}>
-                    {task.status}
-                </span>
-                <div className="flex items-center gap-2" onDoubleClick={(e) => e.stopPropagation()}>
-	                    <button onClick={() => onViewHistory(task)} disabled={isSyncing} className="p-2 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-lg transition-colors shadow-sm disabled:opacity-40"><Info size={18} /></button>
-	                    <button onClick={() => onEditTask(task)} className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-lg transition-colors shadow-sm"><Edit2 size={18} /></button>
-	                    {canDelete && <button onClick={() => onDeleteTask(task.id, isVendorView)} className="p-2 bg-red-100 text-red-600 hover:bg-red-200 rounded-lg transition-colors shadow-sm"><Trash2 size={18} /></button>}
-	                    <button onClick={() => onUpdateTask(task)} disabled={isSyncing} className="ml-1 px-4 py-2 bg-white text-blue-600 border border-blue-600 text-[10px] font-black rounded-lg uppercase shadow-sm inline-flex items-center gap-2 disabled:opacity-40">
-	                      {isSyncing && <Loader2 className="animate-spin" size={14} />}
-	                      {isSyncing ? 'Updating' : 'Update'}
-	                    </button>
-	                </div>
-	              </div>
-            </div>
+            </article>
           );
         })}
       </div>
