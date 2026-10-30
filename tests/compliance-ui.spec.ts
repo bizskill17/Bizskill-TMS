@@ -222,7 +222,7 @@ test('Mobile task cards align labels and values and keep table mode available',a
  const longClient='A very long client name '+ 'ExampleCompany'.repeat(8);
  await page.route('**/api/init.php?**',async route=>{
   const response=await route.fetch();const payload=await response.json();
-  payload.data.mainTasks=[{id:94001,title:'File GST return',firm:longClient,assignees:'Manash Deka, Pankaj Jain',owner:'Pankaj Jain',category:'GST',status:'In Progress',priority:'High',date:'30/10/2026',dueDate:'20/11/2026',remarks:'Collect documents\nCheck ITC',lastUpdateRemarks:'Waiting for client',hours:25,time:'10:30',photos:'[]'}];
+  payload.data.mainTasks=[{id:94001,title:'File GST return',firm:longClient,assignees:'Manash Deka, Pankaj Jain',owner:'Pankaj Jain',category:'GST',status:'In Progress',priority:'High',date:'30/10/2026',dueDate:'20/11/2026',remarks:'Collect documents\nCheck ITC',lastUpdateRemarks:'Waiting for client',hours:25,time:'10:30',photos:'[]'}, {id:94003,title:'Minimal task',firm:'',assignees:'',owner:' ',category:'—',status:'Not Yet Started',priority:'Medium',date:'',dueDate:'',remarks:'  ',hours:'0.00',time:'-',photos:'[]'}];
   payload.data.vendorTasks=[];
   payload.data.recurringTasks=[{id:94002,title:'Monthly challan',firm:longClient,assignee:'Manash Deka',owner:'Pankaj Jain',category:'GST',status:'Not Yet Started',periodicity:'Monthly',recurrenceDay:20,frequencyDays:30,startDate:'01/10/2026',notes:'Review payment\nConfirm challan'}];
   payload.data.recurringActions=[];
@@ -233,11 +233,16 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await page.getByRole('button',{name:'Simple Tasks',exact:true}).click();
  const card=page.getByRole('article',{name:'File GST return',exact:true});
  await expect(card).toBeVisible();
+ const minimal=page.getByRole('article',{name:'Minimal task',exact:true});
+ await minimal.getByRole('button',{name:'Show details',exact:true}).click();
+ await expect(minimal.locator('dt')).toHaveText(['Task','Priority','Status']);
+ await expect(minimal.locator('dl')).toHaveCount(1);
  await expect(card.locator('dt')).toHaveText(['Task','Client','Assignee','Due Date','Priority','Status','Total Minutes']);
  await expect(card.locator('dd').nth(1)).toHaveText(longClient);
  await expect(card.locator('dd').nth(3)).toHaveText('20/11/2026');
  await card.getByRole('button',{name:'Show details',exact:true}).click();
- await expect(card.locator('dt')).toContainText(['Owner','Category','Task Date','Time','Notes','Update Date','Remark','Photo','PDF']);
+ await expect(card.locator('dt')).toContainText(['Owner','Category','Task Date','Time','Notes','Remark']);
+ for (const label of ['Update Date','Photo','PDF']) await expect(card.locator('dt').filter({hasText:new RegExp('^'+label+'$')})).toHaveCount(0);
  await expect(card.locator('dd').filter({hasText:'Collect documents'})).toHaveText('Collect documents\nCheck ITC');
  for(const width of [320,360,393,430]){
   await page.setViewportSize({width,height:800});
@@ -259,9 +264,9 @@ test('Mobile task cards align labels and values and keep table mode available',a
  await page.getByRole('button',{name:'Recurring Tasks',exact:true}).click();
  const recurring=page.getByRole('article',{name:'Monthly challan',exact:true});
  await expect(recurring).toBeVisible();
- await expect(recurring.locator('dt')).toHaveText(['Task','Client','Assignee','Next Due','Status','Owner','Category','Period','Time','Notes','Last Activity']);
+ await expect(recurring.locator('dt')).toHaveText(['Task','Client','Assignee','Next Due','Status','Owner','Category','Period','Notes']);
  await expect(recurring.locator('dd').nth(1)).toHaveText(longClient);
- await expect(recurring.locator('dd').nth(9)).toHaveText('Review payment\nConfirm challan');
+ await expect(recurring.locator('dd').nth(8)).toHaveText('Review payment\nConfirm challan');
  for(const width of [320,393]){
   await page.setViewportSize({width,height:800});
   expect(await recurring.evaluate(node=>node.scrollWidth-node.clientWidth)).toBeLessThanOrEqual(1);
