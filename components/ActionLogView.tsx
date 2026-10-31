@@ -565,8 +565,6 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                 <th className={thClass} style={{ width: '120px' }} onClick={() => requestSort('status')}><div className="flex items-center">Status {getSortIcon('status')}</div></th>
                 <th className={thClass} style={{ width: '100px' }} onClick={() => requestSort('hours')}><div className="flex items-center">Minutes {getSortIcon('hours')}</div></th>
                 <th className={thClass} style={{ width: '300px' }} onClick={() => requestSort('remarks')}><div className="flex items-center">Remarks {getSortIcon('remarks')}</div></th>
-	                <th className={thClass} style={{ width: '140px' }}></th>
-	                <th className={thClass} style={{ width: '120px' }}></th>
                 <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">Photo</div></th>
                 <th className={thClass} style={{ width: '120px' }}><div className="flex items-center">PDF</div></th>
                 <th className={thClass} style={{ width: '180px' }} onClick={() => requestSort('owner')}><div className="flex items-center">Owner {getSortIcon('owner')}</div></th>
@@ -617,7 +615,7 @@ export const ActionLogView: React.FC<ActionLogViewProps> = ({
                   </td>
                 </tr>
               ))}
-	              {paginatedLogs.length === 0 && (<tr><td colSpan={16} className="px-6 py-12 text-center text-blue-300 font-black uppercase">No update logs found.</td></tr>)}
+	              {paginatedLogs.length === 0 && (<tr><td colSpan={12} className="px-6 py-12 text-center text-blue-300 font-black uppercase">No update logs found.</td></tr>)}
             </tbody>
           </table>
         </div>
